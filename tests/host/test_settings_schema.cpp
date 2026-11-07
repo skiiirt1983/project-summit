@@ -22,7 +22,11 @@ struct Locked {
 static const std::vector<std::vector<Locked>> kLocked = {
     // v1
     {{"update/channel", ValueType::String, {"stable", "beta", "alpha"}},
-     {"ui/rotation_lock", ValueType::String, {"off", "landscape", "portrait"}}},
+     {"ui/rotation_lock", ValueType::String, {"off", "landscape", "portrait"}},
+     {"ui/page_order", ValueType::String, {}},
+     {"display/brightness", ValueType::Int, {}},
+     {"audio/volume", ValueType::Int, {}},
+     {"system/dnd", ValueType::Bool, {}}},
 };
 
 TEST(schema_valid_and_compatible_with_locked_version)

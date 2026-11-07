@@ -40,10 +40,11 @@ const char *notice_message(SettingsNotice notice)
 {
     switch (notice) {
     case SettingsNotice::None: return "";
-    case SettingsNotice::NewerVersion: return "Settings are from a newer version \u2014 update or reset";
+    // ASCII " - " rather than an em dash: LVGL's built-in fonts have no U+2014.
+    case SettingsNotice::NewerVersion: return "Settings are from a newer version - update or reset";
     case SettingsNotice::NoMigration:
-        return "Settings are from a version this firmware can't upgrade \u2014 update or reset";
-    case SettingsNotice::Unreadable: return "Settings could not be read \u2014 using defaults. Export or reset";
+        return "Settings are from a version this firmware can't upgrade - update or reset";
+    case SettingsNotice::Unreadable: return "Settings could not be read - using defaults. Export or reset";
     }
     return "";
 }

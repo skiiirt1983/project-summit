@@ -9,7 +9,8 @@ namespace summit {
 
 constexpr uint32_t kSystemSettingsVersion = 1;
 
-// System keys (from ARCHITECTURE.md): update channel, rotation lock.
+// System keys (from ARCHITECTURE.md): update channel, rotation lock, and the
+// quick-settings sheet (brightness 0-100, volume 0-100, do not disturb).
 // Panel settings are appended from PanelRegistry::setting_defs().
 SettingsSchema system_settings_schema();
 
