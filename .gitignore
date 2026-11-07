@@ -1,0 +1,17 @@
+# ESP-IDF
+build/
+managed_components/
+sdkconfig
+sdkconfig.old
+dependencies.lock
+
+# Secrets
+secrets.json
+*.pem
+*.key
+
+# Tooling
+__pycache__/
+node_modules/
+.DS_Store
+.vscode/
