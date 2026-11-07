@@ -12,10 +12,10 @@ EXPECTED = {
     "nvs":      ("data", "nvs",      0x9000,    0x100000),
     "otadata":  ("data", "ota",      0x109000,  0x2000),
     "phy_init": ("data", "phy",      0x10B000,  0x1000),
-    "factory":  ("app",  "factory",  0x110000,  0x300000),
-    "ota_0":    ("app",  "ota_0",    0x410000,  0x800000),
-    "ota_1":    ("app",  "ota_1",    0xC10000,  0x800000),
-    "coredump": ("data", "coredump", 0x1410000, 0x10000),
+    "coredump": ("data", "coredump", 0x10C000,  0x10000),
+    "factory":  ("app",  "factory",  0x120000,  0x300000),
+    "ota_0":    ("app",  "ota_0",    0x420000,  0x800000),
+    "ota_1":    ("app",  "ota_1",    0xC20000,  0x800000),
     "assets":   ("data", "littlefs", 0x1420000, 0xBE0000),
 }
 MB = 1024 * 1024
