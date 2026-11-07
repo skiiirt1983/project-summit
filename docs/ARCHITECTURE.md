@@ -281,6 +281,10 @@ USB web flasher ─▶ Flash over cable (full, or keep settings)
 
 Confirm the first build leaves ≥30% headroom in an 8 MB slot.
 
+**Boot gotcha:** with a `factory` partition present, a blank (erased) `otadata` makes the bootloader start the factory recovery app, not the main app. The main app always lives in `ota_0`, never `factory`. Every USB image (full install and keep-settings) must write an initialised `otadata` that selects `ota_0`. LyricFlash's keep-settings manifest resets otadata to blank; that works for LyricFlash (no factory partition) but would boot Summit into recovery.
+
+**Chip revision:** ESP32-P4 v1.x and v3.x chips need different firmware builds, selected by `CONFIG_ESP32P4_SELECTS_REV_LESS_V3` (`y` = v1.x, `n` = v3.x, default). ESP-IDF 5.5.3 or later is required for v3.x. A build for one family will not boot on the other. CI builds both variants; each catalog entry and the hardware ID carry the revision family, and the update engine installs only the matching variant. Paul's board revision is confirmed from the boot log in Phase 1. ([Espressif v3.x guide](https://documentation.espressif.com/esp32-p4-chip-revision-v3.x_user_guide_en.html))
+
 ### USB recovery tiers
 
 1. Update over USB, keep settings. 2. Full install (erase). 3. Waveshare factory restore.
