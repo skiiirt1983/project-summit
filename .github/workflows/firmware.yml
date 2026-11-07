@@ -1,0 +1,58 @@
+name: Firmware
+
+# Host tests, ESP32-P4 firmware build for both chip-revision variants,
+# OTA + full image packaging. Nothing is published or released here.
+# A green run is NOT hardware proof (CLAUDE.md hard rule 8).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firmware-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Host tests (no ESP-IDF)
+        run: bash tests/run_tests.sh
+
+  firmware:
+    needs: host-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # rev3 = ESP32-P4 v3.x (default), rev1 = v1.x. Not interchangeable.
+        variant: [rev3, rev1]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build ${{ matrix.variant }} and merge full image (app in ota_0)
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.4   # >= 5.5.3 required for P4 v3.x
+          target: esp32p4
+          path: firmware
+          command: bash ../tools/ci_build.sh ${{ matrix.variant }}
+
+      - name: Validate and package ${{ matrix.variant }}
+        run: python3 tools/package_firmware.py firmware/build dist ${{ matrix.variant }} "${GITHUB_SHA:0:12}"
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: summit-firmware-${{ matrix.variant }}-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
