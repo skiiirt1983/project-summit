@@ -1,9 +1,17 @@
-// Pager: one panel per page, in registry order; swipe left/right. Pure logic.
+// Pager: one panel per page, horizontal swipe. Home is always the first page; the
+// rest follow the ui/page_order setting (set from the web config). Pure logic.
 #pragma once
 #include <string>
 #include <vector>
 
 namespace summit::shell {
+
+constexpr const char *kHomePanel = "home_clock";
+
+// Page order from the ui/page_order setting: comma-separated panel ids.
+// Home first (if registered), then listed ids that are registered, then any
+// remaining registered panels in registration order. Unknown/duplicate ids are ignored.
+std::vector<std::string> page_order(const std::vector<std::string> &registered, const std::string &setting);
 
 class Pager {
 public:

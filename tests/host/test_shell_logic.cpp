@@ -117,18 +117,61 @@ TEST(strip_hidden_modes_and_tap_reveal_for_3s)
 TEST(toasts_show_one_at_a_time_then_collapse)
 {
     ToastQueue q;
-    CHECK(q.current(0) == nullptr);
-    q.push({"Print done", ""});
-    q.push({"Print done", ""});  // duplicate ignored
-    q.push({"Update available", ""});
-    const Toast *t = q.current(100);
+    CHECK(q.current(0, true) == nullptr);
+    q.push({"Print done", "", false, 0}, 0);
+    q.push({"Update available", "", false, 0}, 0);
+    q.push({"Print done", "", false, 0}, 50);  // duplicate merged
+    CHECK(q.pending() == 2);
+    const Toast *t = q.current(100, true);
     CHECK(t && t->text == "Print done");
-    CHECK(q.current(100 + ToastQueue::kShowMs - 1)->text == "Print done");
-    t = q.current(100 + ToastQueue::kShowMs);
+    CHECK(q.current(100 + ToastQueue::kShowMs - 1, true)->text == "Print done");
+    q.push({"Print done", "", false, 0}, 200);  // duplicate of the one showing: merged
+    t = q.current(100 + ToastQueue::kShowMs, true);
     CHECK(t && t->text == "Update available");
-    CHECK(q.current(100 + 2 * ToastQueue::kShowMs) == nullptr);
-    for (int i = 0; i < 20; ++i) q.push({"n" + std::to_string(i), ""});
+    CHECK(q.current(100 + 2 * ToastQueue::kShowMs, true) == nullptr);
+    for (int i = 0; i < 20; ++i) q.push({"n" + std::to_string(i), "", false, 0}, 0);
     CHECK(q.pending() == ToastQueue::kMaxQueued);
+}
+
+TEST(toasts_wait_while_hidden_and_expire_after_10_min)
+{
+    ToastQueue q;
+    q.push({"Print done", "", false, 0}, 1000);
+    CHECK(q.current(2000, false) == nullptr);               // hidden: waits
+    const Toast *t = q.current(3000, true);
+    CHECK(t && t->text == "Print done");                    // shown once visible
+    ToastQueue e;
+    e.push({"Old news", "", false, 0}, 1000);
+    CHECK(e.current(1000 + ToastQueue::kExpireMs - 1, false) == nullptr);
+    CHECK(e.current(1000 + ToastQueue::kExpireMs, true) == nullptr);  // expired unseen
+    CHECK(e.pending() == 0);
+}
+
+TEST(critical_toasts_show_immediately_even_when_hidden)
+{
+    ToastQueue q;
+    q.push({"Print done", "", false, 0}, 0);
+    CHECK(q.current(10, true)->text == "Print done");
+    q.push({"Battery low: 10%", "", true, 0}, 20);          // interrupts the normal toast
+    const Toast *t = q.current(30, false);                   // strip hidden: still shown
+    CHECK(t && t->critical && t->text == "Battery low: 10%");
+    t = q.current(30 + ToastQueue::kShowMs, true);
+    CHECK(t && t->text == "Print done");                     // interrupted toast shown again
+    q.push({"Alarm 07:00", "", true, 0}, 40);
+    q.push({"Alarm 07:00", "", false, 0}, 50);              // merged into the critical one
+    CHECK(q.pending() == 2);
+    ToastQueue e;
+    e.push({"Alarm", "", true, 0}, 0);
+    CHECK(e.current(ToastQueue::kExpireMs + 5, false) != nullptr);  // critical never expires
+}
+
+TEST(page_order_home_first_then_setting_then_rest)
+{
+    std::vector<std::string> reg = {"calendar", "home_clock", "weather", "news", "printer"};
+    CHECK((page_order(reg, "") == std::vector<std::string>{"home_clock", "calendar", "weather", "news", "printer"}));
+    CHECK((page_order(reg, "printer, news,bogus,printer,home_clock") ==
+           std::vector<std::string>{"home_clock", "printer", "news", "calendar", "weather"}));
+    CHECK((page_order({"news"}, "weather") == std::vector<std::string>{"news"}));
 }
 
 TEST(rotation_debounces_400ms)
@@ -212,6 +255,9 @@ int main()
     RUN(narrow_width_drops_printer_then_weather_then_event);
     RUN(strip_hidden_modes_and_tap_reveal_for_3s);
     RUN(toasts_show_one_at_a_time_then_collapse);
+    RUN(toasts_wait_while_hidden_and_expire_after_10_min);
+    RUN(critical_toasts_show_immediately_even_when_hidden);
+    RUN(page_order_home_first_then_setting_then_rest);
     RUN(rotation_debounces_400ms);
     RUN(rotation_lock_pins_and_long_press_toggles);
     RUN(pager_navigation_and_swipe);

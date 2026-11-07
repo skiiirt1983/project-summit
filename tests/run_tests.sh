@@ -5,6 +5,7 @@ cd "$(dirname "$0")/.."
 python3 tests/test_partitions.py
 python3 tests/test_firmware_image.py
 python3 tests/test_hardware_id_contract.py
+python3 tests/test_state_topics_contract.py
 # C++ framework host tests (same sources as the firmware, no ESP-IDF/LVGL).
 fw=firmware/framework
 out=$(mktemp -d)

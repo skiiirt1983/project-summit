@@ -1,6 +1,31 @@
 #include "summit/shell/pager.h"
 
+#include <algorithm>
+
 namespace summit::shell {
+
+std::vector<std::string> page_order(const std::vector<std::string> &registered, const std::string &setting)
+{
+    std::vector<std::string> out;
+    auto add = [&](const std::string &id) {
+        if (std::find(registered.begin(), registered.end(), id) != registered.end() &&
+            std::find(out.begin(), out.end(), id) == out.end())
+            out.push_back(id);
+    };
+    add(kHomePanel);
+    size_t start = 0;
+    while (start <= setting.size()) {
+        size_t end = setting.find(',', start);
+        if (end == std::string::npos) end = setting.size();
+        std::string id = setting.substr(start, end - start);
+        id.erase(0, id.find_first_not_of(' '));
+        id.erase(id.find_last_not_of(' ') + 1);
+        if (!id.empty()) add(id);
+        start = end + 1;
+    }
+    for (const auto &id : registered) add(id);
+    return out;
+}
 
 bool Pager::go_to(size_t index)
 {

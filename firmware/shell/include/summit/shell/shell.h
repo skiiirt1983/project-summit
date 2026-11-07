@@ -28,10 +28,13 @@ const lv_font_t *font_for(int16_t px);
 namespace topics {
 constexpr const char *kOrientation = "sensor/orientation";  // "landscape" | "portrait"
 constexpr const char *kToast = "notify/toast";              // event: toast text
+constexpr const char *kToastCritical = "notify/toast_critical";  // event: shown at once, even full-screen
+constexpr const char *kOpenScreen = "ui/open_screen";       // event (shell -> screens): e.g. "settings/updates"
 constexpr const char *kFullscreen = "ui/fullscreen";        // bool: LyricFlash visuals
 constexpr const char *kAlarmRinging = "alarm/ringing";      // bool
 constexpr const char *kAmbient = "ui/ambient";              // bool: night / ambient clock
 constexpr const char *kUpdating = "update/in_progress";     // bool
+constexpr const char *kSettingsNotice = "system/settings_notice";  // string, empty = none
 constexpr const char *kRotationLocked = "shell/rotation_locked";  // written by the shell
 constexpr const char *kCurrentPanel = "shell/current_panel";      // written by the shell
 }  // namespace topics
@@ -69,6 +72,9 @@ public:
     void close_quick_settings();
     void toggle_rotation_lock();
     void tap_reveal();
+    // Settings problem (newer version / corrupt): first call arms, second within 3 s resets.
+    // Settings::reset() saves the old settings as a backup for export first.
+    void request_settings_reset();
     void on_chip_tapped(size_t chip_index);
 
     // Introspection for the simulator self-test.
@@ -79,7 +85,9 @@ public:
     lv_obj_t *quick_settings() const { return sheet_; }
     bool quick_settings_open() const { return sheet_open_; }
     bool strip_visible() const;
-    bool toast_showing() const { return toast_ != nullptr; }
+    bool toast_showing() const { return toast_on_; }
+    bool settings_notice_shown() const;
+    lv_obj_t *reset_button() const { return reset_btn_; }
     std::vector<std::string> visible_chips() const;
     const Pager &pager() const { return *pager_; }
     const RotationController &rotation() const { return rotation_; }
@@ -105,8 +113,10 @@ private:
     void refresh_strip_visibility();
     void show_current(int slide_dir);
     void sync_quick_settings();
+    void refresh_settings_notice();
     void update_hide_reasons();
-    void on_toast(const Value &v);
+    void on_toast(const Value &v, bool critical);
+    void rebuild_pages();
     void on_input(lv_event_t *e);
 
     static void chip_clicked_cb(lv_event_t *e);
@@ -123,9 +133,12 @@ private:
     RotationController rotation_;
     StripVisibility visibility_;
     ToastQueue toasts_;
-    const Toast *toast_ = nullptr;
+    bool toast_on_ = false;        // copied from the queue each tick (no pointers into it)
+    bool toast_critical_ = false;
     std::string toast_text_;
     EventBus::SubscriptionId toast_sub_ = 0;
+    EventBus::SubscriptionId critical_sub_ = 0;
+    EventBus::SubscriptionId order_sub_ = 0;
 
     lv_obj_t *screen_ = nullptr;
     lv_obj_t *content_ = nullptr;
@@ -140,6 +153,13 @@ private:
     lv_obj_t *volume_ = nullptr;
     lv_obj_t *rotation_buttons_ = nullptr;
     lv_obj_t *dnd_ = nullptr;
+    lv_obj_t *notice_row_ = nullptr;
+    lv_obj_t *notice_label_ = nullptr;
+    lv_obj_t *reset_btn_ = nullptr;
+    lv_obj_t *reset_label_ = nullptr;
+    std::string notice_text_;
+    bool reset_armed_ = false;
+    uint32_t reset_armed_until_ = 0;
     bool sheet_open_ = false;
     std::vector<ChipUi> chips_;
 

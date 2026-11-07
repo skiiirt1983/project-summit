@@ -313,8 +313,17 @@ void selftest(App &app)
     release(app);
     run_ms(app, 50);
     EXPECT(std::get<std::string>(app.settings->get("ui/rotation_lock")) == "off", "long-press unlocks");
+    // Tapping the lock chip turns the lock off.
+    press(app, 640, 20);
+    run_ms(app, 700);
+    release(app);
+    run_ms(app, 50);
+    lv_point_t lock_chip = chip_center(app, "rotation_lock");
+    tap(app, lock_chip.x, lock_chip.y);
+    EXPECT(std::get<std::string>(app.settings->get("ui/rotation_lock")) == "off" && !has_chip(app, "rotation_lock"),
+           "tap lock chip unlocks");
     app.state.set("sensor/orientation", std::string("landscape"));
-    run_ms(app, 2 * shell::ToastQueue::kShowMs + 200);  // let the lock + unlock toasts finish
+    for (int i = 0; i < 100 && app.shell->toast_showing(); ++i) run_ms(app, 200);  // lock/unlock toasts
     EXPECT(!app.shell->toast_showing(), "lock/unlock toasts done");
 
     // Toast expands the strip, then collapses.
@@ -339,9 +348,81 @@ void selftest(App &app)
     EXPECT(app.shell->strip_visible(), "tap reveals strip");
     run_ms(app, 3100);
     EXPECT(!app.shell->strip_visible(), "strip hides again after 3 s");
+
+    // While hidden, normal toasts wait; critical toasts show at once as an overlay.
+    app.bus.publish(shell::topics::kToast, std::string("Print finished: Enclosure v2"));
+    run_ms(app, 100);
+    EXPECT(!app.shell->strip_visible() && !app.shell->toast_showing(), "normal toast waits while hidden");
+    app.bus.publish(shell::topics::kToastCritical, std::string("Battery low: 10%"));
+    run_ms(app, 100);
+    EXPECT(app.shell->strip_visible() && app.shell->toast_showing() && app.shell->layout().content.y == 0,
+           "critical toast shows in full-screen (overlay)");
+    shot("05b-landscape-fullscreen-critical-toast");
+    run_ms(app, shell::ToastQueue::kShowMs + 100);
+    EXPECT(!app.shell->strip_visible(), "strip hidden again after the critical toast");
+
     app.state.set("ui/fullscreen", false);
     run_ms(app, 50);
     EXPECT(app.shell->strip_visible() && app.shell->layout().content.y == 44, "strip back after full-screen");
+    EXPECT(app.shell->toast_showing(), "waiting toast shows once the strip is back");
+    run_ms(app, shell::ToastQueue::kShowMs + 100);
+
+    // Chip targets: time -> Home, update -> Settings > Updates request, Wi-Fi/battery -> quick settings.
+    std::string opened;
+    auto sub = app.bus.subscribe(shell::topics::kOpenScreen,
+                                 [&](const std::string &, const Value &v) { opened = std::get<std::string>(v); });
+    lv_point_t c = chip_center(app, "time");
+    tap(app, c.x, c.y);
+    run_ms(app, 300);
+    EXPECT(current_panel(app) == "home_clock", "tap time -> Home (%s)", current_panel(app).c_str());
+    c = chip_center(app, "update");
+    tap(app, c.x, c.y);
+    run_ms(app, 50);
+    EXPECT(opened == "settings/updates" && !app.shell->quick_settings_open(), "tap update -> Updates (%s)",
+           opened.c_str());
+    app.bus.unsubscribe(sub);
+    for (const char *id : {"wifi", "battery"}) {
+        c = chip_center(app, id);
+        tap(app, c.x, c.y);
+        run_ms(app, 300);
+        EXPECT(app.shell->quick_settings_open(), "tap %s -> quick settings", id);
+        app.shell->close_quick_settings();
+    }
+
+    // Settings notice: critical toast + row in quick settings with a two-tap reset.
+    app.state.set(shell::topics::kSettingsNotice, std::string(notice_message(SettingsNotice::NewerVersion)));
+    run_ms(app, 100);
+    EXPECT(app.shell->toast_showing(), "settings notice raises a toast");
+    app.shell->open_quick_settings();
+    run_ms(app, 300);
+    EXPECT(app.shell->settings_notice_shown(), "notice row in quick settings");
+    shot("03b-landscape-settings-notice");
+    app.settings->set("display/brightness", int64_t{30});
+    lv_area_t rb;
+    lv_obj_get_coords(app.shell->reset_button(), &rb);
+    tap(app, (rb.x1 + rb.x2) / 2, (rb.y1 + rb.y2) / 2);
+    EXPECT(std::get<int64_t>(app.settings->get("display/brightness")) == 30, "first tap only arms the reset");
+    tap(app, (rb.x1 + rb.x2) / 2, (rb.y1 + rb.y2) / 2);
+    run_ms(app, 50);
+    EXPECT(std::get<int64_t>(app.settings->get("display/brightness")) == 80 && !app.shell->settings_notice_shown() &&
+               !app.storage.backup.empty(),
+           "second tap resets (old settings backed up), notice cleared");
+    app.shell->close_quick_settings();
+    for (int i = 0; i < 100 && app.shell->toast_showing(); ++i) run_ms(app, 200);
+
+    // Page order: Home first, then ui/page_order, then the rest; applied live.
+    EXPECT((app.shell->pager().ids() ==
+            std::vector<std::string>{"home_clock", "calendar", "weather", "news", "printer"}),
+           "default page order");
+    app.shell->go_to_panel("weather", false);
+    app.settings->set("ui/page_order", std::string("printer,news,home_clock"));
+    run_ms(app, 50);
+    EXPECT((app.shell->pager().ids() ==
+            std::vector<std::string>{"home_clock", "printer", "news", "calendar", "weather"}) &&
+               current_panel(app) == "weather",
+           "page order from settings, current page kept");
+    app.settings->set("ui/page_order", std::string());
+    run_ms(app, 50);
 
     // --- Rotate to portrait 720x1280 (400 ms debounce, then re-layout) ---
     app.shell->go_to_panel("home_clock", false);

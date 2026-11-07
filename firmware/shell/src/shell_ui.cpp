@@ -108,7 +108,17 @@ Shell::Shell(Deps deps, ApplyOrientation apply) : d_(deps), apply_(std::move(app
 
 Shell::~Shell()
 {
-    if (toast_sub_) d_.bus.unsubscribe(toast_sub_);
+    for (auto id : {toast_sub_, critical_sub_, order_sub_})
+        if (id) d_.bus.unsubscribe(id);
+}
+
+void Shell::rebuild_pages()
+{
+    Value v = d_.settings.get("ui/page_order");
+    const std::string *order = std::get_if<std::string>(&v);
+    const std::string current = pager_ ? pager_->current() : std::string();
+    pager_ = std::make_unique<Pager>(page_order(d_.registry.ids(), order ? *order : std::string()));
+    if (!current.empty()) pager_->go_to(current);  // stay on the same panel
 }
 
 bool Shell::start(uint32_t now_ms, std::string *error)
@@ -120,7 +130,7 @@ bool Shell::start(uint32_t now_ms, std::string *error)
         if (error) *error = "no panels registered";
         return false;
     }
-    pager_ = std::make_unique<Pager>(d_.registry.ids());
+    rebuild_pages();
 
     lv_display_t *disp = lv_display_get_default();
     const int32_t w = lv_display_get_horizontal_resolution(disp);
@@ -142,7 +152,11 @@ bool Shell::start(uint32_t now_ms, std::string *error)
     build_strip();
     build_quick_settings();
 
-    toast_sub_ = d_.bus.subscribe(topics::kToast, [this](const std::string &, const Value &v) { on_toast(v); });
+    toast_sub_ = d_.bus.subscribe(topics::kToast, [this](const std::string &, const Value &v) { on_toast(v, false); });
+    critical_sub_ = d_.bus.subscribe(topics::kToastCritical,
+                                     [this](const std::string &, const Value &v) { on_toast(v, true); });
+    order_sub_ = d_.bus.subscribe("settings/ui/page_order",
+                                  [this](const std::string &, const Value &) { rebuild_pages(); });
 
     update_hide_reasons();
     apply_layout(false);
@@ -241,6 +255,24 @@ void Shell::build_quick_settings()
     lv_buttonmatrix_set_button_ctrl_all(rotation_buttons_, LV_BUTTONMATRIX_CTRL_CHECKABLE);
     lv_buttonmatrix_set_one_checked(rotation_buttons_, true);
     dnd_ = lv_switch_create(row("Do not disturb"));
+
+    // Settings notice (newer version / unreadable) with an explicit, two-tap reset.
+    notice_row_ = plain(sheet_);
+    lv_obj_set_width(notice_row_, lv_pct(100));
+    lv_obj_set_height(notice_row_, LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(notice_row_, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(notice_row_, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    notice_label_ = lv_label_create(notice_row_);
+    lv_label_set_long_mode(notice_label_, LV_LABEL_LONG_MODE_WRAP);
+    lv_obj_set_flex_grow(notice_label_, 1);
+    lv_obj_set_style_text_color(notice_label_, lv_color_hex(kText), 0);
+    reset_btn_ = lv_button_create(notice_row_);
+    reset_label_ = lv_label_create(reset_btn_);
+    lv_label_set_text(reset_label_, "Reset settings");
+    lv_obj_set_style_bg_color(reset_btn_, lv_color_hex(kChipBg), 0);
+    lv_obj_set_style_shadow_width(reset_btn_, 0, 0);
+    lv_obj_add_event_cb(reset_btn_, sheet_event_cb, LV_EVENT_CLICKED, this);
+    lv_obj_add_flag(notice_row_, LV_OBJ_FLAG_HIDDEN);
     for (lv_obj_t *o : {brightness_, volume_}) {
         lv_obj_add_event_cb(o, sheet_event_cb, LV_EVENT_RELEASED, this);  // persist once, on release
         lv_obj_set_style_bg_color(o, lv_color_hex(kAccent), LV_PART_INDICATOR);
@@ -293,6 +325,9 @@ void Shell::style_strip_fonts()
     lv_obj_set_style_pad_all(rotation_buttons_, t.space_s / 2, LV_PART_MAIN);
     lv_obj_set_style_pad_gap(rotation_buttons_, t.space_s / 2, LV_PART_MAIN);
     lv_obj_set_size(dnd_, t.unit * 3 / 2, t.space_m + t.space_s);
+    lv_obj_set_style_pad_column(notice_row_, t.space_m, 0);
+    lv_obj_set_style_pad_all(reset_btn_, t.space_s, 0);
+    lv_obj_set_style_radius(reset_btn_, t.radius, 0);
 }
 
 void Shell::apply_layout(bool morph)
@@ -308,7 +343,7 @@ void Shell::apply_layout(bool morph)
     lv_obj_set_size(content_, c.w, c.h);
     lv_obj_set_size(page_, c.w, c.h);
 
-    const Rect &s = toast_ ? layout_.strip_toast : layout_.strip;
+    const Rect &s = toast_on_ ? layout_.strip_toast : layout_.strip;
     lv_obj_set_pos(strip_, s.x, s.y);
     lv_obj_set_size(strip_, s.w, s.h);
     lv_obj_set_pos(row_, 0, 0);
@@ -317,7 +352,7 @@ void Shell::apply_layout(bool morph)
     lv_obj_set_width(toast_label_, layout_.strip.w - 2 * layout_.tokens.space_m);
 
     lv_obj_set_size(backdrop_, w, h);
-    lv_obj_set_pos(sheet_, 0, layout_.strip.h);
+    lv_obj_set_pos(sheet_, 0, s.h);
     lv_obj_set_size(sheet_, w, LV_SIZE_CONTENT);
     style_strip_fonts();
 
@@ -423,7 +458,8 @@ bool Shell::strip_visible() const { return !lv_obj_has_flag(strip_, LV_OBJ_FLAG_
 
 void Shell::refresh_strip_visibility()
 {
-    if (visibility_.visible(now_)) {
+    // A critical toast shows the strip even in full-screen modes (as an overlay).
+    if (visibility_.visible(now_) || (toast_on_ && toast_critical_)) {
         lv_obj_remove_flag(strip_, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_add_flag(strip_, LV_OBJ_FLAG_HIDDEN);
@@ -440,10 +476,10 @@ void Shell::update_hide_reasons()
     if (was != visibility_.hidden_by_mode() && content_) apply_layout(false);
 }
 
-void Shell::on_toast(const Value &v)
+void Shell::on_toast(const Value &v, bool critical)
 {
     const std::string *s = std::get_if<std::string>(&v);
-    if (s && !s->empty()) toasts_.push({*s, ""});
+    if (s && !s->empty()) toasts_.push({*s, "", critical, 0}, now_);
 }
 
 void Shell::tick(uint32_t now_ms)
@@ -466,11 +502,11 @@ void Shell::tick(uint32_t now_ms)
 
     update_hide_reasons();
 
-    // Toasts advance only while the strip can be seen.
-    const bool visible = visibility_.visible(now_ms);
-    const Toast *t = visible ? toasts_.current(now_ms) : nullptr;
-    if ((t != nullptr) != (toast_ != nullptr) || (t && t->text != toast_text_)) {
-        toast_ = t;
+    // Normal toasts wait while the strip is hidden; critical ones show anyway.
+    const Toast *t = toasts_.current(now_ms, visibility_.visible(now_ms));
+    if ((t != nullptr) != toast_on_ || (t && t->text != toast_text_)) {
+        toast_on_ = t != nullptr;
+        toast_critical_ = t && t->critical;
         toast_text_ = t ? t->text : std::string();
         if (t) {
             lv_label_set_text(toast_label_, t->text.c_str());
@@ -478,11 +514,13 @@ void Shell::tick(uint32_t now_ms)
         } else {
             lv_obj_add_flag(toast_label_, LV_OBJ_FLAG_HIDDEN);
         }
-        const Rect &s = toast_ ? layout_.strip_toast : layout_.strip;
+        const Rect &s = toast_on_ ? layout_.strip_toast : layout_.strip;
         lv_obj_set_height(strip_, s.h);
+        lv_obj_set_y(sheet_, s.h);  // the sheet sits below the strip, expanded or not
     }
 
     refresh_chips(false);
+    refresh_settings_notice();
     refresh_strip_visibility();
 
     // Drag-to-swipe: LVGL does not forward PRESSING to input listeners, so follow
@@ -583,7 +621,47 @@ void Shell::toggle_rotation_lock()
     d_.settings.set("ui/rotation_lock", lock);
     rotation_.set_lock(lock);
     d_.state.set(topics::kRotationLocked, lock != "off");
-    toasts_.push({lock == "off" ? "Rotation unlocked" : "Rotation locked", ""});
+    toasts_.push({lock == "off" ? "Rotation unlocked" : "Rotation locked", "", false, 0}, now_);
+}
+
+bool Shell::settings_notice_shown() const { return !lv_obj_has_flag(notice_row_, LV_OBJ_FLAG_HIDDEN); }
+
+void Shell::refresh_settings_notice()
+{
+    Value v = d_.state.get(topics::kSettingsNotice);
+    const std::string *s = std::get_if<std::string>(&v);
+    const std::string text = s ? *s : std::string();
+    if (reset_armed_ && static_cast<int32_t>(now_ - reset_armed_until_) >= 0) {
+        reset_armed_ = false;
+        lv_label_set_text(reset_label_, "Reset settings");
+    }
+    if (text == notice_text_) return;
+    notice_text_ = text;
+    if (text.empty()) {
+        lv_obj_add_flag(notice_row_, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+    lv_label_set_text(notice_label_, text.c_str());
+    lv_obj_remove_flag(notice_row_, LV_OBJ_FLAG_HIDDEN);
+    toasts_.push({text, "", true, 0}, now_);  // the notice and its reset live in quick settings
+}
+
+void Shell::request_settings_reset()
+{
+    if (!reset_armed_) {
+        reset_armed_ = true;
+        reset_armed_until_ = now_ + StripVisibility::kRevealMs;
+        lv_label_set_text(reset_label_, "Tap again to reset");
+        return;
+    }
+    reset_armed_ = false;
+    lv_label_set_text(reset_label_, "Reset settings");
+    if (d_.settings.reset() == ResetResult::Ok) {
+        d_.state.set(topics::kSettingsNotice, std::string());
+        toasts_.push({"Settings reset. Old settings kept for export.", "", false, 0}, now_);
+    } else {
+        toasts_.push({"Reset failed: old settings could not be saved", "", true, 0}, now_);
+    }
 }
 
 void Shell::tap_reveal()
@@ -598,9 +676,16 @@ void Shell::on_chip_tapped(size_t i)
     if (!def.panel_id.empty()) {
         go_to_panel(def.panel_id);
     } else if (def.id == "time") {
-        go_to_panel(pager_->ids().front());
+        go_to_panel(kHomePanel);
+    } else if (def.id == "update") {
+        // Settings -> Updates is built with the update engine (step 5); it listens for this.
+        d_.bus.publish(topics::kOpenScreen, std::string("settings/updates"));
+    } else if (def.id == "rotation_lock") {
+        d_.settings.set("ui/rotation_lock", std::string("off"));
+        rotation_.set_lock("off");
+        d_.state.set(topics::kRotationLocked, false);
     } else {
-        open_quick_settings();  // system icons (Wi-Fi, update, lock, battery)
+        open_quick_settings();  // Wi-Fi, battery
     }
 }
 
@@ -644,6 +729,8 @@ void Shell::sheet_event_cb(lv_event_t *e)
             self->d_.settings.set("ui/rotation_lock", std::string(kRotationValues[i]));
             self->rotation_.set_lock(kRotationValues[i]);
         }
+    } else if (t == self->reset_btn_) {
+        self->request_settings_reset();
     } else if (t == self->dnd_) {
         self->d_.settings.set("system/dnd", lv_obj_has_state(t, LV_STATE_CHECKED));
     }

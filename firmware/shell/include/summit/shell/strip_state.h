@@ -33,18 +33,24 @@ private:
 struct Toast {
     std::string text;
     std::string icon;
+    bool critical = false;  // alarm, low battery: shown at once, even when the strip is hidden
+    uint32_t queued_ms = 0;
 };
 
-// Notifications briefly expand the strip, one at a time, oldest first.
+// Notifications briefly expand the strip, one at a time.
+// - Normal toasts wait while the strip is hidden and expire after 10 min in the queue.
+// - Critical toasts jump the queue and show immediately, even in full-screen modes.
+// - A toast with the same text as one queued or showing is merged into it.
 class ToastQueue {
 public:
     static constexpr uint32_t kShowMs = 4000;
+    static constexpr uint32_t kExpireMs = 10 * 60 * 1000;
     static constexpr size_t kMaxQueued = 8;
 
-    // A toast identical to the last queued/showing one is ignored.
-    void push(Toast t);
-    // Advances time; returns the toast to show now, or nullptr when collapsed.
-    const Toast *current(uint32_t now_ms);
+    void push(Toast t, uint32_t now_ms);
+    // Returns the toast to show now, or nullptr. `strip_visible` false: only a
+    // critical toast is returned (the shell then shows the strip for it).
+    const Toast *current(uint32_t now_ms, bool strip_visible);
     size_t pending() const { return queue_.size(); }
 
 private:

@@ -182,7 +182,7 @@ TEST(newer_schema_is_not_written_and_raises_notice)
     CHECK(s.load() == LoadResult::NewerSchema);
     CHECK(s.notice() == SettingsNotice::NewerVersion && s.read_only());
     CHECK(std::string(notice_message(s.notice())) ==
-          "Settings are from a newer version — update or reset");
+          "Settings are from a newer version - update or reset");
     CHECK(std::get<int64_t>(s.get("ui/brightness")) == 20);  // compatible key still read
     CHECK(s.set("ui/brightness", int64_t{90}) == SetResult::ReadOnly);
     CHECK(st.writes == writes && st.blob == before);

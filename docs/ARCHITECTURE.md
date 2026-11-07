@@ -215,6 +215,37 @@ firmware/
 - **Data:** panels read the state store and subscribe to topics (`weather/now`, `printer/status`, `audio/spectrum`); services do all network I/O.
 - **Layout:** size tokens, never pixels — one layout for portrait and landscape.
 
+### State topics
+
+The state store and event bus are the public API between services, panels and the shell. Names follow `domain/item` (lowercase, `[a-z0-9_]`). Keep this table updated: `tests/test_state_topics_contract.py` fails if code uses a topic missing from it. "event" topics are published on the bus only and hold no stored state.
+
+| Topic | Type | Published by | Read by |
+| --- | --- | --- | --- |
+| `time/now_text` | string, e.g. "09:41" | time service | glance strip (time chip), Home |
+| `time/date_text` | string | time service | Home |
+| `calendar/next_text` | string: next event + countdown; empty = none | calendar service | glance strip (next-event chip), Home |
+| `weather/now_text` | string: temp + condition; empty = none | weather service | glance strip (weather chip), Home, Weather |
+| `printer/progress_text` | string; empty when not printing | printer service | glance strip (printer chip), Printer |
+| `printer/progress_pct` | int 0–100 | printer service | Printer |
+| `net/wifi_connected` | bool | net service | glance strip (Wi-Fi chip) |
+| `update/available` | bool | update engine | glance strip (update chip) |
+| `update/in_progress` | bool | update engine | shell (hides strip) |
+| `power/battery_text` | string, e.g. "85%" | power service | glance strip (battery chip) |
+| `power/battery_icon` | string: LVGL symbol (level / charging) | power service | glance strip (battery chip) |
+| `sensor/orientation` | string: "landscape" \| "portrait" | IMU service (LIS2DW12) | shell (400 ms debounce, rotation) |
+| `ui/fullscreen` | bool | LyricFlash panel | shell (hides strip) |
+| `ui/ambient` | bool: night / ambient clock | power service, Home | shell (hides strip) |
+| `alarm/ringing` | bool | alarm (Home) | shell (hides strip) |
+| `shell/rotation_locked` | bool | shell | glance strip (rotation-lock chip) |
+| `shell/current_panel` | string: panel id | shell | diagnostics, web UI |
+| `system/hardware_id` | string, e.g. "waveshare-p4-wifi6-lcd5-rev3" | boot (`app_main`) | update engine, web UI |
+| `system/settings_notice` | string; empty = none | boot (`app_main`), shell (clears after reset) | shell (toast + quick settings), web UI |
+| `notify/toast` | event: string | any service or panel | shell (toast) |
+| `notify/toast_critical` | event: string | alarm, power service | shell (toast, shown even in full-screen) |
+| `ui/open_screen` | event: string screen id, e.g. "settings/updates" | shell | screens (Settings → Updates, step 5) |
+| `settings/<key>` | event: the new value | settings (on every change) | shell (`settings/ui/page_order`), services |
+| `settings/reset` | event: bool | settings | services, UI |
+
 ### Path to an app installer
 
 | Stage | What an "app" is | Risk |
@@ -307,6 +338,10 @@ Confirm the first build leaves ≥30% headroom in an 8 MB slot.
 - **LyricFlash:** on-device FFT visuals always; recognition goes device → LyricFlash HTTPS endpoint; panel contract `{title, artist, album, art_url, duration, position_ms, lyrics: [{t_ms, line}], mood}`; Song info sheet with QR.
 - **Printer:** port PrintSphere's client + status parsing (licence permitting); new UI; print-done/HMS as system notifications.
 
+### Pager
+
+One panel per page, horizontal swipe. Home is always the first page; the order of the rest comes from the `ui/page_order` setting (set in the web config).
+
 ### Glance strip
 
 - Thin bar on the top edge of every panel, both orientations. Height = one size token (~6% of the short side, ~44 px). Panels get the content area below it and never draw under it.
@@ -314,7 +349,8 @@ Confirm the first build leaves ≥30% headroom in an 8 MB slot.
 - Each item is a "glance chip" fed by a state-store topic. Panels can register a chip in their manifest, so new panels add chips without shell changes. A chip with no data is hidden.
 - Narrow width (portrait): drop chips in this order: printer, weather, next event. Time and battery never drop.
 - Gestures: tap a chip → go to its panel; swipe down from the strip → quick-settings sheet (brightness, volume, rotation lock, do not disturb); long-press → rotation lock.
-- Notifications (print done, update available, etc.) briefly expand the strip as a toast, then collapse.
+- System chip taps: time → Home; update → Settings → Updates; rotation lock → turns the lock off; Wi-Fi and battery → quick-settings sheet.
+- Notifications (print done, update available, etc.) briefly expand the strip as a toast, then collapse. Toasts wait while the strip is hidden, except critical ones (alarm, low battery), which show immediately even in full-screen. Duplicates merge into one; queued toasts expire after 10 min.
 - Hidden during: LyricFlash full-screen visuals, ringing alarm, night/ambient clock, update progress (tap reveals it for 3 s).
 
 ## "Oh nice" features
