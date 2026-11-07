@@ -12,6 +12,12 @@
 #include "summit/settings.h"
 #include "summit/value.h"
 
+// LVGL's object type, forward-declared so the framework builds and is tested
+// without LVGL but stays type-checked. Matches LVGL 9.3+ (9.2 and older use
+// `struct lv_obj_t` and would fail to compile here, which is intended).
+struct _lv_obj_t;
+typedef struct _lv_obj_t lv_obj_t;
+
 namespace summit {
 
 enum SizeClass : uint8_t { kSizeFull = 1, kSizeHalf = 2, kSizeTile = 4 };
@@ -30,10 +36,9 @@ struct PanelManifest {
 };
 
 // Where and how big the panel is shown. Layout uses size tokens from the shell
-// (step 4), never pixels. `lv_parent` is an lv_obj_t*, kept opaque so the
-// framework builds and is tested without LVGL.
+// (step 4), never pixels.
 struct PanelView {
-    void *lv_parent = nullptr;
+    lv_obj_t *lv_parent = nullptr;
     SizeClass size = kSizeFull;
     Orientation orientation = kLandscape;
 };

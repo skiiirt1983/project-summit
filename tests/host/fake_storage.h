@@ -1,21 +1,53 @@
 #pragma once
+#include <string>
+
 #include "summit/settings.h"
 
 struct FakeStorage : summit::SettingsStorage {
-    summit::SettingsMap data;
-    bool fail_load = false, fail_save = false;
-    int saves = 0;
-    bool load(summit::SettingsMap &out) override
+    std::string blob, backup;
+    bool has_blob = false, has_backup = false;
+    bool fail_read = false, fail_write = false, fail_backup = false;
+    int writes = 0;
+
+    summit::ReadStatus read(std::string &out) override
     {
-        if (fail_load) return false;
-        out = data;
+        if (fail_read) return summit::ReadStatus::Error;
+        if (!has_blob) return summit::ReadStatus::Empty;
+        out = blob;
+        return summit::ReadStatus::Ok;
+    }
+    bool write(const std::string &b) override
+    {
+        if (fail_write) return false;
+        blob = b;
+        has_blob = true;
+        ++writes;
         return true;
     }
-    bool save(const summit::SettingsMap &v) override
+    bool write_backup(const std::string &b) override
     {
-        if (fail_save) return false;
-        data = v;
-        ++saves;
+        if (fail_backup) return false;
+        backup = b;
+        has_backup = true;
         return true;
+    }
+    summit::ReadStatus read_backup(std::string &out) override
+    {
+        if (!has_backup) return summit::ReadStatus::Empty;
+        out = backup;
+        return summit::ReadStatus::Ok;
+    }
+
+    // Test helpers
+    void put(const summit::SettingsMap &m)
+    {
+        summit::encode_settings(m, blob);
+        has_blob = true;
+    }
+    summit::SettingsMap map() const
+    {
+        summit::SettingsMap m;
+        summit::decode_settings(blob, m);
+        return m;
     }
 };

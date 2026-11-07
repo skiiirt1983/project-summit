@@ -36,6 +36,18 @@ bool validate_schema(const SettingsSchema &schema, std::string *error)
     return true;
 }
 
+const char *notice_message(SettingsNotice notice)
+{
+    switch (notice) {
+    case SettingsNotice::None: return "";
+    case SettingsNotice::NewerVersion: return "Settings are from a newer version \u2014 update or reset";
+    case SettingsNotice::NoMigration:
+        return "Settings are from a version this firmware can't upgrade \u2014 update or reset";
+    case SettingsNotice::Unreadable: return "Settings could not be read \u2014 using defaults. Export or reset";
+    }
+    return "";
+}
+
 Settings::Settings(SettingsSchema schema, SettingsStorage &storage, EventBus *bus)
     : schema_(std::move(schema)), storage_(storage), bus_(bus)
 {
@@ -50,44 +62,65 @@ const SettingDef *Settings::def(const std::string &key) const
     return nullptr;
 }
 
-void Settings::overlay_known(const SettingsMap &stored)
+bool Settings::accepts(const SettingDef &d, const Value &v) const
+{
+    if (type_of(v) != type_of(d.default_value)) return false;
+    if (d.choices.empty()) return true;
+    return std::find(d.choices.begin(), d.choices.end(), std::get<std::string>(v)) != d.choices.end();
+}
+
+// Usable values go to values_; everything else is kept verbatim for write-back.
+void Settings::apply_stored(const SettingsMap &stored)
 {
     for (const auto &kv : stored) {
         const SettingDef *d = def(kv.first);
-        if (!d || type_of(kv.second) != type_of(d->default_value)) continue;
-        if (!d->choices.empty() &&
-            std::find(d->choices.begin(), d->choices.end(),
-                      std::get<std::string>(kv.second)) == d->choices.end())
-            continue;
-        values_[kv.first] = kv.second;
+        if (d && accepts(*d, kv.second)) {
+            values_[kv.first] = kv.second;
+        } else {
+            passthrough_[kv.first] = kv.second;
+        }
     }
 }
 
-SettingsMap Settings::to_storage() const
+bool Settings::persist()
 {
     SettingsMap out = values_;
+    for (const auto &kv : passthrough_) out[kv.first] = kv.second;
     out[kVersionKey] = static_cast<int64_t>(schema_.version);
-    return out;
+    std::string blob;
+    if (!encode_settings(out, blob) || !storage_.write(blob)) return false;
+    stored_blob_ = std::move(blob);
+    stored_version_ = schema_.version;
+    return true;
 }
 
 LoadResult Settings::load()
 {
     std::lock_guard<std::mutex> lock(mu_);
-    read_only_ = true;
+    values_.clear();
+    passthrough_.clear();
+    stored_blob_.clear();
+    stored_version_ = 0;
     for (const SettingDef &d : schema_.defs) values_[d.key] = d.default_value;
+    notice_ = SettingsNotice::Unreadable;
     if (!validate_schema(schema_, nullptr)) return LoadResult::InvalidSchema;
 
-    SettingsMap stored;
-    if (!storage_.load(stored)) return LoadResult::StorageError;
-
-    if (stored.empty()) {
-        stored_version_ = 0;
-        if (!storage_.save(to_storage())) return LoadResult::StorageError;
-        read_only_ = false;
+    std::string blob;
+    ReadStatus rs = storage_.read(blob);
+    if (rs == ReadStatus::Error) return LoadResult::Unreadable;
+    if (rs == ReadStatus::Empty) {
+        notice_ = SettingsNotice::None;
+        if (!persist()) {
+            notice_ = SettingsNotice::Unreadable;
+            return LoadResult::Unreadable;
+        }
         return LoadResult::Fresh;
     }
+    stored_blob_ = blob;
+    SettingsMap stored;
+    if (!decode_settings(blob, stored)) return LoadResult::Unreadable;
 
-    // Data without a version predates versioning: treat as version 0 (no migration -> safe).
+    // Data without a version predates versioning: version 0 (no migration -> notice).
     uint32_t version = 0;
     auto it = stored.find(kVersionKey);
     if (it != stored.end()) {
@@ -98,23 +131,30 @@ LoadResult Settings::load()
     stored_version_ = version;
 
     if (version > schema_.version) {
-        overlay_known(stored);
+        apply_stored(stored);
+        notice_ = SettingsNotice::NewerVersion;
         return LoadResult::NewerSchema;
     }
     if (version == schema_.version) {
-        overlay_known(stored);
-        read_only_ = false;
+        apply_stored(stored);
+        notice_ = SettingsNotice::None;
         return LoadResult::Current;
     }
     for (uint32_t v = version; v < schema_.version; ++v) {
         auto m = std::find_if(schema_.migrations.begin(), schema_.migrations.end(),
                               [v](const Migration &x) { return x.from == v; });
-        if (m == schema_.migrations.end()) return LoadResult::MigrationMissing;
+        if (m == schema_.migrations.end()) {
+            notice_ = SettingsNotice::NoMigration;
+            return LoadResult::MigrationMissing;
+        }
         m->apply(stored);
     }
-    overlay_known(stored);
-    if (!storage_.save(to_storage())) return LoadResult::StorageError;
-    read_only_ = false;
+    apply_stored(stored);
+    notice_ = SettingsNotice::None;
+    if (!persist()) {
+        notice_ = SettingsNotice::Unreadable;
+        return LoadResult::Unreadable;
+    }
     return LoadResult::Migrated;
 }
 
@@ -132,16 +172,16 @@ SetResult Settings::set(const std::string &key, Value value)
         const SettingDef *d = def(key);
         if (!d) return SetResult::UnknownKey;
         if (type_of(value) != type_of(d->default_value)) return SetResult::WrongType;
-        if (!d->choices.empty() &&
-            std::find(d->choices.begin(), d->choices.end(), std::get<std::string>(value)) ==
-                d->choices.end())
-            return SetResult::NotAChoice;
-        if (read_only_) return SetResult::ReadOnly;
-        if (values_[key] == value) return SetResult::Unchanged;
+        if (!accepts(*d, value)) return SetResult::NotAChoice;
+        if (notice_ != SettingsNotice::None) return SetResult::ReadOnly;
+        if (values_[key] == value && passthrough_.count(key) == 0) return SetResult::Unchanged;
         Value old = values_[key];
+        SettingsMap old_pass = passthrough_;
         values_[key] = value;
-        if (!storage_.save(to_storage())) {
+        passthrough_.erase(key);  // the user's value replaces whatever was stored
+        if (!persist()) {
             values_[key] = old;
+            passthrough_ = old_pass;
             return SetResult::StorageError;
         }
     }
@@ -149,10 +189,32 @@ SetResult Settings::set(const std::string &key, Value value)
     return SetResult::Ok;
 }
 
-bool Settings::read_only() const
+ResetResult Settings::reset()
+{
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (!stored_blob_.empty() && !storage_.write_backup(stored_blob_))
+            return ResetResult::BackupFailed;
+        SettingsMap old_values = values_, old_pass = passthrough_;
+        SettingsNotice old_notice = notice_;
+        for (const SettingDef &d : schema_.defs) values_[d.key] = d.default_value;
+        passthrough_.clear();
+        notice_ = SettingsNotice::None;
+        if (!persist()) {
+            values_ = old_values;
+            passthrough_ = old_pass;
+            notice_ = old_notice;
+            return ResetResult::WriteFailed;
+        }
+    }
+    if (bus_) bus_->publish("settings/reset", true);
+    return ResetResult::Ok;
+}
+
+SettingsNotice Settings::notice() const
 {
     std::lock_guard<std::mutex> lock(mu_);
-    return read_only_;
+    return notice_;
 }
 
 uint32_t Settings::stored_version() const
@@ -165,6 +227,12 @@ SettingsMap Settings::values() const
 {
     std::lock_guard<std::mutex> lock(mu_);
     return values_;
+}
+
+std::string Settings::stored_blob() const
+{
+    std::lock_guard<std::mutex> lock(mu_);
+    return stored_blob_;
 }
 
 // ---- codec -----------------------------------------------------------------

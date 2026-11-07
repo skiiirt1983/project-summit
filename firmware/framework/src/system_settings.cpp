@@ -10,7 +10,7 @@ SettingsSchema system_settings_schema()
         {"update/channel", std::string("stable"), {"stable", "beta", "alpha"}},
         {"ui/rotation_lock", std::string("off"), {"off", "landscape", "portrait"}},
     };
-    // v1 is the first schema: no migrations yet. Add {from, apply} per bump.
+    // v1 is the first schema: no migrations yet. Add {from, apply} per version bump.
     s.migrations = {};
     return s;
 }

@@ -6,51 +6,44 @@
 #include "nvs.h"
 
 static const char *TAG = "nvs_settings";
-static const char *kBlobKey = "v";
 
-bool NvsSettingsStorage::load(summit::SettingsMap &out)
+summit::ReadStatus NvsSettingsStorage::read_key(const char *key, std::string &blob)
 {
-    out.clear();
     nvs_handle_t h;
     esp_err_t err = nvs_open(ns_, NVS_READONLY, &h);
-    if (err == ESP_ERR_NVS_NOT_FOUND) return true;  // never written
+    if (err == ESP_ERR_NVS_NOT_FOUND) return summit::ReadStatus::Empty;  // never written
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "open: %s", esp_err_to_name(err));
-        return false;
+        return summit::ReadStatus::Error;
     }
     size_t len = 0;
-    err = nvs_get_blob(h, kBlobKey, nullptr, &len);
+    err = nvs_get_blob(h, key, nullptr, &len);
     if (err == ESP_ERR_NVS_NOT_FOUND) {
         nvs_close(h);
-        return true;
+        return summit::ReadStatus::Empty;
     }
-    std::string blob(len, '\0');
-    if (err == ESP_OK) err = nvs_get_blob(h, kBlobKey, blob.data(), &len);
+    std::string data(len, '\0');
+    if (err == ESP_OK) err = nvs_get_blob(h, key, data.data(), &len);
     nvs_close(h);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "read: %s", esp_err_to_name(err));
-        return false;
+        ESP_LOGE(TAG, "read %s: %s", key, esp_err_to_name(err));
+        return summit::ReadStatus::Error;
     }
-    if (!summit::decode_settings(blob, out)) {
-        ESP_LOGE(TAG, "stored settings blob is malformed (%u bytes)", (unsigned)len);
-        return false;
-    }
-    return true;
+    blob = std::move(data);
+    return summit::ReadStatus::Ok;
 }
 
-bool NvsSettingsStorage::save(const summit::SettingsMap &values)
+bool NvsSettingsStorage::write_key(const char *key, const std::string &blob)
 {
-    std::string blob;
-    if (!summit::encode_settings(values, blob)) return false;
     nvs_handle_t h;
     esp_err_t err = nvs_open(ns_, NVS_READWRITE, &h);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "open for write: %s", esp_err_to_name(err));
         return false;
     }
-    err = nvs_set_blob(h, kBlobKey, blob.data(), blob.size());
+    err = nvs_set_blob(h, key, blob.data(), blob.size());
     if (err == ESP_OK) err = nvs_commit(h);
     nvs_close(h);
-    if (err != ESP_OK) ESP_LOGE(TAG, "save: %s", esp_err_to_name(err));
+    if (err != ESP_OK) ESP_LOGE(TAG, "write %s: %s", key, esp_err_to_name(err));
     return err == ESP_OK;
 }

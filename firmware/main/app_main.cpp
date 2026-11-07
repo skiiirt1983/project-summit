@@ -21,10 +21,10 @@ static const char *load_result_name(summit::LoadResult r)
     case summit::LoadResult::Fresh: return "fresh";
     case summit::LoadResult::Current: return "current";
     case summit::LoadResult::Migrated: return "migrated";
-    case summit::LoadResult::NewerSchema: return "newer schema (read-only)";
-    case summit::LoadResult::MigrationMissing: return "migration missing (read-only)";
-    case summit::LoadResult::StorageError: return "storage error (read-only)";
-    case summit::LoadResult::InvalidSchema: return "invalid schema (read-only)";
+    case summit::LoadResult::NewerSchema: return "newer schema (not written)";
+    case summit::LoadResult::MigrationMissing: return "no migration (not written)";
+    case summit::LoadResult::Unreadable: return "unreadable (defaults in memory)";
+    case summit::LoadResult::InvalidSchema: return "invalid schema (firmware bug)";
     }
     return "?";
 }
@@ -50,6 +50,11 @@ extern "C" void app_main(void)
     summit::LoadResult r = settings.load();
     ESP_LOGI(TAG, "settings schema v%u, stored v%u: %s", (unsigned)settings.schema_version(),
              (unsigned)settings.stored_version(), load_result_name(r));
+
+    // The shell (step 4) and web UI (step 6) show this until the user updates or resets.
+    state.set("system/settings_notice", std::string(summit::notice_message(settings.notice())));
+    if (settings.notice() != summit::SettingsNotice::None)
+        ESP_LOGW(TAG, "%s", summit::notice_message(settings.notice()));
 
     static summit::PanelHost host(registry, bus, state, settings);
     state.set("system/hardware_id", std::string(SUMMIT_HARDWARE_ID));

@@ -1,5 +1,7 @@
-// The device settings schema. Bump kSystemSettingsVersion, add a Migration and
-// update tests/host/test_settings_schema.cpp for EVERY change (hard rule 4).
+// The device settings schema (hard rule 4).
+// Adding a key with a default: no version bump. Renaming/removing a key or
+// changing its type or meaning: bump kSystemSettingsVersion, add a Migration and
+// update tests/host/test_settings_schema.cpp.
 #pragma once
 #include "summit/settings.h"
 
