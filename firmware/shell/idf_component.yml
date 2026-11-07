@@ -1,0 +1,3 @@
+dependencies:
+  # 9.3+ required: framework/panel_api.h forward-declares `struct _lv_obj_t`.
+  lvgl/lvgl: "9.4.0"

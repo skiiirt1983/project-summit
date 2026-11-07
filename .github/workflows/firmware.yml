@@ -1,6 +1,6 @@
 name: Firmware
 
-# Host tests, ESP32-P4 firmware build for both chip-revision variants,
+# Host tests, LVGL simulator self-test, ESP32-P4 firmware build for both chip-revision variants,
 # OTA + full image packaging. Nothing is published or released here.
 # A green run is NOT hardware proof (CLAUDE.md hard rule 8).
 
@@ -26,6 +26,29 @@ jobs:
       - uses: actions/checkout@v5
       - name: Host tests (no ESP-IDF)
         run: bash tests/run_tests.sh
+
+  simulator:
+    # LVGL PC simulator: shell self-test at 1280x720 and 720x1280 + screenshots.
+    needs: host-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install build deps (SDL2 so the window mode is compiled too)
+        run: sudo apt-get update -q && sudo apt-get install -y -q ninja-build libsdl2-dev zlib1g-dev
+      - name: Build simulator
+        run: |
+          cmake -S firmware/sim -B build/sim -G Ninja
+          cmake --build build/sim
+      - name: Shell self-test
+        run: build/sim/summit_sim --selftest --out sim-out
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulator-screenshots-${{ github.sha }}
+          path: sim-out/
+          if-no-files-found: warn
 
   firmware:
     needs: host-tests

@@ -24,6 +24,9 @@ public:
     // settings schema before Settings::load().
     std::vector<SettingDef> setting_defs() const;
 
+    // Glance chips declared by panels, with panel_id filled in.
+    std::vector<GlanceChipDef> glance_chips() const;
+
 private:
     std::vector<std::unique_ptr<Panel>> panels_;
 };

@@ -307,6 +307,16 @@ Confirm the first build leaves ≥30% headroom in an 8 MB slot.
 - **LyricFlash:** on-device FFT visuals always; recognition goes device → LyricFlash HTTPS endpoint; panel contract `{title, artist, album, art_url, duration, position_ms, lyrics: [{t_ms, line}], mood}`; Song info sheet with QR.
 - **Printer:** port PrintSphere's client + status parsing (licence permitting); new UI; print-done/HMS as system notifications.
 
+### Glance strip
+
+- Thin bar on the top edge of every panel, both orientations. Height = one size token (~6% of the short side, ~44 px). Panels get the content area below it and never draw under it.
+- Contents, left to right: time · next calendar event (title + countdown) · weather now (icon + temp) · printer progress (only while printing) · right side system icons: Wi-Fi, update available, rotation lock, battery % / charging.
+- Each item is a "glance chip" fed by a state-store topic. Panels can register a chip in their manifest, so new panels add chips without shell changes. A chip with no data is hidden.
+- Narrow width (portrait): drop chips in this order: printer, weather, next event. Time and battery never drop.
+- Gestures: tap a chip → go to its panel; swipe down from the strip → quick-settings sheet (brightness, volume, rotation lock, do not disturb); long-press → rotation lock.
+- Notifications (print done, update available, etc.) briefly expand the strip as a toast, then collapse.
+- Hidden during: LyricFlash full-screen visuals, ringing alarm, night/ambient clock, update progress (tap reveals it for 3 s).
+
 ## "Oh nice" features
 
 | Feature | Trigger | What happens |

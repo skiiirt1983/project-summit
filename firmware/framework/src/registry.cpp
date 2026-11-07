@@ -36,6 +36,13 @@ bool validate_manifest(const PanelManifest &m, std::string *error)
     }
     std::string err;
     if (!validate_schema(schema, &err)) return fail("settings: " + err);
+    std::set<std::string> chips;
+    for (const GlanceChipDef &c : m.glances) {
+        if (!valid_topic(c.id) || c.id.find('/') != std::string::npos) return fail("invalid chip id: " + c.id);
+        if (!chips.insert(c.id).second) return fail("duplicate chip: " + c.id);
+        if (!valid_topic(c.topic)) return fail("invalid chip topic: " + c.topic);
+        if (!c.icon_topic.empty() && !valid_topic(c.icon_topic)) return fail("invalid chip icon topic");
+    }
     return true;
 }
 
@@ -50,6 +57,14 @@ bool PanelRegistry::add(std::unique_ptr<Panel> panel, std::string *error)
     if (find(m.id)) {
         if (error) *error = "duplicate panel id: " + m.id;
         return false;
+    }
+    for (const GlanceChipDef &c : m.glances) {
+        for (const GlanceChipDef &other : glance_chips()) {
+            if (other.id == c.id) {
+                if (error) *error = "duplicate glance chip id: " + c.id;
+                return false;
+            }
+        }
     }
     panels_.push_back(std::move(panel));
     return true;
@@ -78,6 +93,18 @@ std::vector<SettingDef> PanelRegistry::setting_defs() const
             SettingDef full = d;
             full.key = panel_setting_key(p->manifest().id, d.key);
             out.push_back(full);
+        }
+    }
+    return out;
+}
+
+std::vector<GlanceChipDef> PanelRegistry::glance_chips() const
+{
+    std::vector<GlanceChipDef> out;
+    for (const auto &p : panels_) {
+        for (GlanceChipDef c : p->manifest().glances) {
+            c.panel_id = p->manifest().id;
+            out.push_back(c);
         }
     }
     return out;
