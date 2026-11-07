@@ -16,7 +16,7 @@ Private alpha repo `project-summit`; public release at 1.0 as `slopeform-home`. 
 1. The partition table in `docs/ARCHITECTURE.md` is fixed from v0.1. Never change it after the first build: it breaks OTA for every device.
 2. Panels talk only to the framework (state store, event bus, settings). Never to drivers or the network directly.
 3. Panels lay out with size tokens, never hard-coded pixels; every panel must work at 1280x720 and 720x1280.
-4. Settings carry a schema version. Every schema change needs a migration and a host test.
+4. Settings carry a schema version. Adding a key with a default needs no version bump: older firmware ignores unknown keys and preserves them on write. Renames, removals, type or meaning changes bump the version and need a migration + host test.
 5. Every update path (on-device, web UI) goes through the one update engine. Keep the post-boot health gate and rollback (pattern: LyricFlash `main/ota_guard.c`).
 6. Never commit secrets. Use `secrets.example.json` only.
 7. Releases are immutable. Never overwrite a published tag or OTA image.
