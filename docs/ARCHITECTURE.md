@@ -256,7 +256,7 @@ USB web flasher ─▶ Flash over cable (full, or keep settings)
 2. One-tap previous version from the spare slot.
 3. Pre-flight: USB power or ≥40% battery, no alarm within 15 min, Wi-Fi + synced time, image fits slot.
 4. Catalog carries SHA-256, hardware ID (`waveshare-p4-wifi6-lcd5`) and partition-layout version. Signed catalogs (ed25519) in 1.x.
-5. Settings export/import (JSON) and schema-versioned settings with migrations.
+5. Settings export/import (JSON) and schema-versioned settings with migrations. Adding a key with a default needs no version bump: older firmware ignores unknown keys and preserves them on write. Renames, removals, type or meaning changes bump the version and need a migration + host test. Settings from a newer version are read-only with a notice on device and web UI; reset only by explicit user action after the old settings are saved for export. A corrupt blob runs on defaults in memory, keeps the raw blob for export, and offers reset.
 6. `factory` recovery app (Wi-Fi + web upload) boots if both main slots fail.
 
 ### Update channels
