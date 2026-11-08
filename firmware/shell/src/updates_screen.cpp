@@ -126,7 +126,27 @@ void UpdatesScreen::build(lv_obj_t *parent)
     keep_ = label(progress_, kMuted);
     lv_label_set_text(keep_, "Keep the device powered. It restarts when the update is ready.");
 
-    for (lv_obj_t *o : {close_btn_, check_btn_, install_btn_, restart_btn_, previous_btn_})
+    // "Previous version" confirmation: modal over everything (top layer).
+    confirm_ = lv_obj_create(lv_layer_top());
+    lv_obj_remove_style_all(confirm_);
+    lv_obj_remove_flag(confirm_, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(confirm_, LV_OBJ_FLAG_CLICKABLE);  // modal: swallow touches
+    lv_obj_set_style_bg_color(confirm_, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(confirm_, LV_OPA_60, 0);
+    confirm_card_ = plain(confirm_, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_style_bg_color(confirm_card_, lv_color_hex(kStripBg), 0);
+    lv_obj_set_style_bg_opa(confirm_card_, LV_OPA_COVER, 0);
+    lv_obj_center(confirm_card_);
+    confirm_label_ = label(confirm_card_, kText);
+    lv_label_set_long_mode(confirm_label_, LV_LABEL_LONG_MODE_WRAP);
+    lv_obj_set_width(confirm_label_, lv_pct(100));
+    confirm_buttons_ = plain(confirm_card_, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(confirm_buttons_, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    cancel_btn_ = button(confirm_buttons_, "Cancel", false);
+    yes_btn_ = button(confirm_buttons_, "Yes", true);
+    show(confirm_, false);
+
+    for (lv_obj_t *o : {close_btn_, check_btn_, install_btn_, restart_btn_, previous_btn_, yes_btn_, cancel_btn_})
         lv_obj_add_event_cb(o, event_cb, LV_EVENT_CLICKED, this);
     lv_obj_add_event_cb(channel_, event_cb, LV_EVENT_VALUE_CHANGED, this);
     show(root_, false);
@@ -160,7 +180,16 @@ void UpdatesScreen::apply_layout(const Layout &l)
     lv_obj_set_style_radius(channel_, t.radius, LV_PART_ITEMS);
     lv_obj_set_style_pad_all(channel_, t.space_s / 2, LV_PART_MAIN);
     lv_obj_set_style_pad_gap(channel_, t.space_s / 2, LV_PART_MAIN);
-    for (lv_obj_t *b : {close_btn_, check_btn_, install_btn_, restart_btn_, previous_btn_}) {
+    lv_display_t *disp = lv_display_get_default();
+    lv_obj_set_size(confirm_, lv_display_get_horizontal_resolution(disp), lv_display_get_vertical_resolution(disp));
+    lv_obj_set_width(confirm_card_, l.orientation == kLandscape ? l.content.w / 2 : l.content.w - 2 * t.space_l);
+    lv_obj_set_style_pad_all(confirm_card_, t.space_l, 0);
+    lv_obj_set_style_pad_row(confirm_card_, t.space_l, 0);
+    lv_obj_set_style_radius(confirm_card_, t.radius, 0);
+    lv_obj_set_style_text_font(confirm_card_, font_for(t.text_m), 0);
+    lv_obj_set_style_pad_column(confirm_buttons_, t.space_m, 0);
+    lv_obj_center(confirm_card_);
+    for (lv_obj_t *b : {close_btn_, check_btn_, install_btn_, restart_btn_, previous_btn_, yes_btn_, cancel_btn_}) {
         lv_obj_set_style_pad_hor(b, t.space_m, 0);
         lv_obj_set_style_pad_ver(b, t.space_s, 0);
         lv_obj_set_style_radius(b, t.radius, 0);
@@ -179,7 +208,12 @@ void UpdatesScreen::close()
 {
     open_ = false;
     show(root_, false);
+    show(confirm_, false);
 }
+
+bool UpdatesScreen::confirm_shown() const { return !lv_obj_has_flag(confirm_, LV_OBJ_FLAG_HIDDEN); }
+
+std::string UpdatesScreen::confirm_text() const { return lv_label_get_text(confirm_label_); }
 
 bool UpdatesScreen::showing_progress() const { return open_ && !lv_obj_has_flag(progress_, LV_OBJ_FLAG_HIDDEN); }
 
@@ -255,7 +289,17 @@ void UpdatesScreen::event_cb(lv_event_t *e)
     } else if (t == self->restart_btn_) {
         self->bus_.publish("update/command", std::string("reboot"));
     } else if (t == self->previous_btn_) {
+        // Confirm first: going back can leave newer settings read-only.
+        lv_label_set_text(self->confirm_label_, ("Go back to v" + self->str("update/previous_version") +
+                                                 "? Settings from the newer version may become read-only.")
+                                                    .c_str());
+        show(self->confirm_, true);
+        lv_obj_move_foreground(self->confirm_);
+    } else if (t == self->yes_btn_) {
+        show(self->confirm_, false);
         self->bus_.publish("update/command", std::string("previous"));
+    } else if (t == self->cancel_btn_) {
+        show(self->confirm_, false);
     } else if (t == self->channel_) {
         uint32_t i = lv_buttonmatrix_get_selected_button(t);
         // The update service re-checks when update/channel changes (also from the web UI).

@@ -442,6 +442,39 @@ TEST(health_gate_three_consecutive_samples_within_40s)
     CHECK(fast.init_failed() == GateDecision::Rollback && fast.feed(good, 2500) == GateDecision::Rollback);
 }
 
+TEST(i2c_only_built_in_devices_gate_health)
+{
+    auto devices = board_i2c_devices();
+    for (auto &d : devices) d.present = true;
+    std::vector<std::string> warnings;
+    CHECK(i2c_healthy(devices, &warnings) && warnings.empty());
+
+    // Accelerometer missing -> still healthy, one diagnostics warning.
+    auto no_accel = devices;
+    for (auto &d : no_accel)
+        if (d.name == "LIS2DW12 accelerometer") d.present = false;
+    warnings.clear();
+    CHECK(i2c_healthy(no_accel, &warnings));
+    CHECK(warnings.size() == 1 && warnings[0].find("LIS2DW12") != std::string::npos);
+
+    HealthSample s;
+    s.ui_tick_age_ms = 100;
+    s.frames_rendered = 1;
+    s.free_heap = 100000;
+    s.touch_ok = s.settings_ok = true;
+    s.i2c_ok = i2c_healthy(no_accel, nullptr);
+    HealthGate g;
+    g.feed(s, 2500);
+    g.feed(s, 5000);
+    CHECK(g.feed(s, 7500) == GateDecision::Confirm);  // a new image is confirmed without the accelerometer
+
+    // A built-in device missing (codec) -> unhealthy.
+    auto no_codec = devices;
+    for (auto &d : no_codec)
+        if (d.name == "ES8311 codec") d.present = false;
+    CHECK(!i2c_healthy(no_codec, nullptr));
+}
+
 int main()
 {
     RUN(sha256_reference_vectors);
@@ -457,5 +490,6 @@ int main()
     RUN(web_upload_uses_same_engine);
     RUN(check_failures_and_up_to_date);
     RUN(health_gate_three_consecutive_samples_within_40s);
+    RUN(i2c_only_built_in_devices_gate_health);
     return report("update engine");
 }

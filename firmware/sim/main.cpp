@@ -489,6 +489,26 @@ void selftest(App &app)
         EXPECT(std::get<std::string>(app.state.get("update/available_version")) == "",
                "back on stable: re-checked, 0.1.0 is installed so nothing newer (%s)", up.status_text().c_str());
         EXPECT(visible(up.previous_button()), "previous version offered");
+        // Previous version asks first; Cancel does nothing, Yes sends the command.
+        std::string cmd;
+        auto csub = app.bus.subscribe("update/command",
+                                      [&](const std::string &, const Value &v) { cmd = std::get<std::string>(v); });
+        click(up.previous_button());
+        run_ms(app, 50);
+        EXPECT(up.confirm_shown() && cmd.empty() &&
+                   up.confirm_text() ==
+                       "Go back to v0.0.1-alpha.3? Settings from the newer version may become read-only.",
+               "previous version asks for confirmation (%s)", up.confirm_text().c_str());
+        shot("13b-landscape-previous-confirm");
+        click(up.confirm_cancel());
+        run_ms(app, 50);
+        EXPECT(!up.confirm_shown() && cmd.empty(), "cancel: nothing happens");
+        click(up.previous_button());
+        run_ms(app, 50);
+        click(up.confirm_yes());
+        run_ms(app, 50);
+        EXPECT(!up.confirm_shown() && cmd == "previous", "yes: previous version requested");
+        app.bus.unsubscribe(csub);
         up.close();
         run_ms(app, 50);
         EXPECT(!up.is_open(), "Updates screen closes");

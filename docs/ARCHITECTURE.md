@@ -252,6 +252,7 @@ The state store and event bus are the public API between services, panels and th
 | `shell/current_panel` | string: panel id | shell | diagnostics, web UI |
 | `system/hardware_id` | string, e.g. "waveshare-p4-wifi6-lcd5-rev3" | boot (`app_main`) | Updates screen, web UI |
 | `system/firmware_version` | string: running app version | boot (`app_main`) | Updates screen, web UI |
+| `diag/warnings` | string: newline-separated warnings, e.g. a missing add-on; empty = none | health gate (add-on checks) | web UI diagnostics |
 | `system/settings_notice` | string; empty = none | boot (`app_main`), shell (clears after reset) | shell (toast + quick settings), web UI |
 | `notify/toast` | event: string | any service or panel | shell (toast) |
 | `notify/toast_critical` | event: string | alarm, power service | shell (toast, shown even in full-screen) |
@@ -303,9 +304,9 @@ USB web flasher ─▶ Flash over cable (full, or keep settings)
 5. Settings export/import (JSON) and schema-versioned settings with migrations. Adding a key with a default needs no version bump: older firmware ignores unknown keys and preserves them on write. Renames, removals, type or meaning changes bump the version and need a migration + host test. Settings from a newer version are read-only with a notice on device and web UI; reset only by explicit user action after the old settings are saved for export. A corrupt blob runs on defaults in memory, keeps the raw blob for export, and offers reset.
 6. `factory` recovery app (Wi-Fi + web upload) boots if both main slots fail.
 
-### Update catalog (format 1) — proposed, awaiting approval
+### Update catalog (format 1)
 
-One `catalog.json` per source, served over HTTPS from GitHub Pages. Stable and beta builds come from the `slopeform-home` catalog; alpha builds from a binaries-only public repo (proposed name `summit-alpha`) fed by `project-summit` CI:
+One `catalog.json` per source, served over HTTPS from GitHub Pages. Stable and beta builds come from the `slopeform-home` catalog; alpha builds from the binaries-only public repo `summit-alpha`, fed by `project-summit` CI:
 
 - Stable / beta: `https://skiiirt1983.github.io/slopeform-home/catalog.json`
 - Alpha: `https://skiiirt1983.github.io/summit-alpha/catalog.json`
@@ -337,7 +338,7 @@ Device rules (`firmware/services/update`, host-tested):
 - Channels: a device on stable sees stable builds; beta sees stable + beta; alpha sees all. "Update available" = the newest installable build newer than the running version (SemVer precedence). Older installable builds stay selectable (deliberate downgrade).
 - Downloads: HTTPS with the certificate bundle, redirects disabled (the allow-list applies to the final host), clock synced first. The first 0x70 bytes are checked before anything is written: ESP32-P4, matching chip-revision range, project `summit`, version equal to the catalog entry. Size and SHA-256 must match; ESP-IDF then validates the image before the spare slot is selected.
 - One update at a time: on-device installs and web uploads share the engine. Uploads skip the catalog checks (no SHA-256 to compare) but get the same header, size and image validation.
-- Health gate after reboot: 3 consecutive healthy samples 2.5 s apart within 40 s (UI heartbeat ≤ 1.5 s old, frames drawn, ≥ 16 KB internal heap, touch controller answers, I2C devices answer, settings loaded without an invalid schema); otherwise rollback. Any init failure on a pending image rolls back at once. "Previous version" boots the spare slot as a pending image, so it goes through the gate too.
+- Health gate after reboot: 3 consecutive healthy samples 2.5 s apart within 40 s (UI heartbeat ≤ 1.5 s old, frames drawn, ≥ 16 KB internal heap, touch controller answers, the built-in I2C devices answer — GT911 touch, ES8311 codec, ES7210 —, settings loaded without an invalid schema); otherwise rollback. Add-ons (LIS2DW12 accelerometer, microSD) never fail the gate: a missing add-on is logged as a diagnostics warning (`diag/warnings`). Any init failure on a pending image rolls back at once. "Previous version" asks for confirmation ("Go back to vX? Settings from the newer version may become read-only."), then boots the spare slot as a pending image, so it goes through the gate too. After the gate confirms an update, an "Updated to X" toast is shown.
 
 ### Update channels
 

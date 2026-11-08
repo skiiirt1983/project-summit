@@ -31,6 +31,10 @@ public:
     lv_obj_t *previous_button() const { return previous_btn_; }
     lv_obj_t *channel_buttons() const { return channel_; }
     bool showing_progress() const;
+    bool confirm_shown() const;
+    lv_obj_t *confirm_yes() const { return yes_btn_; }
+    lv_obj_t *confirm_cancel() const { return cancel_btn_; }
+    std::string confirm_text() const;
     std::string status_text() const;
 
 private:
@@ -49,6 +53,8 @@ private:
     lv_obj_t *available_ = nullptr, *available_title_ = nullptr, *notes_ = nullptr;
     lv_obj_t *buttons_ = nullptr, *check_btn_ = nullptr, *install_btn_ = nullptr, *restart_btn_ = nullptr,
              *previous_btn_ = nullptr;
+    lv_obj_t *confirm_ = nullptr, *confirm_label_ = nullptr, *yes_btn_ = nullptr, *cancel_btn_ = nullptr;
+    lv_obj_t *confirm_card_ = nullptr, *confirm_buttons_ = nullptr;
     lv_obj_t *progress_ = nullptr, *progress_title_ = nullptr, *bar_ = nullptr, *pct_ = nullptr, *keep_ = nullptr;
 };
 

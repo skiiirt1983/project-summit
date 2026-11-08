@@ -1,7 +1,8 @@
 // Post-boot health gate task (pattern: LyricFlash main/ota_guard.c).
 // Runs only on a pending image: 3 healthy samples 2.5 s apart within 40 s
 // confirm it; otherwise it is marked invalid and the previous slot boots.
-// No internet required. Probes: UI heartbeat, frames drawn, heap, touch, I2C, settings.
+// No internet required. Probes: UI heartbeat, frames drawn, heap, touch, built-in I2C
+// devices, settings. Add-ons (accelerometer, microSD) only produce diagnostics warnings.
 #include "esp_app_desc.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -31,6 +32,18 @@ void rollback(const char *reason)
     ESP_LOGE(TAG, "rollback unavailable: %s", esp_err_to_name(err));
 }
 
+// Add-on problems go to diagnostics (logged once, published as diag/warnings), never the gate.
+void publish_warnings(GuardCtx *ctx, const std::vector<std::string> &warnings)
+{
+    std::string text;
+    for (const std::string &w : warnings) text += (text.empty() ? "" : "\n") + w;
+    Value old = ctx->state->get("diag/warnings");
+    const std::string *o = std::get_if<std::string>(&old);
+    if (o && *o == text) return;
+    for (const std::string &w : warnings) ESP_LOGW(TAG, "%s", w.c_str());
+    ctx->state->set("diag/warnings", text);
+}
+
 void guard_task(void *arg)
 {
     GuardCtx *ctx = static_cast<GuardCtx *>(arg);
@@ -44,8 +57,11 @@ void guard_task(void *arg)
         s.frames_rendered = p.frames_rendered ? p.frames_rendered() : 0;
         s.free_heap = static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
         s.touch_ok = p.touch_ok && p.touch_ok();
-        s.i2c_ok = p.i2c_ok && p.i2c_ok();
+        std::vector<std::string> warnings;
+        s.i2c_ok = p.i2c_scan && i2c_healthy(p.i2c_scan(), &warnings);
+        if (p.sd_present && !p.sd_present()) warnings.push_back("microSD not found (add-on, does not affect updates)");
         s.settings_ok = p.settings_ok;
+        publish_warnings(ctx, warnings);
         GateDecision d = gate.feed(s, static_cast<uint32_t>(esp_timer_get_time() / 1000));
         if (d == GateDecision::Confirm) {
             if (esp_ota_mark_app_valid_cancel_rollback() == ESP_OK) {

@@ -13,15 +13,20 @@
 #include "summit/settings.h"
 #include "summit/state_store.h"
 #include "summit/update/engine.h"
+#include "summit/update/health_gate.h"
 
 namespace summit::update {
 
-// Probes for the health gate. Missing probes count as unhealthy.
+// Probes for the health gate. Missing probes count as unhealthy, except add-ons.
 struct HealthProbes {
     std::function<uint32_t()> ui_tick_age_ms;
     std::function<uint32_t()> frames_rendered;
     std::function<bool()> touch_ok;
-    std::function<bool()> i2c_ok;
+    // Bus scan result for board_i2c_devices(). Only built-in devices gate the image;
+    // missing add-ons (accelerometer) become diagnostics warnings.
+    std::function<std::vector<I2cDeviceStatus>()> i2c_scan;
+    // microSD is an add-on: missing = warning only, never a rollback.
+    std::function<bool()> sd_present;
     bool settings_ok = false;
 };
 
