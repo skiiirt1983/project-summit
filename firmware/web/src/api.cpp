@@ -428,6 +428,8 @@ Response WebApi::diagnostics()
     return json(200, w.str());
 }
 
+Response WebApi::upload_refused() { return error(403, "firmware uploads need the X-Summit-Upload: 1 header"); }
+
 bool WebApi::upload_begin(int64_t length, Response *err)
 {
     if (length <= 0) {

@@ -35,7 +35,8 @@ def used():
     add("sim/demo_panels.cpp", r'manifest\("[^"]+", "[^"]+", \{[^}]*\}\)')
     # Update engine, Updates screen and the simulator's fake service: every topic-shaped literal.
     for path in ("services/update/src/status_topics.cpp", "services/update/esp/update_service.cpp",
-                 "services/update/esp/ota_guard.cpp", "shell/src/updates_screen.cpp", "sim/fake_update.cpp"):
+                 "services/update/esp/ota_guard.cpp", "shell/src/updates_screen.cpp", "sim/fake_update.cpp",
+                 "web/src/api.cpp"):
         add(path, r'"[a-z0-9_]+(?:/[a-z0-9_]+)+"')
     return found
 
@@ -54,7 +55,7 @@ def main():
         assert t == "settings/<key>" or re.fullmatch(r"[a-z0-9_]+/[a-z0-9_]+", t), f"bad topic name: {t}"
     missing = []
     for topic, where in sorted(used().items()):
-        if topic in skip:
+        if topic in skip or topic.split("/")[0] in ("application", "text"):  # settings keys, MIME types
             continue
         if topic.startswith("settings/"):
             if "settings/<key>" not in doc and topic not in doc:

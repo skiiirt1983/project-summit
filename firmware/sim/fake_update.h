@@ -21,6 +21,11 @@ public:
     ~FakeUpdateService();
     void tick(uint32_t now_ms);
     summit::update::UpdateEngine &engine() { return *engine_; }
+    // Web upload path, same engine (like summit::update::upload_* on the device).
+    bool upload_begin(int64_t size, std::string *error);
+    bool upload_data(const uint8_t *data, size_t len);
+    bool upload_complete(std::string *error);
+    void upload_abort(const char *reason);
 
 private:
     struct Writer;

@@ -73,6 +73,8 @@ public:
     bool upload_chunk(const uint8_t *data, size_t len);
     Response upload_finish();
     void upload_abort(const char *reason) { update_.upload_abort(reason); }
+    // Response for an upload without the X-Summit-Upload: 1 header.
+    static Response upload_refused();
 
     static constexpr int64_t kMaxJsonBody = 32 * 1024;
 

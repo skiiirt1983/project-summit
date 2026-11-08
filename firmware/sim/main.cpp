@@ -15,6 +15,10 @@
 
 #include "demo_panels.h"
 #include "fake_update.h"
+#include "http_sim.h"
+#include "summit/web/api.h"
+#include <chrono>
+#include <thread>
 #include "png.h"
 #include "summit/event_bus.h"
 #include "summit/registry.h"
@@ -616,14 +620,90 @@ int run_sdl()
 
 }  // namespace
 
+namespace {
+
+// --web: the device's web page + WebApi on http://127.0.0.1:PORT, driven by the same
+// framework, settings, shell and fake update service (real UpdateEngine) as the self-test.
+struct SimControl : web::UpdateControl {
+    sim::FakeUpdateService *svc;
+    bool upload_begin(int64_t n, std::string *e) override { return svc->upload_begin(n, e); }
+    bool upload_data(const uint8_t *d, size_t n) override { return svc->upload_data(d, n); }
+    bool upload_complete(std::string *e) override { return svc->upload_complete(e); }
+    void upload_abort(const char *r) override { svc->upload_abort(r); }
+};
+
+struct SimWifi : web::WifiStore {
+    std::string s = "home", pw;
+    std::string ssid() override { return s; }
+    bool save(const std::string &a, const std::string &b, std::string *) override
+    {
+        s = a;
+        pw = b;
+        return true;
+    }
+};
+
+struct SimFacts : web::DeviceFacts {
+    std::vector<std::pair<std::string, std::string>> facts() override
+    {
+        return {{"uptime_s", std::to_string(g_ms / 1000)}, {"running_partition", "ota_0"}, {"simulator", "yes"}};
+    }
+};
+
+int run_web(int port)
+{
+    lv_init();
+    lv_tick_set_cb(tick_cb);
+    g_hw.set_size(1280, 720);
+    App app;
+    if (start_app(app, [](Orientation o) {
+            if (o == kLandscape) g_hw.set_size(1280, 720);
+            else g_hw.set_size(720, 1280);
+        }) != 0)
+        return 1;
+    app.state.set("net/ssid", std::string("home"));
+    app.state.set("net/ip", std::string("192.168.1.42"));
+    app.state.set("net/scan", std::string(R"([{"ssid":"home","rssi":-48,"secure":true},)"
+                                          R"({"ssid":"cafe","rssi":-71,"secure":false}])"));
+    app.state.set("diag/warnings", std::string("LIS2DW12 accelerometer not found (add-on, does not affect updates)"));
+    SimControl control;
+    control.svc = app.updates.get();
+    SimWifi wifi;
+    SimFacts facts;
+    web::WebApi api(app.bus, app.state, *app.settings, control, wifi, facts);
+    sim::HttpSim http(api, SUMMIT_WEB_PAGE);
+    if (!http.listen(port)) {
+        std::printf("cannot listen on 127.0.0.1:%d\n", port);
+        return 1;
+    }
+    std::printf("web UI: http://127.0.0.1:%d/\n", port);
+    std::fflush(stdout);
+    const auto t0 = std::chrono::steady_clock::now();
+    for (;;) {
+        http.poll();
+        g_ms = static_cast<uint32_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count());
+        app.bus.dispatch();
+        app.updates->tick(g_ms);
+        app.shell->tick(g_ms);
+        lv_timer_handler();
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+}
+
+}  // namespace
+
 int main(int argc, char **argv)
 {
     bool selftest_mode = false, sdl = false;
+    int web_port = 0;
     for (int i = 1; i < argc; ++i) {
         if (!std::strcmp(argv[i], "--selftest")) selftest_mode = true;
         else if (!std::strcmp(argv[i], "--sdl")) sdl = true;
+        else if (!std::strcmp(argv[i], "--web") && i + 1 < argc) web_port = std::atoi(argv[++i]);
         else if (!std::strcmp(argv[i], "--out") && i + 1 < argc) g_out = argv[++i];
     }
+    if (web_port) return run_web(web_port);
     if (sdl) {
 #if SUMMIT_SIM_SDL
         return run_sdl();
@@ -633,7 +713,7 @@ int main(int argc, char **argv)
 #endif
     }
     if (!selftest_mode) {
-        std::printf("usage: summit_sim --selftest [--out DIR] | --sdl\n");
+        std::printf("usage: summit_sim --selftest [--out DIR] | --sdl | --web PORT\n");
         return 2;
     }
     mkdir(g_out.c_str(), 0755);

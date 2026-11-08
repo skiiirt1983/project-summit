@@ -12,7 +12,7 @@ body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-a
 header{padding:16px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline}
 header h1{font-size:18px;margin:0}
 header span{color:var(--muted);font-size:13px}
-nav{display:flex;gap:4px;padding:0 16px;overflow-x:auto}
+nav{display:flex;flex-wrap:wrap;gap:4px;padding:0 16px}
 nav button{background:none;border:0;color:var(--muted);padding:10px 12px;border-bottom:2px solid transparent;font:inherit;cursor:pointer;white-space:nowrap}
 nav button[aria-selected=true]{color:var(--text);border-color:var(--accent)}
 main{padding:16px;max-width:860px}
@@ -21,7 +21,7 @@ section{display:none}section.active{display:block}
 .card h2{font-size:15px;margin:0 0 10px}
 dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0}
 dt{color:var(--muted)}dd{margin:0;overflow-wrap:anywhere}
-button.btn{background:var(--chip);color:var(--text);border:0;border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}
+button.btn,label.btn{display:inline-block;background:var(--chip);color:var(--text);border:0;border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer;margin:0}
 button.btn.primary{background:var(--accent);color:#fff}
 button.btn.danger{background:var(--error);color:#fff}
 button.btn:disabled{opacity:.5;cursor:default}
@@ -98,7 +98,7 @@ ul{margin:0;padding-left:18px}
     <div class="row"><button class="btn primary" id="set-save">Save</button></div><div class="msg" id="set-msg"></div></div>
   <div class="card"><h2>Backup</h2>
     <div class="row"><button class="btn" id="set-export">Export settings</button>
-      <label class="btn" style="margin:0;color:var(--text)" for="set-import-file">Import settings&hellip;</label>
+      <label class="btn" for="set-import-file">Import settings&hellip;</label>
       <input type="file" id="set-import-file" accept=".json" hidden>
       <button class="btn" id="set-backup">Download last backup</button>
       <button class="btn danger" id="set-reset">Reset to defaults</button></div>

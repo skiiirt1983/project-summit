@@ -95,6 +95,7 @@ const char *status_line(int code)
     switch (code) {
     case 200: return "200 OK";
     case 202: return "202 Accepted";
+    case 403: return "403 Forbidden";
     case 400: return "400 Bad Request";
     case 404: return "404 Not Found";
     case 405: return "405 Method Not Allowed";
@@ -167,7 +168,7 @@ esp_err_t upload_handler(httpd_req_t *req)
 {
     // A custom header forces a CORS preflight, so other web pages can't post firmware.
     if (header(req, "X-Summit-Upload") != "1") {
-        return send(req, g->api->handle({"POST", "/api/firmware/upload", "", ""}));  // -> 404 JSON
+        return send(req, WebApi::upload_refused());
     }
     Response err;
     if (!g->api->upload_begin(static_cast<int64_t>(req->content_len), &err)) return send(req, err);

@@ -158,6 +158,7 @@ TEST(firmware_upload_streams_into_engine)
 {
     Rig r;
     Response err;
+    CHECK(WebApi::upload_refused().status == 403);
     CHECK(!r.api.upload_begin(0, &err) && err.status == 411);
     r.update.refuse = true;
     CHECK(!r.api.upload_begin(100, &err) && err.status == 409 && Json(err.body).s("error").find("40%") != std::string::npos);

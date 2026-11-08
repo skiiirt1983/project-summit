@@ -28,12 +28,15 @@ jobs:
         run: bash tests/run_tests.sh
 
   simulator:
-    # LVGL PC simulator: shell self-test at 1280x720 and 720x1280 + screenshots.
+    # LVGL PC simulator: shell self-test at 1280x720 and 720x1280, web UI browser test, screenshots.
     needs: host-tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Install build deps (SDL2 so the window mode is compiled too)
         run: sudo apt-get update -q && sudo apt-get install -y -q ninja-build libsdl2-dev zlib1g-dev
       - name: Build simulator
@@ -42,6 +45,11 @@ jobs:
           cmake --build build/sim
       - name: Shell self-test
         run: build/sim/summit_sim --selftest --out sim-out
+      - name: Web UI browser test (page + API against the simulator)
+        run: |
+          npm install --no-save --no-package-lock playwright@1.63.0
+          npx playwright install --with-deps chromium
+          node tests/web/e2e.mjs build/sim/summit_sim sim-out/web
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4
