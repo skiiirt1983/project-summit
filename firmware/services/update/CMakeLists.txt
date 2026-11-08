@@ -2,7 +2,7 @@
 # ESP-IDF adapters in esp/ (OTA writer, SHA-256, HTTPS, catalog JSON, health gate task).
 idf_component_register(
     SRCS "src/version.cpp" "src/catalog.cpp" "src/preflight.cpp" "src/image_check.cpp"
-         "src/engine.cpp" "src/health_gate.cpp"
+         "src/engine.cpp" "src/health_gate.cpp" "src/status_topics.cpp"
          "esp/esp_backends.cpp" "esp/catalog_json.cpp" "esp/update_service.cpp" "esp/ota_guard.cpp"
     INCLUDE_DIRS "include"
     PRIV_INCLUDE_DIRS "esp"

@@ -16,6 +16,7 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "summit/update/device.h"
+#include "summit/update/status_topics.h"
 
 namespace summit::update {
 
@@ -84,19 +85,7 @@ Channel channel_setting()
 }
 
 // mu held.
-void publish_locked()
-{
-    const Status &s = g->engine->status();
-    StateStore &st = *g->state;
-    st.set("update/stage", std::string(stage_name(s.stage)));
-    st.set("update/progress_pct", s.total > 0 ? int64_t{s.bytes * 100 / s.total} : int64_t{0});
-    st.set("update/error", s.error);
-    st.set("update/in_progress", g->engine->busy());
-    const Candidate *a = g->engine->available();
-    st.set("update/available", a != nullptr);
-    st.set("update/available_version", a ? a->build.version : std::string());
-    st.set("update/notes", a ? a->build.notes : std::string());
-}
+void publish_locked() { publish_status(*g->engine, *g->state); }
 
 void publish()
 {
@@ -321,6 +310,12 @@ bool update_service_start(const ServiceConfig &config, EventBus &bus, StateStore
             c.kind = Command::Install;
             s->copy(c.version, s->size() - 8, 8);
         } else return;
+        xQueueSend(g->queue, &c, 0);
+    });
+    // What's available depends on the channel: re-check whenever it changes (screen or web UI).
+    bus.subscribe("settings/update/channel", [](const std::string &, const Value &) {
+        Command c{};
+        c.kind = Command::Check;
         xQueueSend(g->queue, &c, 0);
     });
     publish();

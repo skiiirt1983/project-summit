@@ -69,5 +69,6 @@ extern "C" void app_main(void)
 
     static summit::PanelHost host(registry, bus, state, settings);
     state.set("system/hardware_id", std::string(SUMMIT_HARDWARE_ID));
+    state.set("system/firmware_version", std::string(desc->version));
     bus.dispatch();
 }

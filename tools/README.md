@@ -6,3 +6,4 @@ Build and release helpers (used by CI; all host-tested in `tests/`).
 - `make_flash_images.py`: writes the otadata that selects ota_0 and prints the `esptool merge_bin` layout (app in ota_0).
 - `ci_build.sh`: builds one variant (`rev3` or `rev1`) and merges the full USB image.
 - `package_firmware.py`: validates a build and packages OTA + full images, otadata, ESP Web Tools manifests (full install and keep-settings), checksums, build-info, zip.
+- `catalog.py`: builds update catalog entries from `build-info.json` and validates a catalog with the device's rules.

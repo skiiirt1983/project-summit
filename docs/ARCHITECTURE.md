@@ -228,22 +228,35 @@ The state store and event bus are the public API between services, panels and th
 | `printer/progress_text` | string; empty when not printing | printer service | glance strip (printer chip), Printer |
 | `printer/progress_pct` | int 0–100 | printer service | Printer |
 | `net/wifi_connected` | bool | net service | glance strip (Wi-Fi chip) |
-| `update/available` | bool | update engine | glance strip (update chip) |
-| `update/in_progress` | bool | update engine | shell (hides strip) |
+| `update/available` | bool | update engine | glance strip (update chip), Updates screen |
+| `update/in_progress` | bool: downloading or verifying | update engine | shell (hides strip), Updates screen (full-screen progress) |
+| `update/stage` | string: idle, checking, up_to_date, available, check_failed, downloading, verifying, ready_to_reboot, failed | update engine | Updates screen, web UI |
+| `update/progress_pct` | int 0–100 | update engine | Updates screen, web UI |
+| `update/error` | string: readable reason (incl. HTTP status, TLS / socket errors) | update engine | Updates screen, web UI |
+| `update/target_version` | string: version being installed | update engine | Updates screen, web UI |
+| `update/available_version` | string; empty = none | update engine | Updates screen, web UI |
+| `update/notes` | string: changelog of the available build | update engine | Updates screen, web UI |
+| `update/previous_version` | string: app in the spare slot; empty = none | update engine | Updates screen, web UI |
+| `update/command` | event: "check", "install:<version>", "previous", "reboot" | Updates screen, web UI | update engine |
 | `power/battery_text` | string, e.g. "85%" | power service | glance strip (battery chip) |
 | `power/battery_icon` | string: LVGL symbol (level / charging) | power service | glance strip (battery chip) |
+| `power/usb_power` | bool | power service | update pre-flight |
+| `power/battery_pct` | int 0–100 | power service | update pre-flight |
+| `alarm/next_in_s` | int: seconds to the next alarm; -1 = none | alarm (Home) | update pre-flight |
+| `time/synced` | bool: SNTP synced | time service | update pre-flight (TLS needs the clock) |
 | `sensor/orientation` | string: "landscape" \| "portrait" | IMU service (LIS2DW12) | shell (400 ms debounce, rotation) |
 | `ui/fullscreen` | bool | LyricFlash panel | shell (hides strip) |
 | `ui/ambient` | bool: night / ambient clock | power service, Home | shell (hides strip) |
 | `alarm/ringing` | bool | alarm (Home) | shell (hides strip) |
 | `shell/rotation_locked` | bool | shell | glance strip (rotation-lock chip) |
 | `shell/current_panel` | string: panel id | shell | diagnostics, web UI |
-| `system/hardware_id` | string, e.g. "waveshare-p4-wifi6-lcd5-rev3" | boot (`app_main`) | update engine, web UI |
+| `system/hardware_id` | string, e.g. "waveshare-p4-wifi6-lcd5-rev3" | boot (`app_main`) | Updates screen, web UI |
+| `system/firmware_version` | string: running app version | boot (`app_main`) | Updates screen, web UI |
 | `system/settings_notice` | string; empty = none | boot (`app_main`), shell (clears after reset) | shell (toast + quick settings), web UI |
 | `notify/toast` | event: string | any service or panel | shell (toast) |
 | `notify/toast_critical` | event: string | alarm, power service | shell (toast, shown even in full-screen) |
-| `ui/open_screen` | event: string screen id, e.g. "settings/updates" | shell | screens (Settings → Updates, step 5) |
-| `settings/<key>` | event: the new value | settings (on every change) | shell (`settings/ui/page_order`), services |
+| `ui/open_screen` | event: string screen id, e.g. "settings/updates" | shell (update chip) | shell (opens the Updates screen) |
+| `settings/<key>` | event: the new value | settings (on every change) | shell (`settings/ui/page_order`), update engine (`settings/update/channel`: re-check), services |
 | `settings/reset` | event: bool | settings | services, UI |
 
 ### Path to an app installer
@@ -289,6 +302,42 @@ USB web flasher ─▶ Flash over cable (full, or keep settings)
 4. Catalog carries SHA-256, hardware ID (`waveshare-p4-wifi6-lcd5`) and partition-layout version. Signed catalogs (ed25519) in 1.x.
 5. Settings export/import (JSON) and schema-versioned settings with migrations. Adding a key with a default needs no version bump: older firmware ignores unknown keys and preserves them on write. Renames, removals, type or meaning changes bump the version and need a migration + host test. Settings from a newer version are read-only with a notice on device and web UI; reset only by explicit user action after the old settings are saved for export. A corrupt blob runs on defaults in memory, keeps the raw blob for export, and offers reset.
 6. `factory` recovery app (Wi-Fi + web upload) boots if both main slots fail.
+
+### Update catalog (format 1) — proposed, awaiting approval
+
+One `catalog.json` per source, served over HTTPS from GitHub Pages. Stable and beta builds come from the `slopeform-home` catalog; alpha builds from a binaries-only public repo (proposed name `summit-alpha`) fed by `project-summit` CI:
+
+- Stable / beta: `https://skiiirt1983.github.io/slopeform-home/catalog.json`
+- Alpha: `https://skiiirt1983.github.io/summit-alpha/catalog.json`
+
+```json
+{
+  "format": 1,
+  "project": "summit",
+  "builds": [
+    {
+      "version": "0.1.0",
+      "channel": "stable",
+      "hardware_id": "waveshare-p4-wifi6-lcd5-rev3",
+      "partition_layout": 1,
+      "url": "https://skiiirt1983.github.io/slopeform-home/firmware/0.1.0/summit-0.1.0-rev3-ota.bin",
+      "size": 1228800,
+      "sha256": "64 lowercase hex characters",
+      "released": "2026-11-07",
+      "notes": "Short changelog shown on the Updates screen"
+    }
+  ]
+}
+```
+
+Device rules (`firmware/services/update`, host-tested):
+
+- The whole catalog is ignored unless `format` is 1 and `project` is `summit`. Unknown fields are ignored.
+- A build is installable only if: `version` is SemVer (`MAJOR.MINOR.PATCH[-pre]`), `hardware_id` equals the device's (board + chip-revision family), `partition_layout` equals 1, `url` is `https://` on an allowed host (`skiiirt1983.github.io`) with no credentials or port, `0 < size ≤` the 8 MB slot, and `sha256` is 64 lowercase hex.
+- Channels: a device on stable sees stable builds; beta sees stable + beta; alpha sees all. "Update available" = the newest installable build newer than the running version (SemVer precedence). Older installable builds stay selectable (deliberate downgrade).
+- Downloads: HTTPS with the certificate bundle, redirects disabled (the allow-list applies to the final host), clock synced first. The first 0x70 bytes are checked before anything is written: ESP32-P4, matching chip-revision range, project `summit`, version equal to the catalog entry. Size and SHA-256 must match; ESP-IDF then validates the image before the spare slot is selected.
+- One update at a time: on-device installs and web uploads share the engine. Uploads skip the catalog checks (no SHA-256 to compare) but get the same header, size and image validation.
+- Health gate after reboot: 3 consecutive healthy samples 2.5 s apart within 40 s (UI heartbeat ≤ 1.5 s old, frames drawn, ≥ 16 KB internal heap, touch controller answers, I2C devices answer, settings loaded without an invalid schema); otherwise rollback. Any init failure on a pending image rolls back at once. "Previous version" boots the spare slot as a pending image, so it goes through the gate too.
 
 ### Update channels
 

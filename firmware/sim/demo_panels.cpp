@@ -224,6 +224,13 @@ void publish_placeholders(StateStore &s)
     s.set("update/available", true);
     s.set("power/battery_text", std::string("85%"));
     s.set("power/battery_icon", std::string(LV_SYMBOL_BATTERY_3));
+    // Device facts and update pre-flight inputs (published by boot and services on the device).
+    s.set("system/firmware_version", std::string("0.0.1"));
+    s.set("system/hardware_id", std::string("waveshare-p4-wifi6-lcd5-rev3"));
+    s.set("power/usb_power", true);
+    s.set("power/battery_pct", int64_t{85});
+    s.set("time/synced", true);
+    s.set("update/previous_version", std::string("0.0.1-alpha.3"));
 }
 
 }  // namespace sim

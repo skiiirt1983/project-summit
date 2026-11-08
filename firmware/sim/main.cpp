@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "demo_panels.h"
+#include "fake_update.h"
 #include "png.h"
 #include "summit/event_bus.h"
 #include "summit/registry.h"
@@ -85,6 +86,7 @@ struct App {
     std::unique_ptr<Settings> settings;
     std::unique_ptr<PanelHost> host;
     std::unique_ptr<shell::Shell> shell;
+    std::unique_ptr<sim::FakeUpdateService> updates;
 };
 
 void run_ms(App &app, uint32_t ms)
@@ -93,6 +95,7 @@ void run_ms(App &app, uint32_t ms)
     while (g_ms < end) {
         g_ms += 4;
         app.bus.dispatch();
+        if (app.updates) app.updates->tick(g_ms);
         app.shell->tick(g_ms);
         lv_timer_handler();
     }
@@ -378,8 +381,9 @@ void selftest(App &app)
     c = chip_center(app, "update");
     tap(app, c.x, c.y);
     run_ms(app, 50);
-    EXPECT(opened == "settings/updates" && !app.shell->quick_settings_open(), "tap update -> Updates (%s)",
-           opened.c_str());
+    EXPECT(opened == "settings/updates" && !app.shell->quick_settings_open() && app.shell->updates().is_open(),
+           "tap update -> Updates screen (%s)", opened.c_str());
+    app.shell->updates().close();
     app.bus.unsubscribe(sub);
     for (const char *id : {"wifi", "battery"}) {
         c = chip_center(app, id);
@@ -424,6 +428,74 @@ void selftest(App &app)
     app.settings->set("ui/page_order", std::string());
     run_ms(app, 50);
 
+    // --- Updates screen, driven end to end through the real UpdateEngine ---
+    {
+        auto &up = app.shell->updates();
+        auto click = [&](lv_obj_t *o) {
+            lv_area_t a;
+            lv_obj_get_coords(o, &a);
+            tap(app, (a.x1 + a.x2) / 2, (a.y1 + a.y2) / 2);
+        };
+        auto visible = [](lv_obj_t *o) { return !lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN); };
+        auto stage = [&] { return std::get<std::string>(app.state.get("update/stage")); };
+        lv_point_t uc = chip_center(app, "update");
+        tap(app, uc.x, uc.y);
+        run_ms(app, 100);
+        EXPECT(up.is_open() && visible(up.check_button()), "Updates screen opens from the update chip");
+        shot("10-landscape-updates");
+        click(up.check_button());
+        run_ms(app, 100);
+        EXPECT(stage() == "checking", "check -> checking (%s)", stage().c_str());
+        run_ms(app, 400);
+        EXPECT(stage() == "available" && visible(up.install_button()) &&
+                   std::get<std::string>(app.state.get("update/available_version")) == "0.1.0",
+               "stable channel: 0.1.0 available (%s)", up.status_text().c_str());
+        shot("11-landscape-update-available");
+
+        // Pre-flight: on battery below 40% the install is refused with a reason.
+        app.state.set("power/usb_power", false);
+        app.state.set("power/battery_pct", int64_t{20});
+        click(up.install_button());
+        run_ms(app, 100);
+        EXPECT(stage() == "failed" && up.status_text().find("40%") != std::string::npos, "pre-flight blocks: %s",
+               up.status_text().c_str());
+        app.state.set("power/usb_power", true);
+
+        // Install: full-screen progress, strip hidden, then ready to restart.
+        click(up.install_button());
+        run_ms(app, 40);
+        EXPECT(up.showing_progress() && !app.shell->strip_visible() && app.shell->layout().content.y == 0,
+               "installing: full-screen progress, strip hidden");
+        shot("12-landscape-update-progress");
+        run_ms(app, 1500);
+        EXPECT(stage() == "ready_to_reboot" && visible(up.restart_button()) && !up.showing_progress() &&
+                   app.shell->strip_visible(),
+               "image verified (size + SHA-256) and ready to restart (%s)", up.status_text().c_str());
+        shot("13-landscape-update-ready");
+        click(up.restart_button());
+        run_ms(app, 100);
+        EXPECT(std::get<std::string>(app.state.get("system/firmware_version")) == "0.1.0", "restart runs 0.1.0");
+
+        // Beta channel: selecting it re-checks; the beta build appears.
+        lv_area_t m;
+        lv_obj_get_coords(up.channel_buttons(), &m);
+        tap(app, m.x1 + lv_area_get_width(&m) / 2, (m.y1 + m.y2) / 2);
+        run_ms(app, 500);
+        EXPECT(std::get<std::string>(app.settings->get("update/channel")) == "beta" &&
+                   std::get<std::string>(app.state.get("update/available_version")) == "0.2.0-beta.1",
+               "beta channel offers 0.2.0-beta.1");
+        app.settings->set("update/channel", std::string("stable"));  // e.g. from the web UI
+        run_ms(app, 500);
+        EXPECT(std::get<std::string>(app.state.get("update/available_version")) == "",
+               "back on stable: re-checked, 0.1.0 is installed so nothing newer (%s)", up.status_text().c_str());
+        EXPECT(visible(up.previous_button()), "previous version offered");
+        up.close();
+        run_ms(app, 50);
+        EXPECT(!up.is_open(), "Updates screen closes");
+        sim::publish_placeholders(app.state);
+        for (int i = 0; i < 100 && app.shell->toast_showing(); ++i) run_ms(app, 200);
+    }
+
     // --- Rotate to portrait 720x1280 (400 ms debounce, then re-layout) ---
     app.shell->go_to_panel("home_clock", false);
     app.state.set("sensor/orientation", std::string("portrait"));
@@ -451,6 +523,10 @@ void selftest(App &app)
         check_panel_inside_content(app, id);
         shot(std::string("08-portrait-") + id);
     }
+    app.shell->updates().open();
+    run_ms(app, 100);
+    shot("14-portrait-updates");
+    app.shell->updates().close();
 
     // System chip icons are LVGL's symbols.
     auto sys = shell::system_chips();
@@ -467,6 +543,7 @@ int start_app(App &app, shell::Shell::ApplyOrientation apply)
     app.settings = std::make_unique<Settings>(schema, app.storage, &app.bus);
     app.settings->load();
     app.host = std::make_unique<PanelHost>(app.registry, app.bus, app.state, *app.settings);
+    app.updates = std::make_unique<sim::FakeUpdateService>(app.bus, app.state, *app.settings, "0.0.1");
     sim::publish_placeholders(app.state);
     app.shell = std::make_unique<shell::Shell>(
         shell::Shell::Deps{app.bus, app.state, *app.settings, app.registry, *app.host}, std::move(apply));

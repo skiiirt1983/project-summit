@@ -17,6 +17,7 @@
 #include "summit/shell/pager.h"
 #include "summit/shell/rotation.h"
 #include "summit/shell/strip_state.h"
+#include "summit/shell/updates_screen.h"
 #include "summit/state_store.h"
 
 namespace summit::shell {
@@ -91,6 +92,7 @@ public:
     std::vector<std::string> visible_chips() const;
     const Pager &pager() const { return *pager_; }
     const RotationController &rotation() const { return rotation_; }
+    UpdatesScreen &updates() { return *updates_; }
 
 private:
     struct ChipUi {
@@ -139,6 +141,8 @@ private:
     EventBus::SubscriptionId toast_sub_ = 0;
     EventBus::SubscriptionId critical_sub_ = 0;
     EventBus::SubscriptionId order_sub_ = 0;
+    EventBus::SubscriptionId open_sub_ = 0;
+    std::unique_ptr<UpdatesScreen> updates_;
 
     lv_obj_t *screen_ = nullptr;
     lv_obj_t *content_ = nullptr;
