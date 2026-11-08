@@ -33,16 +33,29 @@ def used():
     add("sim/demo_panels.cpp", r'(?:s\.set|ctx\.state|str\(ctx,)\s*\(?"[^"]+"')
     add("sim/demo_panels.cpp", r'chip\("[^"]+", "[^"]+"')
     add("sim/demo_panels.cpp", r'manifest\("[^"]+", "[^"]+", \{[^}]*\}\)')
+    # Update engine, Updates screen and the simulator's fake service: every topic-shaped literal.
+    for path in ("services/update/src/status_topics.cpp", "services/update/esp/update_service.cpp",
+                 "services/update/esp/ota_guard.cpp", "shell/src/updates_screen.cpp", "sim/fake_update.cpp"):
+        add(path, r'"[a-z0-9_]+(?:/[a-z0-9_]+)+"')
     return found
+
+
+def settings_keys():
+    """Keys of the settings schema: read via Settings, not topics (their change events are settings/<key>)."""
+    text = (FW / "framework/src/system_settings.cpp").read_text()
+    return set(re.findall(r'\{"([a-z0-9_]+(?:/[a-z0-9_]+)+)",', text))
 
 
 def main():
     doc = documented()
+    skip = settings_keys()
     assert doc, "State topics table not found in docs/ARCHITECTURE.md"
     for t in doc:
         assert t == "settings/<key>" or re.fullmatch(r"[a-z0-9_]+/[a-z0-9_]+", t), f"bad topic name: {t}"
     missing = []
     for topic, where in sorted(used().items()):
+        if topic in skip:
+            continue
         if topic.startswith("settings/"):
             if "settings/<key>" not in doc and topic not in doc:
                 missing.append((topic, where))

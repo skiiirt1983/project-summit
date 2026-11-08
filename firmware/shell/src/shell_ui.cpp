@@ -2,18 +2,13 @@
 #include <cstdlib>
 
 #include "summit/shell/shell.h"
+#include "theme.h"
 
 namespace summit::shell {
 
 namespace {
 
-// Dark theme. Colours are not lengths, so they are not tokens.
-constexpr uint32_t kBg = 0x0F1317;
-constexpr uint32_t kStripBg = 0x1A2027;
-constexpr uint32_t kChipBg = 0x262E37;
-constexpr uint32_t kText = 0xE6EDF3;
-constexpr uint32_t kMuted = 0x9AA7B4;
-constexpr uint32_t kAccent = 0x4EA1FF;
+using namespace theme;
 constexpr uint32_t kBackdropOpa = LV_OPA_50;
 constexpr uint32_t kSlideMs = 250;
 
@@ -108,7 +103,7 @@ Shell::Shell(Deps deps, ApplyOrientation apply) : d_(deps), apply_(std::move(app
 
 Shell::~Shell()
 {
-    for (auto id : {toast_sub_, critical_sub_, order_sub_})
+    for (auto id : {toast_sub_, critical_sub_, order_sub_, open_sub_})
         if (id) d_.bus.unsubscribe(id);
 }
 
@@ -143,6 +138,8 @@ bool Shell::start(uint32_t now_ms, std::string *error)
     lv_obj_remove_flag(screen_, LV_OBJ_FLAG_SCROLLABLE);
     content_ = plain(screen_);
     page_ = plain(content_);
+    updates_ = std::make_unique<UpdatesScreen>(d_.bus, d_.state, d_.settings);
+    updates_->build(screen_);  // above the page, below the strip (top layer)
 
     for (const GlanceChipDef &def : defs) {
         ChipUi c;
@@ -155,6 +152,13 @@ bool Shell::start(uint32_t now_ms, std::string *error)
     toast_sub_ = d_.bus.subscribe(topics::kToast, [this](const std::string &, const Value &v) { on_toast(v, false); });
     critical_sub_ = d_.bus.subscribe(topics::kToastCritical,
                                      [this](const std::string &, const Value &v) { on_toast(v, true); });
+    open_sub_ = d_.bus.subscribe(topics::kOpenScreen, [this](const std::string &, const Value &v) {
+        const std::string *s = std::get_if<std::string>(&v);
+        if (s && *s == "settings/updates") {
+            close_quick_settings();
+            updates_->open();
+        }
+    });
     order_sub_ = d_.bus.subscribe("settings/ui/page_order",
                                   [this](const std::string &, const Value &) { rebuild_pages(); });
 
@@ -359,6 +363,7 @@ void Shell::apply_layout(bool morph)
     const bool changed = old.content.w != c.w || old.content.h != c.h || old.content.y != c.y ||
                          old.orientation != layout_.orientation;
     if (changed && pager_) show_current(0);
+    if (updates_) updates_->apply_layout(layout_);
     fit_chip_row();
     if (morph) anim_opa(content_, RotationController::kMorphMs);
 }
@@ -520,6 +525,7 @@ void Shell::tick(uint32_t now_ms)
     }
 
     refresh_chips(false);
+    updates_->tick();
     refresh_settings_notice();
     refresh_strip_visibility();
 
@@ -756,7 +762,7 @@ void Shell::on_input(lv_event_t *e)
         drag_horizontal_ = false;
         const Rect &c = layout_.content;
         const bool over_strip = strip_visible() && p.y < layout_.strip.h;
-        dragging_ = !sheet_open_ && !over_strip && p.y >= c.y && p.y < c.y + c.h;
+        dragging_ = !sheet_open_ && !updates_->is_open() && !over_strip && p.y >= c.y && p.y < c.y + c.h;
         return;
     }
     // RELEASED

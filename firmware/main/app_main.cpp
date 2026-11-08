@@ -1,6 +1,6 @@
 // Project Summit firmware entry point.
-// Phase 0 step 3: framework wiring (bus, state, settings, panel registry).
-// Shell, services and panels arrive in later steps.
+// Phase 0: framework wiring (bus, state, settings, panel registry) and the update
+// engine with its post-boot health gate. Shell and panels start once the display BSP lands.
 #include "esp_app_desc.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
@@ -12,6 +12,7 @@
 #include "summit/settings.h"
 #include "summit/state_store.h"
 #include "summit/system_settings.h"
+#include "summit/update/device.h"
 
 static const char *TAG = "summit";
 
@@ -56,7 +57,18 @@ extern "C" void app_main(void)
     if (settings.notice() != summit::SettingsNotice::None)
         ESP_LOGW(TAG, "%s", summit::notice_message(settings.notice()));
 
+    // Post-boot health gate (only runs on a newly installed, pending image) and the
+    // update service. UI, touch and I2C probes arrive with the display/touch BSP
+    // (Phase 1); until then a pending OTA image fails the gate and rolls back.
+    // Fail-fast: a firmware bug on a new image rolls back at once instead of waiting 40 s.
+    if (r == summit::LoadResult::InvalidSchema) summit::update::ota_init_failed("settings schema invalid");
+    summit::update::HealthProbes probes;
+    probes.settings_ok = r != summit::LoadResult::InvalidSchema;
+    summit::update::ota_guard_start(probes, bus, state);
+    summit::update::update_service_start({SUMMIT_HARDWARE_ID, SUMMIT_CHIP_REV_FAMILY}, bus, state, settings);
+
     static summit::PanelHost host(registry, bus, state, settings);
     state.set("system/hardware_id", std::string(SUMMIT_HARDWARE_ID));
+    state.set("system/firmware_version", std::string(desc->version));
     bus.dispatch();
 }

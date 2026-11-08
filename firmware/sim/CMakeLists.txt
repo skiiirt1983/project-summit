@@ -39,12 +39,18 @@ endif()
 find_package(ZLIB REQUIRED)
 
 add_executable(summit_sim
-    main.cpp demo_panels.cpp png.cpp
+    main.cpp demo_panels.cpp png.cpp fake_update.cpp
     ${FW}/framework/src/value.cpp ${FW}/framework/src/event_bus.cpp
     ${FW}/framework/src/state_store.cpp ${FW}/framework/src/settings.cpp
     ${FW}/framework/src/registry.cpp ${FW}/framework/src/system_settings.cpp
     ${FW}/shell/src/layout.cpp ${FW}/shell/src/glance.cpp ${FW}/shell/src/strip_state.cpp
-    ${FW}/shell/src/rotation.cpp ${FW}/shell/src/pager.cpp ${FW}/shell/src/shell_ui.cpp)
-target_include_directories(summit_sim PRIVATE ${FW}/framework/include ${FW}/shell/include)
+    ${FW}/shell/src/rotation.cpp ${FW}/shell/src/pager.cpp ${FW}/shell/src/shell_ui.cpp
+    ${FW}/shell/src/updates_screen.cpp
+    ${FW}/services/update/src/version.cpp ${FW}/services/update/src/catalog.cpp
+    ${FW}/services/update/src/preflight.cpp ${FW}/services/update/src/image_check.cpp
+    ${FW}/services/update/src/engine.cpp ${FW}/services/update/src/health_gate.cpp
+    ${FW}/services/update/src/status_topics.cpp)
+target_include_directories(summit_sim PRIVATE ${FW}/framework/include ${FW}/shell/include
+    ${FW}/services/update/include ${FW}/../tests/host)
 target_link_libraries(summit_sim PRIVATE lvgl ZLIB::ZLIB)
 target_compile_options(summit_sim PRIVATE -Wall -Wextra -Werror)
