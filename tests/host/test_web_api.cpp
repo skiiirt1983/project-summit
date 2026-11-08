@@ -41,6 +41,7 @@ struct FakeUpdate : UpdateControl {
 struct FakeWifi : WifiStore {
     std::string s, pw;
     std::string ssid() override { return s; }
+    std::string password() override { return pw; }
     bool save(const std::string &a, const std::string &b, std::string *) override
     {
         s = a;
@@ -53,11 +54,18 @@ struct FakeFacts : DeviceFacts {
     std::vector<std::pair<std::string, std::string>> facts() override { return {{"uptime_s", "42"}}; }
 };
 
+static SettingsSchema schema_with_secret()
+{
+    SettingsSchema s = system_settings_schema();
+    s.defs.push_back({"printer/access_code", std::string(""), {}, "Printer access code", "From the printer's screen", true});
+    return s;
+}
+
 struct Rig {
     EventBus bus{64};
     StateStore state{bus};
     FakeStorage storage;
-    Settings settings{system_settings_schema(), storage, &bus};
+    Settings settings{schema_with_secret(), storage, &bus};
     FakeUpdate update;
     FakeWifi wifi;
     FakeFacts facts;
@@ -253,6 +261,56 @@ TEST(diagnostics_lists_addon_warnings)
     CHECK(d.s("device.uptime_s") == "42");
 }
 
+TEST(import_is_validated_first_and_refused_cleanly)
+{
+    Rig r;
+    r.settings.set("display/brightness", int64_t{30});
+    std::string blob = r.storage.blob;
+    const char *bad = R"({"format":"summit-settings","schema_version":1,"values":{"display/brightness":"bright","ui/rotation_lock":"sideways"}})";
+    Response v = r.post("/api/settings/import/validate", bad);
+    CHECK(v.status == 400 && Json(v.body).s("error") ==
+                                 "settings file has invalid values: display/brightness, ui/rotation_lock");
+    Response i = r.post("/api/settings/import", bad);
+    CHECK(i.status == 400 && r.storage.blob == blob && !r.storage.has_backup);  // nothing changed
+    const char *good = R"({"format":"summit-settings","schema_version":1,"values":{"display/brightness":55}})";
+    CHECK(r.post("/api/settings/import/validate", good).status == 200 && r.storage.blob == blob);  // dry run only
+    CHECK(r.post("/api/settings/import", good).status == 200);
+    CHECK(std::get<int64_t>(r.settings.get("display/brightness")) == 55);
+    // Undo import restores what was there before.
+    CHECK(r.post("/api/settings/undo", "{}").status == 200);
+    CHECK(std::get<int64_t>(r.settings.get("display/brightness")) == 30);
+}
+
+TEST(secrets_left_out_of_exports_unless_asked)
+{
+    Rig r;
+    r.wifi.s = "home";
+    r.wifi.pw = "wifi-secret-pw";
+    r.settings.set("printer/access_code", std::string("12345678"));
+    Response e = r.get("/api/settings/export");
+    CHECK(e.body.find("wifi-secret-pw") == std::string::npos && e.body.find("12345678") == std::string::npos);
+    CHECK(Json(e.body).s("wifi.ssid") == "home");
+    Response es = r.api.handle({"GET", "/api/settings/export", "", "", "secrets=1"});
+    CHECK(es.body.find("wifi-secret-pw") != std::string::npos && es.body.find("12345678") != std::string::npos);
+    CHECK(es.filename == "summit-settings-0.1.0-with-secrets.json");
+    // GET /api/settings never shows a secret, only whether it is set.
+    Response g = r.get("/api/settings");
+    CHECK(g.body.find("12345678") == std::string::npos && g.body.find("\"is_set\":true") != std::string::npos);
+    CHECK(g.body.find("\"label\":\"Printer access code\"") != std::string::npos);
+
+    // Import of a file without secrets keeps the current ones (setting and Wi-Fi password).
+    Rig other;
+    other.wifi.pw = "other-pw-123";
+    other.settings.set("printer/access_code", std::string("99999999"));
+    CHECK(other.post("/api/settings/import", e.body).status == 200);
+    CHECK(std::get<std::string>(other.settings.get("printer/access_code")) == "99999999");
+    CHECK(other.wifi.s == "home" && other.wifi.pw == "other-pw-123");
+    // With secrets, they are replaced.
+    CHECK(other.post("/api/settings/import", es.body).status == 200);
+    CHECK(std::get<std::string>(other.settings.get("printer/access_code")) == "12345678" &&
+          other.wifi.pw == "wifi-secret-pw");
+}
+
 int main()
 {
     RUN(routing_and_request_guards);
@@ -263,5 +321,7 @@ int main()
     RUN(settings_export_import_round_trip);
     RUN(settings_reset_and_unreadable_export);
     RUN(diagnostics_lists_addon_warnings);
+    RUN(import_is_validated_first_and_refused_cleanly);
+    RUN(secrets_left_out_of_exports_unless_asked);
     return report("web api");
 }

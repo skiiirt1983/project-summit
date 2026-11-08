@@ -218,6 +218,7 @@ const char *import_error_text(ImportError e)
     case ImportError::None: return "ok";
     case ImportError::NewerSchema: return "settings file is from a newer firmware version";
     case ImportError::MigrationMissing: return "settings file is from a version this firmware can't upgrade";
+    case ImportError::InvalidValues: return "settings file has invalid values";
     case ImportError::BackupFailed: return "could not back up the current settings";
     case ImportError::WriteFailed: return "could not save the imported settings";
     }
@@ -243,24 +244,47 @@ SettingsSnapshot Settings::snapshot() const
     return snap;
 }
 
-ImportResult Settings::import(const SettingsSnapshot &in)
+// Migrates a snapshot to this schema. False (and result.error set) if it can't be.
+static bool migrate_snapshot(const SettingsSchema &schema, const SettingsSnapshot &in, SettingsMap &out,
+                             ImportResult &result)
+{
+    if (in.schema_version > schema.version) {
+        result.error = ImportError::NewerSchema;
+        return false;
+    }
+    out = in.values;
+    out.erase(Settings::kVersionKey);
+    for (uint32_t v = in.schema_version; v < schema.version; ++v) {
+        auto m = std::find_if(schema.migrations.begin(), schema.migrations.end(),
+                              [v](const Migration &x) { return x.from == v; });
+        if (m == schema.migrations.end()) {
+            result.error = ImportError::MigrationMissing;
+            return false;
+        }
+        m->apply(out);
+    }
+    return true;
+}
+
+ImportResult Settings::validate_import(const SettingsSnapshot &in) const
 {
     ImportResult result;
-    if (in.schema_version > schema_.version) {
-        result.error = ImportError::NewerSchema;
-        return result;
+    SettingsMap incoming;
+    if (!migrate_snapshot(schema_, in, incoming, result)) return result;
+    for (const auto &kv : incoming) {
+        const SettingDef *d = def(kv.first);
+        if (d && !accepts(*d, kv.second)) result.invalid.push_back(kv.first);
     }
-    SettingsMap incoming = in.values;
-    incoming.erase(kVersionKey);
-    for (uint32_t v = in.schema_version; v < schema_.version; ++v) {
-        auto m = std::find_if(schema_.migrations.begin(), schema_.migrations.end(),
-                              [v](const Migration &x) { return x.from == v; });
-        if (m == schema_.migrations.end()) {
-            result.error = ImportError::MigrationMissing;
-            return result;
-        }
-        m->apply(incoming);
-    }
+    if (!result.invalid.empty()) result.error = ImportError::InvalidValues;
+    return result;
+}
+
+ImportResult Settings::import(const SettingsSnapshot &in)
+{
+    ImportResult result = validate_import(in);
+    if (result.error != ImportError::None) return result;  // nothing changes
+    SettingsMap incoming;
+    migrate_snapshot(schema_, in, incoming, result);
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (!stored_blob_.empty() && !storage_.write_backup(stored_blob_)) {
@@ -269,16 +293,16 @@ ImportResult Settings::import(const SettingsSnapshot &in)
         }
         SettingsMap old_values = values_, old_pass = passthrough_;
         SettingsNotice old_notice = notice_;
-        for (const SettingDef &d : schema_.defs) values_[d.key] = d.default_value;
+        // Everything not in the file resets to defaults, except secrets, which keep
+        // their current value (exports leave them out by default).
+        for (const SettingDef &d : schema_.defs)
+            if (!d.secret) values_[d.key] = d.default_value;
         passthrough_.clear();
         for (const auto &kv : incoming) {
-            const SettingDef *d = def(kv.first);
-            if (!d) {
-                passthrough_[kv.first] = kv.second;  // unknown here: keep for newer firmware
-            } else if (accepts(*d, kv.second)) {
+            if (def(kv.first)) {
                 values_[kv.first] = kv.second;
             } else {
-                result.skipped.push_back(kv.first);
+                passthrough_[kv.first] = kv.second;  // unknown here: keep for newer firmware
             }
         }
         notice_ = SettingsNotice::None;

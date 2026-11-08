@@ -97,12 +97,14 @@ ul{margin:0;padding-left:18px}
   <div class="card"><h2>Settings</h2><form id="set-form"></form>
     <div class="row"><button class="btn primary" id="set-save">Save</button></div><div class="msg" id="set-msg"></div></div>
   <div class="card"><h2>Backup</h2>
+    <label style="display:flex;gap:8px;align-items:center;color:var(--text)"><input type="checkbox" id="set-secrets"> Include secrets (Wi-Fi password, access codes, tokens)</label>
     <div class="row"><button class="btn" id="set-export">Export settings</button>
       <label class="btn" for="set-import-file">Import settings&hellip;</label>
       <input type="file" id="set-import-file" accept=".json" hidden>
+      <button class="btn" id="set-undo" hidden>Undo import</button>
       <button class="btn" id="set-backup">Download last backup</button>
       <button class="btn danger" id="set-reset">Reset to defaults</button></div>
-    <p class="muted">Wi-Fi passwords are never included in an export. Import and reset save the current settings as the backup first.</p>
+    <p class="muted">Exports leave secrets out unless ticked. Importing replaces all settings and keeps your current secrets if the file has none. Import and reset back up the current settings first.</p>
     <div class="msg" id="set-backup-msg"></div></div>
 </section>
 
@@ -257,13 +259,15 @@ loaders.settings = async () => {
   const form = $("set-form"); form.replaceChildren();
   for (const s of schema.settings) {
     const id = "set-" + s.key.replace(/[^a-z0-9]/g, "-");
-    const label = el("label", s.key); label.htmlFor = id;
+    const label = el("label", s.label || s.key); label.htmlFor = id;
     let input;
-    if (s.choices) { input = el("select"); for (const c of s.choices) { const o = el("option", c); o.value = c; input.append(o); } input.value = s.value; }
+    if (s.secret) { input = el("input"); input.type = "password"; input.placeholder = s.is_set ? "set (leave empty to keep)" : "not set"; input.autocomplete = "off"; }
+    else if (s.choices) { input = el("select"); for (const c of s.choices) { const o = el("option", c); o.value = c; input.append(o); } input.value = s.value; }
     else if (s.type === "bool") { input = el("input"); input.type = "checkbox"; input.checked = s.value === true; }
     else { input = el("input"); input.type = (s.type === "int" || s.type === "double") ? "number" : "text"; if (s.type === "double") input.step = "any"; input.value = s.value ?? ""; }
     input.id = id; input.dataset.key = s.key; input.dataset.type = s.type; input.disabled = schema.read_only;
     form.append(label, input);
+    if (s.help) form.append(el("div", s.help, "muted"));
   }
   $("set-save").disabled = schema.read_only;
 };
@@ -271,6 +275,7 @@ $("set-save").addEventListener("click", async () => {
   const changes = {};
   for (const s of schema.settings) {
     const input = document.querySelector('[data-key="' + s.key + '"]');
+    if (s.secret) { if (input.value) changes[s.key] = input.value; continue; }  // write-only
     let v = s.type === "bool" ? input.checked : (s.type === "int" ? parseInt(input.value, 10) : (s.type === "double" ? parseFloat(input.value) : input.value));
     if (v !== s.value) changes[s.key] = v;
   }
@@ -278,20 +283,33 @@ $("set-save").addEventListener("click", async () => {
   try { await api("/api/settings", { method: "POST", json: changes }); msg("set-msg", "Saved.", "ok"); loaders.settings(); }
   catch (err) { msg("set-msg", err.message, "err"); }
 });
-$("set-export").addEventListener("click", () => download("/api/settings/export"));
+$("set-export").addEventListener("click", () => download("/api/settings/export" + ($("set-secrets").checked ? "?secrets=1" : "")));
 $("set-backup").addEventListener("click", async () => {
   const r = await fetch("/api/settings/backup");
   if (r.ok) download("/api/settings/backup"); else msg("set-backup-msg", "No backup yet (made by reset or import).");
 });
+async function postJson(path, text) {
+  const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: text });
+  let body = null; try { body = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error((body && body.error) || ("HTTP " + r.status));
+  return body;
+}
 $("set-import-file").addEventListener("change", async () => {
   const file = $("set-import-file").files[0]; if (!file) return;
-  try { const text = await file.text(); JSON.parse(text);
-    const r = await fetch("/api/settings/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: text });
-    const body = await r.json();
-    if (!r.ok) throw new Error(body.error);
-    msg("set-backup-msg", "Imported." + (body.skipped.length ? " Kept defaults for: " + body.skipped.join(", ") : ""), "ok"); loaders.settings(); }
-  catch (err) { msg("set-backup-msg", "Import failed: " + err.message, "err"); }
   $("set-import-file").value = "";
+  try {
+    const text = await file.text();
+    try { JSON.parse(text); } catch (e) { throw new Error("not a JSON file"); }
+    await postJson("/api/settings/import/validate", text);  // whole file checked first; nothing changes
+    if (!confirm("Replace all settings? Your current settings are backed up.")) { msg("set-backup-msg", "Import cancelled."); return; }
+    await postJson("/api/settings/import", text);
+    msg("set-backup-msg", "Imported. Use Undo import to go back.", "ok");
+    $("set-undo").hidden = false; loaders.settings();
+  } catch (err) { msg("set-backup-msg", "Import refused, nothing changed: " + err.message, "err"); }
+});
+$("set-undo").addEventListener("click", async () => {
+  try { await postJson("/api/settings/undo", "{}"); msg("set-backup-msg", "Import undone.", "ok"); $("set-undo").hidden = true; loaders.settings(); }
+  catch (err) { msg("set-backup-msg", err.message, "err"); }
 });
 $("set-reset").addEventListener("click", async () => {
   if (!confirm("Reset all settings to defaults? The current settings are saved as the backup first.")) return;

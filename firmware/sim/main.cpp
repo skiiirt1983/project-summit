@@ -633,8 +633,9 @@ struct SimControl : web::UpdateControl {
 };
 
 struct SimWifi : web::WifiStore {
-    std::string s = "home", pw;
+    std::string s = "home", pw = "home-network-password";
     std::string ssid() override { return s; }
+    std::string password() override { return pw; }
     bool save(const std::string &a, const std::string &b, std::string *) override
     {
         s = a;

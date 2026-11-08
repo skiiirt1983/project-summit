@@ -46,6 +46,16 @@ struct NvsWifi : WifiStore {
         nvs_close(h);
         return out;
     }
+    std::string password() override
+    {
+        nvs_handle_t h;
+        if (nvs_open("wifi", NVS_READONLY, &h) != ESP_OK) return "";
+        char buf[64] = {};
+        size_t len = sizeof buf;
+        std::string out = nvs_get_str(h, "pass", buf, &len) == ESP_OK ? buf : "";
+        nvs_close(h);
+        return out;
+    }
     bool save(const std::string &ssid, const std::string &password, std::string *error) override
     {
         nvs_handle_t h;
@@ -146,7 +156,10 @@ esp_err_t api_handler(httpd_req_t *req)
     r.method = req->method == HTTP_POST ? "POST" : "GET";
     r.path = req->uri;
     size_t q = r.path.find('?');
-    if (q != std::string::npos) r.path.resize(q);
+    if (q != std::string::npos) {
+        r.query = r.path.substr(q + 1);
+        r.path.resize(q);
+    }
     r.content_type = header(req, "Content-Type");
     if (req->method == HTTP_POST) {
         if (req->content_len > static_cast<size_t>(WebApi::kMaxJsonBody)) {

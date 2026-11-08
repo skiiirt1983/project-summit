@@ -118,14 +118,34 @@ try {
   await dl.saveAs(exported);
   const ex = JSON.parse(readFileSync(exported, "utf8"));
   check(ex.format === "summit-settings" && ex.values["display/brightness"] === 42, "export contains the setting");
-  check(!JSON.stringify(ex).includes("password"), "export has no Wi-Fi password");
+  check(ex.wifi && ex.wifi.ssid && ex.wifi.password === undefined, "export has the SSID but no Wi-Fi password by default");
+  await page.check("#set-secrets");
+  const [dls] = await Promise.all([page.waitForEvent("download"), page.click("#set-export")]);
+  await dls.saveAs(`${out}/exported-with-secrets.json`);
+  const exs = JSON.parse(readFileSync(`${out}/exported-with-secrets.json`, "utf8"));
+  check(exs.includes_secrets === true && typeof exs.wifi.password === "string", "tick-box includes secrets");
+  await page.uncheck("#set-secrets");
   await page.click("#set-reset");
   await page.waitForSelector("#set-backup-msg.ok");
   check((await page.inputValue("#set-display-brightness")) === "80", "reset restores defaults");
+  // An invalid file is refused and nothing changes.
+  const bad = JSON.parse(JSON.stringify(ex)); bad.values["display/brightness"] = "bright";
+  writeFileSync(`${out}/bad-settings.json`, JSON.stringify(bad));
+  await page.setInputFiles("#set-import-file", `${out}/bad-settings.json`);
+  await page.waitForSelector("#set-backup-msg.err");
+  check((await page.textContent("#set-backup-msg")).includes("invalid values: display/brightness"), "invalid import refused with the reason");
+  check((await page.inputValue("#set-display-brightness")) === "80", "refused import changed nothing");
+  // A valid file: confirm, apply, then undo.
+  dialogs.length = 0;
   await page.setInputFiles("#set-import-file", exported);
   await page.waitForFunction(() => document.querySelector("#set-backup-msg").textContent.startsWith("Imported"));
+  check(dialogs.includes("Replace all settings? Your current settings are backed up."), "import asks for confirmation");
   await page.waitForFunction(() => document.querySelector("#set-display-brightness").value === "42");
   check(true, "import restores the exported settings");
+  await page.click("#set-undo");
+  await page.waitForFunction(() => document.querySelector("#set-backup-msg").textContent === "Import undone.");
+  await page.waitForFunction(() => document.querySelector("#set-display-brightness").value === "80");
+  check(true, "undo import restores the previous settings");
 
   // Diagnostics
   await tab("diagnostics");

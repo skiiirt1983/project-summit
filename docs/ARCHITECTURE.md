@@ -227,14 +227,19 @@ A single vanilla-JS page served gzipped from flash (`firmware/web/page/index.htm
 | `POST /api/firmware/check`, `/install`, `/reboot`, `/previous` | update commands (previous needs `{"confirm":true}`) |
 | `POST /api/firmware/upload` | raw OTA `.bin`, streamed into the update engine; needs header `X-Summit-Upload: 1` |
 | `GET/POST /api/settings` | schema + values (the form is rendered from it); set values by key |
-| `GET /api/settings/export`, `POST /api/settings/import` | settings file (`format: summit-settings`, schema version, values) |
+| `GET /api/settings/export[?secrets=1]` | settings file (`format: summit-settings`, schema version, values, Wi-Fi SSID); secrets only with `secrets=1` |
+| `POST /api/settings/import/validate`, `POST /api/settings/import` | check a whole file without changing anything; replace all settings |
+| `POST /api/settings/undo` | undo the last import (restores the backup) |
 | `POST /api/settings/reset` | defaults (needs `{"confirm":true}`); `GET /api/settings/backup` downloads the pre-reset/import backup |
 | `GET /api/diagnostics` | warnings (e.g. missing add-ons), settings/update state, event bus stats, device facts |
 
 - Every firmware path goes through the one update engine (hard rule 5); uploads get the same header, size and image checks as catalog installs.
 - Wi-Fi credentials live in their own NVS namespace, so a settings export never contains them (hard rule 6).
-- Settings import replaces all settings: older files are migrated, newer ones refused, the current settings are backed up first, missing keys get defaults, unknown keys are kept.
-- Cross-site protection: POST bodies must be `application/json` and uploads need the custom header, so other web pages can't trigger them without a CORS preflight the device never approves. **No login (proposed, pending decision):** anyone on the same network can use the portal.
+- Settings import replaces all settings. The whole file is validated first: a file from a newer schema or with any invalid value is refused with a clear message and nothing changes. The page then asks "Replace all settings? Your current settings are backed up." before applying. Older files are migrated, missing keys get defaults, unknown keys are kept. The backup stays available: "Undo import" restores it and it can be downloaded.
+- Secrets (Wi-Fi password, printer access code, tokens: settings marked `secret`) are left out of exports by default; a tick-box includes them. An import keeps the current secrets when the file has none. The API never returns a secret's value, only whether it is set.
+- Settings schema entries can carry an optional `label` and `help` text (shown by the web UI instead of the raw key). Raw keys are fine for the alpha; labels and help are filled in before the first beta. These are code-only and don't change stored settings.
+- Security: no login. The local network is trusted. Cross-site protection stays: POST bodies must be `application/json` and uploads need the `X-Summit-Upload` header, so other web pages can't trigger them without a CORS preflight the device never approves.
+- Wi-Fi setup (separate hardware step): the setup access point uses WPA2 with a password shown in the on-screen QR code, never an open network.
 
 ### State topics
 

@@ -100,6 +100,7 @@ void HttpSim::serve(int fd)
         if (k == "x-summit-upload") upload_hdr = v;
     }
     std::string path = target.substr(0, target.find('?'));
+    std::string query = target.find('?') == std::string::npos ? "" : target.substr(target.find('?') + 1);
     std::string body = buf.substr(header_end + 4);
 
     if (method == "GET" && (path == "/" || path == "/index.html")) {
@@ -143,7 +144,13 @@ void HttpSim::serve(int fd)
         if (n <= 0) break;
         body.append(chunk, static_cast<size_t>(n));
     }
-    respond(fd, api_.handle({method, path, content_type, body}));
+    summit::web::Request req;
+    req.method = method;
+    req.path = path;
+    req.query = query;
+    req.content_type = content_type;
+    req.body = body;
+    respond(fd, api_.handle(req));
 }
 
 }  // namespace sim

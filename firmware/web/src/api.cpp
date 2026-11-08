@@ -1,6 +1,7 @@
 #include "summit/web/api.h"
 
 #include <cmath>
+#include <cstring>
 #include <memory>
 
 #include "cJSON.h"
@@ -124,18 +125,29 @@ bool confirmed(const std::string &body)
 
 }  // namespace
 
-std::string snapshot_to_json(const SettingsSnapshot &snap, const SettingsSchema &, const std::string &firmware)
+std::string snapshot_to_json(const SettingsSnapshot &snap, const SettingsSchema &schema, const std::string &firmware,
+                             bool include_secrets, const WifiExport &wifi)
 {
     JsonWriter w;
     w.begin_object().key("format").value("summit-settings").key("schema_version").value(snap.schema_version);
-    w.key("firmware").value(firmware).key("values").begin_object();
-    for (const auto &kv : snap.values) w.key(kv.first).value(kv.second);
-    w.end_object().end_object();
+    w.key("firmware").value(firmware).key("includes_secrets").value(include_secrets).key("values").begin_object();
+    for (const auto &kv : snap.values) {
+        const SettingDef *d = find_def(schema, kv.first);
+        if (d && d->secret && !include_secrets) continue;
+        w.key(kv.first).value(kv.second);
+    }
+    w.end_object();
+    if (wifi.present) {
+        w.key("wifi").begin_object().key("ssid").value(wifi.ssid);
+        if (include_secrets) w.key("password").value(wifi.password);
+        w.end_object();
+    }
+    w.end_object();
     return w.str();
 }
 
 bool snapshot_from_json(const std::string &body, const SettingsSchema &schema, SettingsSnapshot &out,
-                        std::string *err)
+                        WifiExport &wifi, std::string *err)
 {
     JsonPtr j = parse(body);
     if (!j || !cJSON_IsObject(j.get())) {
@@ -175,7 +187,29 @@ bool snapshot_from_json(const std::string &body, const SettingsSchema &schema, S
         }
         s.values[key] = v;
     }
+    WifiExport wf;
+    const cJSON *w = cJSON_GetObjectItemCaseSensitive(j.get(), "wifi");
+    if (w) {
+        const cJSON *ssid = cJSON_GetObjectItemCaseSensitive(w, "ssid");
+        const cJSON *pass = cJSON_GetObjectItemCaseSensitive(w, "password");
+        if (!cJSON_IsObject(w) || !cJSON_IsString(ssid) || (pass && !cJSON_IsString(pass)) ||
+            std::strlen(ssid->valuestring) == 0 || std::strlen(ssid->valuestring) > 32) {
+            *err = "invalid wifi section";
+            return false;
+        }
+        wf.present = true;
+        wf.ssid = ssid->valuestring;
+        if (pass) {
+            wf.has_password = true;
+            wf.password = pass->valuestring;
+            if (!wf.password.empty() && (wf.password.size() < 8 || wf.password.size() > 63)) {
+                *err = "invalid Wi-Fi password in file";
+                return false;
+            }
+        }
+    }
     out = std::move(s);
+    wifi = wf;
     return true;
 }
 
@@ -204,14 +238,17 @@ Response WebApi::handle(const Request &req)
         return firmware_command(p.substr(14), req.body);
     if (p == "/api/settings" && get) return settings_get();
     if (p == "/api/settings" && post) return settings_post(req.body);
-    if (p == "/api/settings/export" && get) return settings_export();
-    if (p == "/api/settings/import" && post) return settings_import(req.body);
+    if (p == "/api/settings/export" && get) return settings_export(req.query.find("secrets=1") != std::string::npos);
+    if (p == "/api/settings/import" && post) return settings_import(req.body, false);
+    if (p == "/api/settings/import/validate" && post) return settings_import(req.body, true);
+    if (p == "/api/settings/undo" && post) return settings_undo();
     if (p == "/api/settings/reset" && post) return settings_reset(req.body);
     if (p == "/api/settings/backup" && get) return settings_backup();
     if (p == "/api/diagnostics" && get) return diagnostics();
     static const char *known[] = {"/api/status", "/api/wifi", "/api/firmware", "/api/settings",
                                   "/api/settings/export", "/api/settings/import", "/api/settings/reset",
-                                  "/api/settings/backup", "/api/diagnostics"};
+                                  "/api/settings/backup", "/api/settings/import/validate", "/api/settings/undo",
+                                  "/api/diagnostics"};
     for (const char *k : known)
         if (p == k) return error(405, "method not allowed");
     return error(404, "not found");
@@ -310,7 +347,17 @@ Response WebApi::settings_get()
     w.key("read_only").value(settings_.read_only()).key("settings").begin_array();
     for (const SettingDef &d : schema.defs) {
         w.begin_object().key("key").value(d.key).key("type").value(type_name(type_of(d.default_value)));
-        w.key("value").value(settings_.get(d.key)).key("default").value(d.default_value);
+        if (!d.label.empty()) w.key("label").value(d.label);
+        if (!d.help.empty()) w.key("help").value(d.help);
+        if (d.secret) {
+            // Write-only: report whether it is set, never the value.
+            Value v = settings_.get(d.key);
+            const std::string *sv = std::get_if<std::string>(&v);
+            w.key("secret").value(true).key("is_set").value(sv ? !sv->empty() : v != d.default_value);
+            w.key("value").null().key("default").null();
+        } else {
+            w.key("value").value(settings_.get(d.key)).key("default").value(d.default_value);
+        }
         if (!d.choices.empty()) {
             w.key("choices").begin_array();
             for (const auto &c : d.choices) w.value(c);
@@ -344,7 +391,7 @@ Response WebApi::settings_post(const std::string &body)
     return json(all_ok ? 200 : 400, w.str());
 }
 
-Response WebApi::settings_export()
+Response WebApi::settings_export(bool include_secrets)
 {
     SettingsSnapshot snap = settings_.snapshot();
     const std::string fw = str("system/firmware_version");
@@ -358,27 +405,75 @@ Response WebApi::settings_export()
         r.filename = "summit-settings-raw.bin";
         return r;
     }
-    Response r = json(200, snapshot_to_json(snap, settings_.schema(), fw));
-    r.filename = "summit-settings-" + (fw.empty() ? std::string("device") : fw) + ".json";
+    WifiExport wifi;
+    wifi.ssid = wifi_.ssid();
+    wifi.present = !wifi.ssid.empty();
+    if (include_secrets) wifi.password = wifi_.password();
+    Response r = json(200, snapshot_to_json(snap, settings_.schema(), fw, include_secrets, wifi));
+    r.filename = "summit-settings-" + (fw.empty() ? std::string("device") : fw) +
+                 (include_secrets ? "-with-secrets" : "") + ".json";
     return r;
 }
 
-Response WebApi::settings_import(const std::string &body)
+static Response import_refused(const ImportResult &r)
 {
+    JsonWriter w;
+    std::string message = import_error_text(r.error);
+    if (r.error == ImportError::InvalidValues) {
+        message += ": ";
+        for (size_t i = 0; i < r.invalid.size(); ++i) message += (i ? ", " : "") + r.invalid[i];
+    }
+    w.begin_object().key("ok").value(false).key("error").value(message).key("invalid").begin_array();
+    for (const auto &k : r.invalid) w.value(k);
+    w.end_array().end_object();
+    const bool conflict = r.error == ImportError::NewerSchema || r.error == ImportError::MigrationMissing;
+    const bool bad = r.error == ImportError::InvalidValues;
+    return json(conflict ? 409 : bad ? 400 : 500, w.str());
+}
+
+Response WebApi::settings_import(const std::string &body, bool dry_run)
+{
+    // Validate the whole file before anything changes.
     SettingsSnapshot snap;
+    WifiExport wifi;
     std::string err;
-    if (!snapshot_from_json(body, settings_.schema(), snap, &err)) return error(400, err);
+    if (!snapshot_from_json(body, settings_.schema(), snap, wifi, &err)) return error(400, err);
+    ImportResult check = settings_.validate_import(snap);
+    if (check.error != ImportError::None) return import_refused(check);
+    if (dry_run) {
+        JsonWriter w;
+        w.begin_object().key("ok").value(true).key("schema_version").value(snap.schema_version);
+        w.key("settings").value(static_cast<int64_t>(snap.values.size())).key("wifi").value(wifi.present);
+        w.end_object();
+        return json(200, w.str());
+    }
     ImportResult r = settings_.import(snap);
-    if (r.error != ImportError::None) {
-        const int code = (r.error == ImportError::NewerSchema || r.error == ImportError::MigrationMissing) ? 409 : 500;
-        return error(code, import_error_text(r.error));
+    if (r.error != ImportError::None) return import_refused(r);
+    if (wifi.present) {
+        // No password in the file: keep the current one.
+        std::string e;
+        wifi_.save(wifi.ssid, wifi.has_password ? wifi.password : wifi_.password(), &e);
     }
     state_.set("system/settings_notice", std::string());
-    JsonWriter w;
-    w.begin_object().key("ok").value(true).key("skipped").begin_array();
-    for (const auto &k : r.skipped) w.value(k);
-    w.end_array().end_object();
-    return json(200, w.str());
+    return json(200, "{\"ok\":true,\"undo\":true}");
+}
+
+Response WebApi::settings_undo()
+{
+    std::string blob;
+    SettingsMap stored;
+    if (!settings_.backup_blob(blob) || blob.empty()) return error(404, "nothing to undo");
+    if (!decode_settings(blob, stored)) return error(409, "the backup can't be read; download it instead");
+    SettingsSnapshot snap;
+    auto it = stored.find(Settings::kVersionKey);
+    const int64_t *v = it != stored.end() ? std::get_if<int64_t>(&it->second) : nullptr;
+    snap.schema_version = v ? static_cast<uint32_t>(*v) : 0;
+    stored.erase(Settings::kVersionKey);
+    snap.values = std::move(stored);
+    ImportResult r = settings_.import(snap);  // backs up the current settings in turn
+    if (r.error != ImportError::None) return import_refused(r);
+    state_.set("system/settings_notice", std::string());
+    return json(200, "{\"ok\":true}");
 }
 
 Response WebApi::settings_reset(const std::string &body)

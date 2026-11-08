@@ -18,10 +18,15 @@
 namespace summit::web {
 
 struct Request {
+    Request() = default;
+    Request(std::string m, std::string p, std::string ct = {}, std::string b = {}, std::string q = {})
+        : method(std::move(m)), path(std::move(p)), content_type(std::move(ct)), body(std::move(b)), query(std::move(q)) {}
+
     std::string method;        // "GET" | "POST"
     std::string path;          // without query string
     std::string content_type;  // request Content-Type
     std::string body;
+    std::string query;         // after '?', e.g. "secrets=1"
 };
 
 struct Response {
@@ -47,6 +52,8 @@ class WifiStore {
 public:
     virtual ~WifiStore() = default;
     virtual std::string ssid() = 0;
+    // Only used for an export with secrets ticked; never returned by any GET.
+    virtual std::string password() = 0;
     virtual bool save(const std::string &ssid, const std::string &password, std::string *error) = 0;
 };
 
@@ -86,8 +93,9 @@ private:
     Response firmware_command(const std::string &cmd, const std::string &body);
     Response settings_get();
     Response settings_post(const std::string &body);
-    Response settings_export();
-    Response settings_import(const std::string &body);
+    Response settings_export(bool include_secrets);
+    Response settings_import(const std::string &body, bool dry_run);
+    Response settings_undo();
     Response settings_reset(const std::string &body);
     Response settings_backup();
     Response diagnostics();
@@ -103,8 +111,16 @@ private:
 };
 
 // Settings file format for export/import (pure; tested on the host).
-std::string snapshot_to_json(const SettingsSnapshot &snap, const SettingsSchema &schema, const std::string &firmware);
+// Secret settings are left out unless include_secrets. Wi-Fi: SSID always, password
+// only with secrets.
+struct WifiExport {
+    bool present = false;
+    std::string ssid, password;
+    bool has_password = false;
+};
+std::string snapshot_to_json(const SettingsSnapshot &snap, const SettingsSchema &schema, const std::string &firmware,
+                             bool include_secrets, const WifiExport &wifi);
 bool snapshot_from_json(const std::string &json, const SettingsSchema &schema, SettingsSnapshot &out,
-                        std::string *error);
+                        WifiExport &wifi, std::string *error);
 
 }  // namespace summit::web

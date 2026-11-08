@@ -18,6 +18,7 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "summit/event_bus.h"
@@ -28,9 +29,18 @@ namespace summit {
 using SettingsMap = std::map<std::string, Value>;
 
 struct SettingDef {
+    SettingDef() = default;
+    SettingDef(std::string k, Value def, std::vector<std::string> ch = {}, std::string lbl = {}, std::string hlp = {},
+               bool is_secret = false)
+        : key(std::move(k)), default_value(std::move(def)), choices(std::move(ch)), label(std::move(lbl)),
+          help(std::move(hlp)), secret(is_secret) {}
+
     std::string key;                   // topic syntax, must not start with '_'
     Value default_value;               // also fixes the type
     std::vector<std::string> choices;  // optional: allowed values for a string setting
+    std::string label;                 // optional: shown instead of the key (web UI, device)
+    std::string help;                  // optional: one-line explanation
+    bool secret = false;               // never returned by the API; left out of exports by default
 };
 
 struct Migration {
@@ -84,10 +94,10 @@ struct SettingsSnapshot {
     SettingsMap values;  // every stored key, including ones this firmware doesn't know
 };
 
-enum class ImportError { None, NewerSchema, MigrationMissing, BackupFailed, WriteFailed };
+enum class ImportError { None, NewerSchema, MigrationMissing, InvalidValues, BackupFailed, WriteFailed };
 struct ImportResult {
     ImportError error = ImportError::None;
-    std::vector<std::string> skipped;  // known keys with a wrong type or choice: default used
+    std::vector<std::string> invalid;  // known keys with a wrong type or choice (InvalidValues)
 };
 const char *import_error_text(ImportError e);
 
@@ -114,9 +124,13 @@ public:
     // found (with its stored schema version) when it can be decoded; empty values
     // and version 0 if it can't (use stored_blob() for the raw bytes then).
     SettingsSnapshot snapshot() const;
-    // Explicit user action: replaces all settings with `in`. Older schemas are
-    // migrated; newer ones are refused. The current stored blob is backed up first.
-    // Keys missing from the import get defaults; unknown keys are kept as-is.
+    // Checks a whole import without changing anything: newer schema, missing
+    // migration or any known key with a wrong type / choice refuses it.
+    ImportResult validate_import(const SettingsSnapshot &in) const;
+    // Explicit user action: replaces all settings with `in` after validate_import()
+    // passes (nothing changes otherwise). Older schemas are migrated. The current
+    // stored blob is backed up first. Keys missing from the import get defaults,
+    // except secret keys, which keep their current value. Unknown keys are kept.
     ImportResult import(const SettingsSnapshot &in);
 
     SettingsNotice notice() const;
