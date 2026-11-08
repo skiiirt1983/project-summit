@@ -13,6 +13,7 @@
 #include "summit/state_store.h"
 #include "summit/system_settings.h"
 #include "summit/update/device.h"
+#include "summit/web/device.h"
 
 static const char *TAG = "summit";
 
@@ -66,6 +67,8 @@ extern "C" void app_main(void)
     probes.settings_ok = r != summit::LoadResult::InvalidSchema;
     summit::update::ota_guard_start(probes, bus, state);
     summit::update::update_service_start({SUMMIT_HARDWARE_ID, SUMMIT_CHIP_REV_FAMILY}, bus, state, settings);
+    // Config portal; reachable once Wi-Fi is up (network service, Phase 1).
+    summit::web::web_server_start(bus, state, settings);
 
     static summit::PanelHost host(registry, bus, state, settings);
     state.set("system/hardware_id", std::string(SUMMIT_HARDWARE_ID));

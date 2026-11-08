@@ -3,6 +3,7 @@ set(PROJECT_VER "0.0.1")
 set(EXTRA_COMPONENT_DIRS
     ${CMAKE_CURRENT_LIST_DIR}/framework
     ${CMAKE_CURRENT_LIST_DIR}/shell
+    ${CMAKE_CURRENT_LIST_DIR}/web
     ${CMAKE_CURRENT_LIST_DIR}/services)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 # ESP32-P4 v3.x support needs ESP-IDF 5.5.3 or later (ARCHITECTURE.md, Chip revision).

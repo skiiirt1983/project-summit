@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SLOPEFORM Home</title>
+<style>
+:root{--bg:#0f1317;--card:#1a2027;--chip:#262e37;--text:#e6edf3;--muted:#9aa7b4;--accent:#4ea1ff;--error:#ff6b6b;--ok:#3fb950}
+@media (prefers-color-scheme: light){:root{--bg:#f6f8fa;--card:#fff;--chip:#eaeef2;--text:#1f2328;--muted:#59636e;--accent:#0969da;--error:#cf222e;--ok:#1a7f37}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{padding:16px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline}
+header h1{font-size:18px;margin:0}
+header span{color:var(--muted);font-size:13px}
+nav{display:flex;gap:4px;padding:0 16px;overflow-x:auto}
+nav button{background:none;border:0;color:var(--muted);padding:10px 12px;border-bottom:2px solid transparent;font:inherit;cursor:pointer;white-space:nowrap}
+nav button[aria-selected=true]{color:var(--text);border-color:var(--accent)}
+main{padding:16px;max-width:860px}
+section{display:none}section.active{display:block}
+.card{background:var(--card);border-radius:10px;padding:16px;margin-bottom:12px}
+.card h2{font-size:15px;margin:0 0 10px}
+dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0}
+dt{color:var(--muted)}dd{margin:0;overflow-wrap:anywhere}
+button.btn{background:var(--chip);color:var(--text);border:0;border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}
+button.btn.primary{background:var(--accent);color:#fff}
+button.btn.danger{background:var(--error);color:#fff}
+button.btn:disabled{opacity:.5;cursor:default}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+label{display:block;margin:8px 0 4px;color:var(--muted)}
+input,select{width:100%;max-width:360px;padding:8px;border-radius:8px;border:1px solid var(--chip);background:var(--bg);color:var(--text);font:inherit}
+input[type=checkbox]{width:auto}
+.notice{border-left:4px solid var(--error)}
+.msg{margin-top:8px;color:var(--muted);min-height:1.2em}.msg.err{color:var(--error)}.msg.ok{color:var(--ok)}
+table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:6px 4px;border-bottom:1px solid var(--chip);vertical-align:top}
+th{color:var(--muted);font-weight:normal}
+progress{width:100%;height:12px}
+.muted{color:var(--muted)}
+ul{margin:0;padding-left:18px}
+</style>
+</head>
+<body>
+<header><h1>SLOPEFORM Home</h1><span id="hdr-version"></span><span id="hdr-hw"></span></header>
+<nav role="tablist">
+  <button role="tab" data-tab="status" aria-selected="true">Status</button>
+  <button role="tab" data-tab="wifi">Wi-Fi</button>
+  <button role="tab" data-tab="firmware">Firmware</button>
+  <button role="tab" data-tab="settings">Settings</button>
+  <button role="tab" data-tab="diagnostics">Diagnostics</button>
+</nav>
+<main>
+<section id="status" class="active">
+  <div class="card notice" id="status-notice" hidden><span id="status-notice-text"></span></div>
+  <div class="card"><h2>Device</h2><dl id="status-dl"></dl></div>
+</section>
+
+<section id="wifi">
+  <div class="card"><h2>Connection</h2><dl id="wifi-dl"></dl></div>
+  <div class="card"><h2>Networks</h2><table><tbody id="wifi-networks"></tbody></table><p class="muted" id="wifi-none">No scan results yet.</p></div>
+  <div class="card"><h2>Join a network</h2>
+    <form id="wifi-form" autocomplete="off">
+      <label for="wifi-ssid">Network name (SSID)</label><input id="wifi-ssid" maxlength="32" required>
+      <label for="wifi-pass">Password (leave empty for an open network)</label><input id="wifi-pass" type="password" maxlength="63">
+      <div class="row"><button class="btn primary" type="submit">Save and connect</button></div>
+      <div class="msg" id="wifi-msg"></div>
+    </form>
+  </div>
+</section>
+
+<section id="firmware">
+  <div class="card"><h2>Installed</h2><dl id="fw-dl"></dl>
+    <label for="fw-channel">Update channel</label>
+    <select id="fw-channel"><option value="stable">Stable</option><option value="beta">Beta</option><option value="alpha">Alpha</option></select>
+    <div class="row"><button class="btn" id="fw-check">Check now</button>
+      <button class="btn" id="fw-previous" hidden></button></div>
+    <div class="msg" id="fw-msg"></div>
+  </div>
+  <div class="card" id="fw-progress-card" hidden><h2 id="fw-progress-title">Installing</h2>
+    <progress id="fw-progress" max="100" value="0"></progress><p class="muted">Keep the device powered.</p></div>
+  <div class="card" id="fw-ready" hidden><h2>Update ready</h2><p id="fw-ready-text"></p>
+    <div class="row"><button class="btn primary" id="fw-reboot">Restart now</button></div></div>
+  <div class="card" id="fw-available" hidden><h2 id="fw-available-title"></h2><p id="fw-notes" class="muted"></p>
+    <div class="row"><button class="btn primary" id="fw-install"></button></div></div>
+  <div class="card"><h2>All versions</h2>
+    <table><thead><tr><th>Version</th><th>Channel</th><th>Released</th><th></th></tr></thead><tbody id="fw-catalog"></tbody></table>
+    <p class="muted" id="fw-catalog-none">Check for updates to load the list.</p></div>
+  <div class="card"><h2>Upload firmware</h2>
+    <p class="muted">An OTA image (<code>summit-*-ota.bin</code>) for this device's hardware. It is checked before anything is written.</p>
+    <input type="file" id="fw-file" accept=".bin">
+    <div class="row"><button class="btn" id="fw-upload" disabled>Upload and install</button></div>
+    <progress id="fw-upload-progress" max="100" value="0" hidden></progress>
+    <div class="msg" id="fw-upload-msg"></div>
+  </div>
+</section>
+
+<section id="settings">
+  <div class="card notice" id="set-notice" hidden><span id="set-notice-text"></span></div>
+  <div class="card"><h2>Settings</h2><form id="set-form"></form>
+    <div class="row"><button class="btn primary" id="set-save">Save</button></div><div class="msg" id="set-msg"></div></div>
+  <div class="card"><h2>Backup</h2>
+    <div class="row"><button class="btn" id="set-export">Export settings</button>
+      <label class="btn" style="margin:0;color:var(--text)" for="set-import-file">Import settings&hellip;</label>
+      <input type="file" id="set-import-file" accept=".json" hidden>
+      <button class="btn" id="set-backup">Download last backup</button>
+      <button class="btn danger" id="set-reset">Reset to defaults</button></div>
+    <p class="muted">Wi-Fi passwords are never included in an export. Import and reset save the current settings as the backup first.</p>
+    <div class="msg" id="set-backup-msg"></div></div>
+</section>
+
+<section id="diagnostics">
+  <div class="card"><h2>Warnings</h2><ul id="diag-warnings"></ul><p class="muted" id="diag-none">None.</p></div>
+  <div class="card"><h2>Details</h2><dl id="diag-dl"></dl><div class="row"><button class="btn" id="diag-refresh">Refresh</button></div></div>
+</section>
+</main>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const el = (tag, text, cls) => { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; return e; };
+
+async function api(path, opts = {}) {
+  const init = { method: opts.method || "GET", headers: {} };
+  if (opts.json !== undefined) { init.headers["Content-Type"] = "application/json"; init.body = JSON.stringify(opts.json); }
+  const r = await fetch(path, init);
+  let body = null;
+  try { body = await r.json(); } catch (e) { body = null; }
+  if (!r.ok) throw new Error((body && body.error) || ("HTTP " + r.status));
+  return body;
+}
+function msg(id, text, kind) { const m = $(id); m.textContent = text || ""; m.className = "msg" + (kind ? " " + kind : ""); }
+function fillDl(dl, pairs) { dl.replaceChildren(); for (const [k, v] of pairs) { dl.append(el("dt", k), el("dd", v === undefined || v === null || v === "" ? "—" : String(v))); } }
+function download(path) { const a = document.createElement("a"); a.href = path; a.download = ""; document.body.append(a); a.click(); a.remove(); }
+
+// ---- tabs
+let current = "status";
+const loaders = {};
+for (const b of document.querySelectorAll("nav button")) {
+  b.addEventListener("click", () => show(b.dataset.tab));
+}
+function show(tab) {
+  current = tab;
+  for (const b of document.querySelectorAll("nav button")) b.setAttribute("aria-selected", b.dataset.tab === tab);
+  for (const s of document.querySelectorAll("main section")) s.classList.toggle("active", s.id === tab);
+  loaders[tab]();
+}
+
+// ---- status
+loaders.status = async () => {
+  const s = await api("/api/status");
+  $("hdr-version").textContent = s.firmware ? "v" + s.firmware : "";
+  $("hdr-hw").textContent = s.hardware_id;
+  $("status-notice").hidden = !s.settings_notice;
+  $("status-notice-text").textContent = s.settings_notice;
+  fillDl($("status-dl"), [
+    ["Firmware", s.firmware], ["Hardware", s.hardware_id],
+    ["Wi-Fi", s.wifi.connected ? (s.wifi.ssid + " (" + s.wifi.ip + ")") : "not connected"],
+    ["Battery", s.power.battery_pct === null ? null : s.power.battery_pct + "%" + (s.power.usb_power ? ", on USB power" : "")],
+    ["Update", s.update.available_version ? s.update.available_version + " available" : s.update.stage],
+    ["Showing", s.current_panel]]);
+};
+
+// ---- wifi
+loaders.wifi = async () => {
+  const w = await api("/api/wifi");
+  fillDl($("wifi-dl"), [["Status", w.connected ? "connected" : "not connected"], ["Network", w.ssid || w.configured_ssid], ["IP address", w.ip]]);
+  const tb = $("wifi-networks"); tb.replaceChildren();
+  for (const n of w.networks) {
+    const tr = el("tr"); const name = el("td", n.ssid); const sig = el("td", (n.rssi !== undefined ? n.rssi + " dBm" : "") + (n.secure === false ? ", open" : ""), "muted");
+    tr.append(name, sig); tr.style.cursor = "pointer"; tr.addEventListener("click", () => { $("wifi-ssid").value = n.ssid; $("wifi-pass").focus(); }); tb.append(tr);
+  }
+  $("wifi-none").hidden = w.networks.length > 0;
+  if (!$("wifi-ssid").value) $("wifi-ssid").value = w.configured_ssid || "";
+};
+$("wifi-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try { await api("/api/wifi", { method: "POST", json: { ssid: $("wifi-ssid").value, password: $("wifi-pass").value } });
+    $("wifi-pass").value = ""; msg("wifi-msg", "Saved. The device is connecting.", "ok"); }
+  catch (err) { msg("wifi-msg", err.message, "err"); }
+});
+
+// ---- firmware
+let fw = null, poll = null;
+loaders.firmware = async () => {
+  fw = await api("/api/firmware");
+  fillDl($("fw-dl"), [["Version", fw.firmware], ["Hardware", fw.hardware_id], ["Status", fw.stage.replace(/_/g, " ")]]);
+  $("fw-channel").value = fw.channel;
+  const installing = fw.in_progress === true;
+  $("fw-progress-card").hidden = !installing;
+  $("fw-progress-title").textContent = "Installing " + fw.target_version;
+  $("fw-progress").value = fw.progress_pct || 0;
+  $("fw-ready").hidden = fw.stage !== "ready_to_reboot";
+  $("fw-ready-text").textContent = "Version " + fw.target_version + " is installed. Restart to run it.";
+  $("fw-available").hidden = !fw.available_version || installing || fw.stage === "ready_to_reboot";
+  $("fw-available-title").textContent = "Version " + fw.available_version + " available";
+  $("fw-notes").textContent = fw.notes;
+  $("fw-install").textContent = "Install " + fw.available_version;
+  $("fw-previous").hidden = !fw.previous_version || installing;
+  $("fw-previous").textContent = "Previous version (" + fw.previous_version + ")";
+  $("fw-check").disabled = installing || fw.stage === "checking";
+  if (fw.stage === "failed" || fw.stage === "check_failed") msg("fw-msg", fw.error, "err");
+  else if (fw.stage === "up_to_date") msg("fw-msg", "Up to date.", "ok");
+  else if (fw.stage === "checking") msg("fw-msg", "Checking…");
+  else msg("fw-msg", "");
+  const tb = $("fw-catalog"); tb.replaceChildren();
+  for (const b of fw.catalog) {
+    const tr = el("tr");
+    const action = el("td");
+    if (b.installable && b.version !== fw.firmware && !installing) {
+      const btn = el("button", "Install", "btn"); btn.addEventListener("click", () => install(b.version)); action.append(btn);
+    } else if (!b.installable) action.append(el("span", b.reason, "muted"));
+    tr.append(el("td", b.version), el("td", b.channel), el("td", b.released), action);
+    tb.append(tr);
+  }
+  $("fw-catalog-none").hidden = fw.catalog.length > 0;
+  const busy = installing || fw.stage === "checking";
+  if (busy && !poll) poll = setInterval(() => current === "firmware" && loaders.firmware().catch(() => {}), 1000);
+  if (!busy && poll) { clearInterval(poll); poll = null; }
+};
+async function command(path, json) {
+  try { await api(path, { method: "POST", json: json || {} }); setTimeout(() => loaders.firmware(), 300); }
+  catch (err) { msg("fw-msg", err.message, "err"); }
+}
+async function install(version) { await command("/api/firmware/install", { version }); }
+$("fw-check").addEventListener("click", () => command("/api/firmware/check"));
+$("fw-install").addEventListener("click", () => install(fw.available_version));
+$("fw-reboot").addEventListener("click", () => command("/api/firmware/reboot"));
+$("fw-previous").addEventListener("click", () => {
+  if (confirm("Go back to v" + fw.previous_version + "? Settings from the newer version may become read-only.")) command("/api/firmware/previous", { confirm: true });
+});
+$("fw-channel").addEventListener("change", async () => {
+  try { await api("/api/settings", { method: "POST", json: { "update/channel": $("fw-channel").value } }); setTimeout(() => loaders.firmware(), 400); }
+  catch (err) { msg("fw-msg", err.message, "err"); }
+});
+$("fw-file").addEventListener("change", () => { $("fw-upload").disabled = !$("fw-file").files.length; msg("fw-upload-msg", ""); });
+$("fw-upload").addEventListener("click", () => {
+  const file = $("fw-file").files[0]; if (!file) return;
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", "/api/firmware/upload");
+  xhr.setRequestHeader("Content-Type", "application/octet-stream");
+  xhr.setRequestHeader("X-Summit-Upload", "1");
+  const bar = $("fw-upload-progress"); bar.hidden = false; bar.value = 0; $("fw-upload").disabled = true;
+  xhr.upload.onprogress = (e) => { if (e.lengthComputable) bar.value = Math.round(100 * e.loaded / e.total); };
+  xhr.onload = () => {
+    let body = null; try { body = JSON.parse(xhr.responseText); } catch (e) {}
+    if (xhr.status === 200) msg("fw-upload-msg", "Version " + body.version + " installed. Restart to run it.", "ok");
+    else msg("fw-upload-msg", (body && body.error) || ("Upload failed (HTTP " + xhr.status + ")"), "err");
+    bar.hidden = true; $("fw-upload").disabled = false; loaders.firmware();
+  };
+  xhr.onerror = () => { msg("fw-upload-msg", "Upload failed: connection lost", "err"); bar.hidden = true; $("fw-upload").disabled = false; };
+  xhr.send(file);
+});
+
+// ---- settings (form rendered from the schema)
+let schema = null;
+loaders.settings = async () => {
+  schema = await api("/api/settings");
+  $("set-notice").hidden = schema.notice === "none";
+  $("set-notice-text").textContent = schema.notice_text;
+  const form = $("set-form"); form.replaceChildren();
+  for (const s of schema.settings) {
+    const id = "set-" + s.key.replace(/[^a-z0-9]/g, "-");
+    const label = el("label", s.key); label.htmlFor = id;
+    let input;
+    if (s.choices) { input = el("select"); for (const c of s.choices) { const o = el("option", c); o.value = c; input.append(o); } input.value = s.value; }
+    else if (s.type === "bool") { input = el("input"); input.type = "checkbox"; input.checked = s.value === true; }
+    else { input = el("input"); input.type = (s.type === "int" || s.type === "double") ? "number" : "text"; if (s.type === "double") input.step = "any"; input.value = s.value ?? ""; }
+    input.id = id; input.dataset.key = s.key; input.dataset.type = s.type; input.disabled = schema.read_only;
+    form.append(label, input);
+  }
+  $("set-save").disabled = schema.read_only;
+};
+$("set-save").addEventListener("click", async () => {
+  const changes = {};
+  for (const s of schema.settings) {
+    const input = document.querySelector('[data-key="' + s.key + '"]');
+    let v = s.type === "bool" ? input.checked : (s.type === "int" ? parseInt(input.value, 10) : (s.type === "double" ? parseFloat(input.value) : input.value));
+    if (v !== s.value) changes[s.key] = v;
+  }
+  if (!Object.keys(changes).length) { msg("set-msg", "No changes."); return; }
+  try { await api("/api/settings", { method: "POST", json: changes }); msg("set-msg", "Saved.", "ok"); loaders.settings(); }
+  catch (err) { msg("set-msg", err.message, "err"); }
+});
+$("set-export").addEventListener("click", () => download("/api/settings/export"));
+$("set-backup").addEventListener("click", async () => {
+  const r = await fetch("/api/settings/backup");
+  if (r.ok) download("/api/settings/backup"); else msg("set-backup-msg", "No backup yet (made by reset or import).");
+});
+$("set-import-file").addEventListener("change", async () => {
+  const file = $("set-import-file").files[0]; if (!file) return;
+  try { const text = await file.text(); JSON.parse(text);
+    const r = await fetch("/api/settings/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: text });
+    const body = await r.json();
+    if (!r.ok) throw new Error(body.error);
+    msg("set-backup-msg", "Imported." + (body.skipped.length ? " Kept defaults for: " + body.skipped.join(", ") : ""), "ok"); loaders.settings(); }
+  catch (err) { msg("set-backup-msg", "Import failed: " + err.message, "err"); }
+  $("set-import-file").value = "";
+});
+$("set-reset").addEventListener("click", async () => {
+  if (!confirm("Reset all settings to defaults? The current settings are saved as the backup first.")) return;
+  try { await api("/api/settings/reset", { method: "POST", json: { confirm: true } }); msg("set-backup-msg", "Settings reset. The old settings are in the backup.", "ok"); loaders.settings(); }
+  catch (err) { msg("set-backup-msg", err.message, "err"); }
+});
+
+// ---- diagnostics
+loaders.diagnostics = async () => {
+  const d = await api("/api/diagnostics");
+  const ul = $("diag-warnings"); ul.replaceChildren(); for (const w of d.warnings) ul.append(el("li", w));
+  $("diag-none").hidden = d.warnings.length > 0;
+  const pairs = [["Settings notice", d.settings.notice], ["Settings schema", d.settings.schema_version + " (stored " + d.settings.stored_version + ")"],
+    ["Update", d.update.stage + (d.update.error ? ": " + d.update.error : "")],
+    ["Event bus", d.event_bus.published + " published, " + d.event_bus.dropped + " dropped, peak queue " + d.event_bus.high_water]];
+  for (const [k, v] of Object.entries(d.device)) pairs.push([k, v]);
+  fillDl($("diag-dl"), pairs);
+};
+$("diag-refresh").addEventListener("click", () => loaders.diagnostics());
+
+loaders.status().catch((e) => { $("status-dl").replaceChildren(el("dd", "Could not reach the device: " + e.message)); });
+</script>
+</body>
+</html>

@@ -77,6 +77,20 @@ const char *notice_message(SettingsNotice notice);
 enum class SetResult { Ok, Unchanged, UnknownKey, WrongType, NotAChoice, ReadOnly, StorageError };
 enum class ResetResult { Ok, BackupFailed, WriteFailed };
 
+// Settings export/import (web UI). An export is the stored settings plus the schema
+// version they belong to; an import replaces all settings.
+struct SettingsSnapshot {
+    uint32_t schema_version = 0;
+    SettingsMap values;  // every stored key, including ones this firmware doesn't know
+};
+
+enum class ImportError { None, NewerSchema, MigrationMissing, BackupFailed, WriteFailed };
+struct ImportResult {
+    ImportError error = ImportError::None;
+    std::vector<std::string> skipped;  // known keys with a wrong type or choice: default used
+};
+const char *import_error_text(ImportError e);
+
 class Settings {
 public:
     static constexpr const char *kVersionKey = "_schema_version";
@@ -96,6 +110,15 @@ public:
     // then writes defaults and clears the notice.
     ResetResult reset();
 
+    // What an export contains. While a notice is active this is the stored data as
+    // found (with its stored schema version) when it can be decoded; empty values
+    // and version 0 if it can't (use stored_blob() for the raw bytes then).
+    SettingsSnapshot snapshot() const;
+    // Explicit user action: replaces all settings with `in`. Older schemas are
+    // migrated; newer ones are refused. The current stored blob is backed up first.
+    // Keys missing from the import get defaults; unknown keys are kept as-is.
+    ImportResult import(const SettingsSnapshot &in);
+
     SettingsNotice notice() const;
     bool read_only() const { return notice() != SettingsNotice::None; }
     uint32_t schema_version() const { return schema_.version; }
@@ -105,6 +128,8 @@ public:
 
     // The blob as stored (raw, even if corrupt) for settings export.
     std::string stored_blob() const;
+    // The blob saved by the last reset/import (raw). False if there is none.
+    bool backup_blob(std::string &out) const;
 
 private:
     const SettingDef *def(const std::string &key) const;

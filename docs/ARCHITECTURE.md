@@ -236,6 +236,7 @@ The state store and event bus are the public API between services, panels and th
 | `update/target_version` | string: version being installed | update engine | Updates screen, web UI |
 | `update/available_version` | string; empty = none | update engine | Updates screen, web UI |
 | `update/notes` | string: changelog of the available build | update engine | Updates screen, web UI |
+| `update/catalog` | string: JSON array of builds for this hardware ({version, channel, released, notes, size, installable, reason}) | update engine | web UI (firmware page) |
 | `update/previous_version` | string: app in the spare slot; empty = none | update engine | Updates screen, web UI |
 | `update/command` | event: "check", "install:<version>", "previous", "reboot" | Updates screen, web UI | update engine |
 | `power/battery_text` | string, e.g. "85%" | power service | glance strip (battery chip) |
