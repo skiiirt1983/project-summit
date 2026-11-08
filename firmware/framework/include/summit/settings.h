@@ -18,6 +18,7 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "summit/event_bus.h"
@@ -28,9 +29,18 @@ namespace summit {
 using SettingsMap = std::map<std::string, Value>;
 
 struct SettingDef {
+    SettingDef() = default;
+    SettingDef(std::string k, Value def, std::vector<std::string> ch = {}, std::string lbl = {}, std::string hlp = {},
+               bool is_secret = false)
+        : key(std::move(k)), default_value(std::move(def)), choices(std::move(ch)), label(std::move(lbl)),
+          help(std::move(hlp)), secret(is_secret) {}
+
     std::string key;                   // topic syntax, must not start with '_'
     Value default_value;               // also fixes the type
     std::vector<std::string> choices;  // optional: allowed values for a string setting
+    std::string label;                 // optional: shown instead of the key (web UI, device)
+    std::string help;                  // optional: one-line explanation
+    bool secret = false;               // never returned by the API; left out of exports by default
 };
 
 struct Migration {
@@ -77,6 +87,20 @@ const char *notice_message(SettingsNotice notice);
 enum class SetResult { Ok, Unchanged, UnknownKey, WrongType, NotAChoice, ReadOnly, StorageError };
 enum class ResetResult { Ok, BackupFailed, WriteFailed };
 
+// Settings export/import (web UI). An export is the stored settings plus the schema
+// version they belong to; an import replaces all settings.
+struct SettingsSnapshot {
+    uint32_t schema_version = 0;
+    SettingsMap values;  // every stored key, including ones this firmware doesn't know
+};
+
+enum class ImportError { None, NewerSchema, MigrationMissing, InvalidValues, BackupFailed, WriteFailed };
+struct ImportResult {
+    ImportError error = ImportError::None;
+    std::vector<std::string> invalid;  // known keys with a wrong type or choice (InvalidValues)
+};
+const char *import_error_text(ImportError e);
+
 class Settings {
 public:
     static constexpr const char *kVersionKey = "_schema_version";
@@ -96,6 +120,19 @@ public:
     // then writes defaults and clears the notice.
     ResetResult reset();
 
+    // What an export contains. While a notice is active this is the stored data as
+    // found (with its stored schema version) when it can be decoded; empty values
+    // and version 0 if it can't (use stored_blob() for the raw bytes then).
+    SettingsSnapshot snapshot() const;
+    // Checks a whole import without changing anything: newer schema, missing
+    // migration or any known key with a wrong type / choice refuses it.
+    ImportResult validate_import(const SettingsSnapshot &in) const;
+    // Explicit user action: replaces all settings with `in` after validate_import()
+    // passes (nothing changes otherwise). Older schemas are migrated. The current
+    // stored blob is backed up first. Keys missing from the import get defaults,
+    // except secret keys, which keep their current value. Unknown keys are kept.
+    ImportResult import(const SettingsSnapshot &in);
+
     SettingsNotice notice() const;
     bool read_only() const { return notice() != SettingsNotice::None; }
     uint32_t schema_version() const { return schema_.version; }
@@ -105,6 +142,8 @@ public:
 
     // The blob as stored (raw, even if corrupt) for settings export.
     std::string stored_blob() const;
+    // The blob saved by the last reset/import (raw). False if there is none.
+    bool backup_blob(std::string &out) const;
 
 private:
     const SettingDef *def(const std::string &key) const;

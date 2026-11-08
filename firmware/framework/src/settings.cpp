@@ -212,6 +212,112 @@ ResetResult Settings::reset()
     return ResetResult::Ok;
 }
 
+const char *import_error_text(ImportError e)
+{
+    switch (e) {
+    case ImportError::None: return "ok";
+    case ImportError::NewerSchema: return "settings file is from a newer firmware version";
+    case ImportError::MigrationMissing: return "settings file is from a version this firmware can't upgrade";
+    case ImportError::InvalidValues: return "settings file has invalid values";
+    case ImportError::BackupFailed: return "could not back up the current settings";
+    case ImportError::WriteFailed: return "could not save the imported settings";
+    }
+    return "?";
+}
+
+SettingsSnapshot Settings::snapshot() const
+{
+    std::lock_guard<std::mutex> lock(mu_);
+    SettingsSnapshot snap;
+    if (notice_ == SettingsNotice::None) {
+        snap.schema_version = schema_.version;
+        snap.values = values_;
+        for (const auto &kv : passthrough_) snap.values[kv.first] = kv.second;
+        return snap;
+    }
+    SettingsMap stored;
+    if (!stored_blob_.empty() && decode_settings(stored_blob_, stored)) {
+        snap.schema_version = stored_version_;
+        stored.erase(kVersionKey);
+        snap.values = std::move(stored);
+    }
+    return snap;
+}
+
+// Migrates a snapshot to this schema. False (and result.error set) if it can't be.
+static bool migrate_snapshot(const SettingsSchema &schema, const SettingsSnapshot &in, SettingsMap &out,
+                             ImportResult &result)
+{
+    if (in.schema_version > schema.version) {
+        result.error = ImportError::NewerSchema;
+        return false;
+    }
+    out = in.values;
+    out.erase(Settings::kVersionKey);
+    for (uint32_t v = in.schema_version; v < schema.version; ++v) {
+        auto m = std::find_if(schema.migrations.begin(), schema.migrations.end(),
+                              [v](const Migration &x) { return x.from == v; });
+        if (m == schema.migrations.end()) {
+            result.error = ImportError::MigrationMissing;
+            return false;
+        }
+        m->apply(out);
+    }
+    return true;
+}
+
+ImportResult Settings::validate_import(const SettingsSnapshot &in) const
+{
+    ImportResult result;
+    SettingsMap incoming;
+    if (!migrate_snapshot(schema_, in, incoming, result)) return result;
+    for (const auto &kv : incoming) {
+        const SettingDef *d = def(kv.first);
+        if (d && !accepts(*d, kv.second)) result.invalid.push_back(kv.first);
+    }
+    if (!result.invalid.empty()) result.error = ImportError::InvalidValues;
+    return result;
+}
+
+ImportResult Settings::import(const SettingsSnapshot &in)
+{
+    ImportResult result = validate_import(in);
+    if (result.error != ImportError::None) return result;  // nothing changes
+    SettingsMap incoming;
+    migrate_snapshot(schema_, in, incoming, result);
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (!stored_blob_.empty() && !storage_.write_backup(stored_blob_)) {
+            result.error = ImportError::BackupFailed;
+            return result;
+        }
+        SettingsMap old_values = values_, old_pass = passthrough_;
+        SettingsNotice old_notice = notice_;
+        // Everything not in the file resets to defaults, except secrets, which keep
+        // their current value (exports leave them out by default).
+        for (const SettingDef &d : schema_.defs)
+            if (!d.secret) values_[d.key] = d.default_value;
+        passthrough_.clear();
+        for (const auto &kv : incoming) {
+            if (def(kv.first)) {
+                values_[kv.first] = kv.second;
+            } else {
+                passthrough_[kv.first] = kv.second;  // unknown here: keep for newer firmware
+            }
+        }
+        notice_ = SettingsNotice::None;
+        if (!persist()) {
+            values_ = old_values;
+            passthrough_ = old_pass;
+            notice_ = old_notice;
+            result.error = ImportError::WriteFailed;
+            return result;
+        }
+    }
+    if (bus_) bus_->publish("settings/reset", true);  // everything may have changed
+    return result;
+}
+
 SettingsNotice Settings::notice() const
 {
     std::lock_guard<std::mutex> lock(mu_);
@@ -228,6 +334,12 @@ SettingsMap Settings::values() const
 {
     std::lock_guard<std::mutex> lock(mu_);
     return values_;
+}
+
+bool Settings::backup_blob(std::string &out) const
+{
+    std::lock_guard<std::mutex> lock(mu_);
+    return storage_.read_backup(out) == ReadStatus::Ok;
 }
 
 std::string Settings::stored_blob() const

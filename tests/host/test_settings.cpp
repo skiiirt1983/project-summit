@@ -2,6 +2,7 @@
 
 #include "check.h"
 #include "fake_storage.h"
+#include "summit/json_writer.h"
 #include "summit/settings.h"
 
 using namespace summit;
@@ -295,6 +296,115 @@ TEST(codec_rejects_malformed)
     CHECK(!encode_settings({{"s", std::string(70000, 'x')}}, blob));
 }
 
+TEST(json_writer_escapes_and_types)
+{
+    JsonWriter w;
+    w.begin_object().key("s").value(std::string("a\"b\\c\n\x01\xC3\xA9")).key("i").value(int64_t{-5});
+    w.key("d").value(2.0).key("b").value(true).key("n").null().key("a").begin_array().value(1).value("x").end_array();
+    w.key("v").value(Value{std::string("q")}).end_object();
+    CHECK(w.str() == "{\"s\":\"a\\\"b\\\\c\\n\\u0001\xC3\xA9\",\"i\":-5,\"d\":2.0,\"b\":true,\"n\":null,"
+                     "\"a\":[1,\"x\"],\"v\":\"q\"}");
+}
+
+TEST(snapshot_and_import_round_trip)
+{
+    FakeStorage st;
+    Settings s(v1(), st);
+    s.load();
+    s.set("ui/brightness", int64_t{33});
+    SettingsSnapshot snap = s.snapshot();
+    CHECK(snap.schema_version == 1 && std::get<int64_t>(snap.values.at("ui/brightness")) == 33);
+
+    FakeStorage other;
+    Settings t(v1(), other);
+    t.load();
+    std::string before = other.blob;
+    ImportResult r = t.import(snap);
+    CHECK(r.error == ImportError::None && r.invalid.empty());
+    CHECK(std::get<int64_t>(t.get("ui/brightness")) == 33);
+    CHECK(other.backup == before);  // previous settings backed up first
+}
+
+TEST(import_migrates_older_and_refuses_newer_or_invalid)
+{
+    FakeStorage st;
+    Settings s(v2(), st);
+    s.load();
+    s.set("ui/brightness", int64_t{11});
+    SettingsSnapshot old;
+    old.schema_version = 1;
+    old.values = {{"ui/theme", std::string("light")}, {"ui/future_key", true}};
+    ImportResult r = s.import(old);
+    CHECK(r.error == ImportError::None);
+    CHECK(std::get<std::string>(s.get("ui/colour_theme")) == "light");  // migrated rename
+    CHECK(std::get<int64_t>(s.get("ui/brightness")) == 80);             // missing -> default
+    CHECK(std::get<bool>(st.map().at("ui/future_key")) == true);        // unknown key kept
+
+    // Invalid values: the whole file is refused and nothing changes.
+    std::string blob = st.blob, backup = st.backup;
+    int writes = st.writes;
+    SettingsSnapshot bad;
+    bad.schema_version = 2;
+    bad.values = {{"ui/brightness", std::string("bright")}, {"ui/colour_theme", std::string("neon")},
+                  {"ui/colour_theme_ok", true}};
+    r = s.import(bad);
+    CHECK(r.error == ImportError::InvalidValues);
+    CHECK((r.invalid == std::vector<std::string>{"ui/brightness", "ui/colour_theme"}));
+    CHECK(st.blob == blob && st.writes == writes && st.backup == backup);  // nothing changed
+    CHECK(s.validate_import(bad).error == ImportError::InvalidValues);
+
+    SettingsSnapshot newer;
+    newer.schema_version = 3;
+    CHECK(s.import(newer).error == ImportError::NewerSchema && st.blob == blob);
+
+    SettingsSnapshot ancient;
+    ancient.schema_version = 0;
+    CHECK(s.import(ancient).error == ImportError::MigrationMissing);
+}
+
+TEST(import_keeps_secrets_missing_from_the_file)
+{
+    SettingsSchema schema = v1();
+    schema.defs.push_back({"printer/access_code", std::string(""), {}, "Printer access code", "", true});
+    FakeStorage st;
+    Settings s(schema, st);
+    s.load();
+    s.set("printer/access_code", std::string("12345678"));
+    SettingsSnapshot file;
+    file.schema_version = 1;
+    file.values = {{"ui/brightness", int64_t{50}}};
+    CHECK(s.import(file).error == ImportError::None);
+    CHECK(std::get<std::string>(s.get("printer/access_code")) == "12345678");  // kept
+    file.values["printer/access_code"] = std::string("87654321");
+    CHECK(s.import(file).error == ImportError::None);
+    CHECK(std::get<std::string>(s.get("printer/access_code")) == "87654321");  // replaced when present
+}
+
+TEST(snapshot_while_notice_exports_stored_data)
+{
+    FakeStorage st;
+    Settings newer(v2(), st);
+    newer.load();
+    newer.set("ui/brightness", int64_t{20});
+    Settings older(v1(), st);
+    older.load();
+    SettingsSnapshot snap = older.snapshot();
+    CHECK(snap.schema_version == 2 && snap.values.count("ui/colour_theme") == 1);  // as stored, not reduced
+    // Import clears the notice (explicit user action), after backing up.
+    SettingsSnapshot mine;
+    mine.schema_version = 1;
+    mine.values = {{"ui/theme", std::string("light")}};
+    CHECK(older.import(mine).error == ImportError::None && older.notice() == SettingsNotice::None);
+    CHECK(!st.backup.empty());
+
+    FakeStorage bad;
+    bad.blob = "junk";
+    bad.has_blob = true;
+    Settings u(v1(), bad);
+    u.load();
+    CHECK(u.snapshot().schema_version == 0 && u.snapshot().values.empty() && u.stored_blob() == "junk");
+}
+
 int main()
 {
     RUN(schema_validation);
@@ -313,5 +423,10 @@ int main()
     RUN(read_error_runs_on_defaults_and_can_reset);
     RUN(codec_round_trip);
     RUN(codec_rejects_malformed);
+    RUN(json_writer_escapes_and_types);
+    RUN(snapshot_and_import_round_trip);
+    RUN(import_migrates_older_and_refuses_newer_or_invalid);
+    RUN(import_keeps_secrets_missing_from_the_file);
+    RUN(snapshot_while_notice_exports_stored_data);
     return report("settings");
 }

@@ -161,6 +161,47 @@ FakeUpdateService::~FakeUpdateService()
     bus_.unsubscribe(channel_sub_);
 }
 
+static PreflightInput preflight_from(StateStore &st)
+{
+    auto b = [&](const char *k) { Value x = st.get(k); return std::get_if<bool>(&x) && std::get<bool>(x); };
+    Value bat = st.get("power/battery_pct");
+    PreflightInput in;
+    in.on_usb_power = b("power/usb_power");
+    in.battery_pct = std::get_if<int64_t>(&bat) ? static_cast<int>(std::get<int64_t>(bat)) : 0;
+    in.wifi_connected = b("net/wifi_connected");
+    in.time_synced = b("time/synced");
+    return in;
+}
+
+bool FakeUpdateService::upload_begin(int64_t size, std::string *error)
+{
+    bool ok = engine_->start_upload(size, preflight_from(state_));
+    if (!ok && error) *error = engine_->status().error;
+    publish_status(*engine_, state_);
+    return ok;
+}
+
+bool FakeUpdateService::upload_data(const uint8_t *data, size_t len)
+{
+    bool ok = engine_->data(data, len);
+    publish_status(*engine_, state_);
+    return ok;
+}
+
+bool FakeUpdateService::upload_complete(std::string *error)
+{
+    bool ok = engine_->complete();
+    if (!ok && error) *error = engine_->status().error;
+    publish_status(*engine_, state_);
+    return ok;
+}
+
+void FakeUpdateService::upload_abort(const char *reason)
+{
+    engine_->fail(reason);
+    publish_status(*engine_, state_);
+}
+
 void FakeUpdateService::tick(uint32_t now_ms)
 {
     now_ = now_ms;

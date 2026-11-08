@@ -215,6 +215,32 @@ firmware/
 - **Data:** panels read the state store and subscribe to topics (`weather/now`, `printer/status`, `audio/spectrum`); services do all network I/O.
 - **Layout:** size tokens, never pixels — one layout for portrait and landscape.
 
+### Web config portal
+
+A single vanilla-JS page served gzipped from flash (`firmware/web/page/index.html`) over a JSON API (`firmware/web/src/api.cpp`, pure and host-tested; the PC simulator serves the same page and API with `summit_sim --web PORT`). Tabs: Status, Wi-Fi, Firmware, Settings, Diagnostics.
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/status` | firmware, hardware ID, Wi-Fi, battery, settings notice, update state |
+| `GET/POST /api/wifi` | status + scan results; save SSID + password (password is write-only) |
+| `GET /api/firmware` | version, channel, update stage/progress/error, available build + notes, catalog list |
+| `POST /api/firmware/check`, `/install`, `/reboot`, `/previous` | update commands (previous needs `{"confirm":true}`) |
+| `POST /api/firmware/upload` | raw OTA `.bin`, streamed into the update engine; needs header `X-Summit-Upload: 1` |
+| `GET/POST /api/settings` | schema + values (the form is rendered from it); set values by key |
+| `GET /api/settings/export[?secrets=1]` | settings file (`format: summit-settings`, schema version, values, Wi-Fi SSID); secrets only with `secrets=1` |
+| `POST /api/settings/import/validate`, `POST /api/settings/import` | check a whole file without changing anything; replace all settings |
+| `POST /api/settings/undo` | undo the last import (restores the backup) |
+| `POST /api/settings/reset` | defaults (needs `{"confirm":true}`); `GET /api/settings/backup` downloads the pre-reset/import backup |
+| `GET /api/diagnostics` | warnings (e.g. missing add-ons), settings/update state, event bus stats, device facts |
+
+- Every firmware path goes through the one update engine (hard rule 5); uploads get the same header, size and image checks as catalog installs.
+- Wi-Fi credentials live in their own NVS namespace, so a settings export never contains them (hard rule 6).
+- Settings import replaces all settings. The whole file is validated first: a file from a newer schema or with any invalid value is refused with a clear message and nothing changes. The page then asks "Replace all settings? Your current settings are backed up." before applying. Older files are migrated, missing keys get defaults, unknown keys are kept. The backup stays available: "Undo import" restores it and it can be downloaded.
+- Secrets (Wi-Fi password, printer access code, tokens: settings marked `secret`) are left out of exports by default; a tick-box includes them. An import keeps the current secrets when the file has none. The API never returns a secret's value, only whether it is set.
+- Settings schema entries can carry an optional `label` and `help` text (shown by the web UI instead of the raw key). Raw keys are fine for the alpha; labels and help are filled in before the first beta. These are code-only and don't change stored settings.
+- Security: no login. The local network is trusted. Cross-site protection stays: POST bodies must be `application/json` and uploads need the `X-Summit-Upload` header, so other web pages can't trigger them without a CORS preflight the device never approves.
+- Wi-Fi setup (separate hardware step): the setup access point uses WPA2 with a password shown in the on-screen QR code, never an open network.
+
 ### State topics
 
 The state store and event bus are the public API between services, panels and the shell. Names follow `domain/item` (lowercase, `[a-z0-9_]`). Keep this table updated: `tests/test_state_topics_contract.py` fails if code uses a topic missing from it. "event" topics are published on the bus only and hold no stored state.
@@ -227,7 +253,11 @@ The state store and event bus are the public API between services, panels and th
 | `weather/now_text` | string: temp + condition; empty = none | weather service | glance strip (weather chip), Home, Weather |
 | `printer/progress_text` | string; empty when not printing | printer service | glance strip (printer chip), Printer |
 | `printer/progress_pct` | int 0–100 | printer service | Printer |
-| `net/wifi_connected` | bool | net service | glance strip (Wi-Fi chip) |
+| `net/wifi_connected` | bool | net service | glance strip (Wi-Fi chip), web UI |
+| `net/ssid` | string: connected network | net service | web UI |
+| `net/ip` | string: IPv4 address | net service | web UI |
+| `net/scan` | string: JSON array of {ssid, rssi, secure} | net service | web UI (Wi-Fi page) |
+| `net/connect` | event: SSID just saved (the password stays in the Wi-Fi store) | web UI | net service |
 | `update/available` | bool | update engine | glance strip (update chip), Updates screen |
 | `update/in_progress` | bool: downloading or verifying | update engine | shell (hides strip), Updates screen (full-screen progress) |
 | `update/stage` | string: idle, checking, up_to_date, available, check_failed, downloading, verifying, ready_to_reboot, failed | update engine | Updates screen, web UI |
@@ -236,6 +266,7 @@ The state store and event bus are the public API between services, panels and th
 | `update/target_version` | string: version being installed | update engine | Updates screen, web UI |
 | `update/available_version` | string; empty = none | update engine | Updates screen, web UI |
 | `update/notes` | string: changelog of the available build | update engine | Updates screen, web UI |
+| `update/catalog` | string: JSON array of builds for this hardware ({version, channel, released, notes, size, installable, reason}) | update engine | web UI (firmware page) |
 | `update/previous_version` | string: app in the spare slot; empty = none | update engine | Updates screen, web UI |
 | `update/command` | event: "check", "install:<version>", "previous", "reboot" | Updates screen, web UI | update engine |
 | `power/battery_text` | string, e.g. "85%" | power service | glance strip (battery chip) |
