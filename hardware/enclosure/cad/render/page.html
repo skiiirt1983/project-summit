@@ -1,7 +1,7 @@
 <!doctype html><meta charset="utf-8">
 <style>
- body{margin:0;background:#e9e6e0;font:600 22px system-ui,sans-serif;color:#333}
- #grid{display:grid;grid-template-columns:800px 800px;grid-template-rows:600px 600px}
+ body{margin:0;background:#fff;font:600 18px system-ui,sans-serif;color:#333}
+ #grid{display:grid;grid-template-columns:repeat(4,500px)}
  .cell{position:relative}.cell span{position:absolute;left:18px;top:14px}
  #title{position:absolute;right:18px;bottom:12px;font-weight:400;font-size:16px;color:#666}
 </style>
@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-const scene = await (await fetch('/out/scene.json')).json();
+const scene = await (await fetch('/out/' + (new URLSearchParams(location.search).get('scene') ?? 'scene.json'))).json();
 const loader = new STLLoader();
 const model = new THREE.Group();
 for (const part of scene.parts) {
@@ -28,12 +28,12 @@ for (const part of scene.parts) {
 const views = scene.views ?? [
   { label: 'Landscape',            dir: [-1.0, -0.75, 0.55], portrait: false },
   { label: 'Side',                 dir: [0, -1, 0.0],        portrait: false, ortho: true },
-  { label: 'Front',                dir: [-1, 0, 0.12],       portrait: false, ortho: true },
+  { label: 'From behind',          dir: [1.0, 0.75, 0.55],   portrait: false },
   { label: 'Portrait (on its end)', dir: [-1.0, -0.75, 0.55], portrait: true },
 ];
-const W = 800, H = 600;
+const W = 500, H = 450;
 for (const v of views) {
-  const s = new THREE.Scene(); s.background = new THREE.Color('#e9e6e0');
+  const s = new THREE.Scene(); s.background = new THREE.Color('#ffffff');
   const g = model.clone();
   if (v.portrait) g.rotation.x = (v.flip ? -1 : 1) * Math.PI / 2;
   g.updateMatrixWorld(true);
@@ -43,7 +43,7 @@ for (const v of views) {
   const c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length() / 2;
   s.add(g);
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.ShadowMaterial({ opacity: 0.22 }));
-  ground.receiveShadow = true; s.add(ground);
+  ground.receiveShadow = true; if (!v.noground) s.add(ground);
   const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
   renderer.setPixelRatio(2); renderer.setSize(W, H); renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -54,11 +54,20 @@ for (const v of views) {
   sun.shadow.mapSize.set(2048, 2048); sun.shadow.radius = 6; sun.shadow.bias = -0.0005;
   Object.assign(sun.shadow.camera, { left: -2 * r, right: 2 * r, top: 2 * r, bottom: -2 * r, near: 1, far: 10 * r });
   s.add(sun, sun.target);
+  // Frame the model: measure how big it looks from this direction, then fit it.
   const d = new THREE.Vector3(...v.dir).normalize();
-  let cam;
-  if (v.ortho) { const k = r * 1.05; cam = new THREE.OrthographicCamera(-k * W / H, k * W / H, k, -k, 1, 20 * r); }
-  else cam = new THREE.PerspectiveCamera(28, W / H, 1, 50 * r);
-  cam.up.set(0, 0, 1); cam.position.copy(c).addScaledVector(d, v.ortho ? 5 * r : 4.6 * r); cam.lookAt(c);
+  const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 0, 1), d).normalize();
+  const up = new THREE.Vector3().crossVectors(d, right);
+  let hw = 0, hh = 0;
+  for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+    const q = new THREE.Vector3(x, y, z).sub(c);
+    hw = Math.max(hw, Math.abs(q.dot(right))); hh = Math.max(hh, Math.abs(q.dot(up)));
+  }
+  const fit = 1.22, k = Math.max(hh, hw * H / W) * fit;
+  let cam, dist = 6 * r;
+  if (v.ortho) cam = new THREE.OrthographicCamera(-k * W / H, k * W / H, k, -k, 1, 20 * r);
+  else { cam = new THREE.PerspectiveCamera(24, W / H, 1, 50 * r); dist = k / Math.tan(Math.PI * 12 / 180) + r * 0.6; }
+  cam.up.set(0, 0, 1); cam.position.copy(c).addScaledVector(d, dist); cam.lookAt(c);
   renderer.render(s, cam);
   const cell = document.createElement('div'); cell.className = 'cell';
   const label = document.createElement('span'); label.textContent = v.label;

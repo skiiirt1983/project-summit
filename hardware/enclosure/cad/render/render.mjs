@@ -29,10 +29,10 @@ const server = http.createServer((req, res) => {
 await new Promise(r => server.once('listening', r));
 
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-const page = await browser.newPage({ viewport: { width: 1600, height: 1200 }, deviceScaleFactor: 2 });
+const page = await browser.newPage({ viewport: { width: 2000, height: 450 }, deviceScaleFactor: 2 });
 page.on('console', m => { if (m.type() === 'error') console.error('page:', m.text()); });
 page.on('pageerror', e => console.error('page error:', e.message));
-await page.goto(`http://127.0.0.1:${server.address().port}/`);
+await page.goto(`http://127.0.0.1:${server.address().port}/?scene=${encodeURIComponent(path.basename(scenePath))}`);
 await page.waitForFunction('window.done === true', null, { timeout: 120000 });
 await page.screenshot({ path: outPng });
 await browser.close(); server.close();
