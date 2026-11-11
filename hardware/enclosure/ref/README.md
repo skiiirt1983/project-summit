@@ -1,6 +1,6 @@
 # ref/
 
-Reference images and files named in `../ENCLOSURE.md`. **None are in the repo yet** (2026-11-11):
+Reference images and files named in `../ENCLOSURE.md`. All images below are in the repo (added 2026-11-11). Still missing: `lyricflash-enclosure/` (Paul to supply).
 
 - `peak-final-60.png` (target), `triangle-one-piece.png`, `q1-angles.png`, `q2-opening.png`, `q3-corners.png`
 - `not-like-this.png`
