@@ -57,10 +57,19 @@ USB-C ports on the left. x = along the long side from the USB end, y = up from t
 
 ## LyricFlash (family look)
 
-| What | Value | Source | Status |
+Source `lyricflash` = `ref/lyricflash-enclosure/lyricflash_print_plates.3mf` (meshes `top_shell.stl`,
+`base_smooth.stl`, and the assembly guide inside the file). Meshes, so values are ±0.05.
+
+| What | Value (mm) | Source | Status |
 |---|---|---|---|
-| Visible bezel width around glass | — | lyricflash | ❌ |
-| Screen depth below/above bezel face | — | lyricflash | ❌ |
-| Bezel lip overlap onto glass | — | lyricflash | ❌ |
-| Corner and edge radii | — | lyricflash | ❌ |
-| Mic hole: diameter, wall thickness at hole, chamfer | — | lyricflash | ❌ |
+| Top shell outline | 52.86 × 66.83, 5.15 thick | lyricflash | ✅ |
+| Visible bezel width at its narrowest (opening edge → outer edge) | 2.95 | lyricflash | ✅ |
+| Lip over the glass: thickness | 1.0 | lyricflash | ✅ |
+| Lip over the glass: overlap past the glass pocket edge | 1.35 (opening Ø46.96, glass pocket Ø49.66) | lyricflash | ✅ |
+| Gap between lip and glass | 0.25 | lyricflash (assembly guide) | ✅ |
+| Screen depth below bezel face | 1.25 (= lip 1.0 + gap 0.25) | lyricflash | ✅ |
+| Wall outside the glass pocket | 1.6 | lyricflash | ✅ |
+| Outer corner radius | 6.7 | lyricflash | ✅ |
+| Outer edge treatment | 1.45 wide × 1.4 high bevel around the front face | lyricflash | ✅ |
+| Mic holes | 2× Ø2.0, straight, no chamfer or countersink | lyricflash (mesh + guide) | ✅ |
+| Wall thickness at the mic hole | 1.6 | lyricflash | 🔍 hole face sits 2.8 back from the outer wall; confirm it is in a recess |

@@ -30,10 +30,16 @@ BATT_T = 12.0              # PLACEHOLDER — measure
 BATT_SWELL = 1.0           # brief §4: never clamp the pouch
 BATT_BOARD_GAP = 2.0       # ARCHITECTURE.md: air gap battery <-> board
 
-# --- Bezel (to be copied from LyricFlash) ---------------------------------
-BEZEL_W = 3.0              # PLACEHOLDER — measure (lyricflash)
-BEZEL_R = GLASS_R + BEZEL_W
-GLASS_RECESS = 0.0         # PLACEHOLDER — measure (lyricflash screen depth)
+# --- Bezel, copied from LyricFlash (dimensions.md) ------------------------------
+LIP_T = 1.0                # lyricflash: thickness of the lip over the glass
+LIP_OVERLAP = 1.35         # lyricflash: how far the lip covers the glass edge
+LIP_GAP = 0.25             # lyricflash: air between lip and glass
+GLASS_RECESS = LIP_T + LIP_GAP   # screen depth below the bezel face
+BEZEL_WALL = 1.6           # lyricflash: cream wall outside the glass edge.
+                           # Visible cream = BEZEL_WALL + LIP_OVERLAP = 2.95 (as LyricFlash)
+BEZEL_R = 6.7              # lyricflash: outer corner radius. Paul to confirm scaling (§8.5)
+MIC_HOLE_D = 2.0           # lyricflash: straight hole, no chamfer
+MIC_WALL = 1.6             # lyricflash: wall thickness at the hole
 SEAM = 0.3                 # gap between module and body, per side (coupon)
 
 # --- Peak body ---------------------------------------------------------------
@@ -50,7 +56,17 @@ FRONT_MARGIN = 5.0         # PLACEHOLDER — body showing above/below the bezel
 SIDE_MARGIN = 11.0         # body left/right of the bezel; gives ~156 wide as in ref
 
 # --- Derived -------------------------------------------------------------------
-MODULE_L = GLASS_L + 2 * BEZEL_W          # module face, long side
-MODULE_W = GLASS_W + 2 * BEZEL_W          # module face, short side
-FRONT_T = (MODULE_DEPTH + BATT_BOARD_GAP + BATT_T + BATT_SWELL + BACK_WALL)
-BODY_WIDTH = MODULE_L + 2 * (SEAM + SIDE_MARGIN)
+def derive():
+    """Recompute values that follow from the ones above (call again after changing any)."""
+    g = globals()
+    g["MODULE_L"] = GLASS_L + 2 * BEZEL_WALL          # module face, long side
+    g["MODULE_W"] = GLASS_W + 2 * BEZEL_WALL          # module face, short side
+    g["OPEN_L"] = GLASS_L - 2 * LIP_OVERLAP           # opening in the bezel
+    g["OPEN_W"] = GLASS_W - 2 * LIP_OVERLAP
+    g["OPEN_R"] = max(GLASS_R - LIP_OVERLAP, 0.5)
+    g["FRONT_T"] = (GLASS_RECESS + MODULE_DEPTH + BATT_BOARD_GAP + BATT_T
+                    + BATT_SWELL + BACK_WALL)
+    g["BODY_WIDTH"] = MODULE_L + 2 * (SEAM + SIDE_MARGIN)
+
+
+derive()
