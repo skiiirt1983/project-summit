@@ -1,0 +1,70 @@
+<!doctype html><meta charset="utf-8">
+<style>
+ body{margin:0;background:#e9e6e0;font:600 22px system-ui,sans-serif;color:#333}
+ #grid{display:grid;grid-template-columns:800px 800px;grid-template-rows:600px 600px}
+ .cell{position:relative}.cell span{position:absolute;left:18px;top:14px}
+ #title{position:absolute;right:18px;bottom:12px;font-weight:400;font-size:16px;color:#666}
+</style>
+<div id="grid"></div><div id="title"></div>
+<script type="importmap">{"imports":{"three":"/three/build/three.module.js","three/addons/":"/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const scene = await (await fetch('/out/scene.json')).json();
+const loader = new STLLoader();
+const model = new THREE.Group();
+for (const part of scene.parts) {
+  if (part.hide) continue;
+  const geo = await loader.loadAsync('/out/' + part.file);
+  geo.computeVertexNormals();
+  const glossy = part.name === 'glass';
+  const mat = new THREE.MeshStandardMaterial({ color: part.color, roughness: glossy ? 0.15 : 0.85, metalness: 0,
+    emissive: part.name === 'view' ? part.color : '#000', emissiveIntensity: 0.6 });
+  const mesh = new THREE.Mesh(geo, mat); mesh.castShadow = mesh.receiveShadow = true; model.add(mesh);
+}
+// CAD frame is Z-up; three.js default is Y-up, so everything here sets up = Z.
+const views = scene.views ?? [
+  { label: 'Landscape',            dir: [-1.0, -0.75, 0.55], portrait: false },
+  { label: 'Side',                 dir: [0, -1, 0.0],        portrait: false, ortho: true },
+  { label: 'Front',                dir: [-1, 0, 0.12],       portrait: false, ortho: true },
+  { label: 'Portrait (on its end)', dir: [-1.0, -0.75, 0.55], portrait: true },
+];
+const W = 800, H = 600;
+for (const v of views) {
+  const s = new THREE.Scene(); s.background = new THREE.Color('#e9e6e0');
+  const g = model.clone();
+  if (v.portrait) g.rotation.x = (v.flip ? -1 : 1) * Math.PI / 2;
+  g.updateMatrixWorld(true);
+  let box = new THREE.Box3().setFromObject(g);
+  g.position.z -= box.min.z; g.updateMatrixWorld(true);
+  box = new THREE.Box3().setFromObject(g);
+  const c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length() / 2;
+  s.add(g);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.ShadowMaterial({ opacity: 0.22 }));
+  ground.receiveShadow = true; s.add(ground);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(2); renderer.setSize(W, H); renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  s.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+  s.environmentIntensity = 0.55;
+  const sun = new THREE.DirectionalLight('#fff', 2.2);
+  sun.position.set(c.x - 2 * r, c.y - 1.2 * r, c.z + 3 * r); sun.target.position.copy(c); sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048); sun.shadow.radius = 6; sun.shadow.bias = -0.0005;
+  Object.assign(sun.shadow.camera, { left: -2 * r, right: 2 * r, top: 2 * r, bottom: -2 * r, near: 1, far: 10 * r });
+  s.add(sun, sun.target);
+  const d = new THREE.Vector3(...v.dir).normalize();
+  let cam;
+  if (v.ortho) { const k = r * 1.05; cam = new THREE.OrthographicCamera(-k * W / H, k * W / H, k, -k, 1, 20 * r); }
+  else cam = new THREE.PerspectiveCamera(28, W / H, 1, 50 * r);
+  cam.up.set(0, 0, 1); cam.position.copy(c).addScaledVector(d, v.ortho ? 5 * r : 4.6 * r); cam.lookAt(c);
+  renderer.render(s, cam);
+  const cell = document.createElement('div'); cell.className = 'cell';
+  const label = document.createElement('span'); label.textContent = v.label;
+  renderer.domElement.style.cssText = `width:${W}px;height:${H}px;display:block`;
+  cell.append(renderer.domElement, label); document.getElementById('grid').append(cell);
+}
+document.getElementById('title').textContent = scene.caption ?? '';
+window.done = true;
+</script>

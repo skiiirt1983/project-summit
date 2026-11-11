@@ -32,3 +32,6 @@ Private alpha repo `project-summit`; public release at 1.0 as `slopeform-home`. 
 - Small steps. Stop after each step and show what changed.
 - Host-side tests for all pure logic (as LyricFlash does in `tests/`).
 - Paul prefers concise, direct updates.
+
+## Enclosure
+Case design brief: `hardware/enclosure/ENCLOSURE.md` (single source of truth for the case). Update it first, then the CAD.

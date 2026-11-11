@@ -15,3 +15,7 @@ __pycache__/
 node_modules/
 .DS_Store
 .vscode/
+
+# Enclosure build output
+hardware/enclosure/out/
+hardware/enclosure/cad/render/node_modules/
