@@ -1,0 +1,3 @@
+dependencies:
+  # Same pin as firmware/shell (the panel includes lvgl.h directly).
+  lvgl/lvgl: "9.4.0"
