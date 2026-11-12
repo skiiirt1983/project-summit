@@ -1,9 +1,11 @@
 # CAD
 
 ```bash
-pip install build123d            # 0.13
-python peak.py                   # STEP / STL / 3MF + scene.json -> ../out/
-cd render && npm i && node render.mjs   # ../out/peak-views.png (needs Playwright + Chromium)
+pip install build123d pillow            # build123d 0.13
+python peak.py                          # full model: STEP / STL / 3MF -> ../out/
+python test_coupons.py                  # coupons -> ../coupons/
+cd render && npm i && cd ..             # once; needs Playwright + Chromium
+python render_all.py                    # review renders -> ../out/*.png
 ```
 
-All numbers live in `params.py`. Anything tagged `PLACEHOLDER` is not yet measured or decided.
+All numbers live in `params.py`. `PLACEHOLDER` = not yet measured. `COUPON` = tune after the test prints.

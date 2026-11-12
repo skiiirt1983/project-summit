@@ -251,15 +251,18 @@ still works without them.
   ```
   hardware/enclosure/
     ENCLOSURE.md        # this file
-    dimensions.md       # measured/sourced dims with provenance
-    decisions.md        # dated log of design decisions
-    ref/                # reference images (not-like-this.png, inspiration)
-    cad/params.py
-    cad/bezel.py
-    cad/back_shell.py
-    cad/base.py
-    cad/test_coupons.py # snap-fit, magnet, port alignment coupons
-    out/                # STEP / STL / 3MF / renders (gitignored except releases)
+    dimensions.md       # every dimension, marked drawing / measured / PLACEHOLDER
+    decisions.md        # dated log of design decisions and defaults to confirm
+    COUPON-RESULTS.md   # form to fill in after printing coupons + "Measure these"
+    ref/                # reference images, LyricFlash 3MF
+    cad/params.py       # every dimension and clearance
+    cad/parts.py        # screen module (bezel, carrier plate, back cover) + inner frame
+    cad/peak.py         # body, pads, full assembly, exports
+    cad/test_coupons.py # material slices and fit coupons
+    cad/render_all.py   # review renders (cad/render/ = headless three.js renderer)
+    coupons/            # ready-to-print coupon 3MF + STL
+    renders/            # latest review renders
+    out/                # STEP / STL / 3MF build output (gitignored)
   ```
 
 ---
@@ -302,6 +305,10 @@ still works without them.
 ---
 
 ## 8. Open decisions (settle with Paul, with renders)
+
+> **2026-11-12:** 3 is decided (stands on the end away from the USB-C ports). For the rest, Claude
+> picked defaults so the full model could be built; they are listed in `decisions.md` as
+> "default, Paul to confirm". Coupon answers go in `COUPON-RESULTS.md`.
 
 1. **Body material:** TPU for AMS (which soft/firm settings) or stone-look PLA? Decided by coupons.
 2. **Screen module attachment:** how it locks into the body and comes out for service.

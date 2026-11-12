@@ -1,7 +1,7 @@
 <!doctype html><meta charset="utf-8">
 <style>
  body{margin:0;background:#fff;font:600 18px system-ui,sans-serif;color:#333}
- #grid{display:grid;grid-template-columns:repeat(4,500px)}
+ #grid{display:grid;width:max-content;grid-template-columns:repeat(4,500px)}
  .cell{position:relative}.cell span{position:absolute;left:18px;top:14px}
  #title{position:absolute;right:18px;bottom:12px;font-weight:400;font-size:16px;color:#666}
 </style>
@@ -32,7 +32,9 @@ const views = scene.views ?? [
   { label: 'Portrait (on its end)', dir: [-1.0, -0.75, 0.55], portrait: true },
 ];
 const W = 500, H = 450;
+document.getElementById('grid').style.gridTemplateColumns = `repeat(${views.length}, ${W * (views.length < 4 ? 2 : 1)}px)`;
 for (const v of views) {
+  const W = views.length < 4 ? 1000 : 500, H = views.length < 4 ? 800 : 450;
   const s = new THREE.Scene(); s.background = new THREE.Color('#ffffff');
   const g = model.clone();
   if (v.portrait) g.rotation.x = (v.flip ? -1 : 1) * Math.PI / 2;

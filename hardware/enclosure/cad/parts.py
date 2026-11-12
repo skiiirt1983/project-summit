@@ -1,0 +1,190 @@
+"""Screen module and inner frame, built in the module frame.
+
+Module frame: origin at the centre of the bezel face, x along the long side
+(USB-C ports at -x), y down the slope (buttons and card slot at -y), +z out of
+the screen. Depths below the face are negative z.
+"""
+from build123d import (Box, CounterSinkHole, Cylinder, Pos, RectangleRounded,
+                       Rot, extrude)
+
+import params as p
+
+
+def slab(length, width, radius, z_top, z_bot):
+    """Rounded rectangle solid between two depths."""
+    return Pos(0, 0, z_bot) * extrude(RectangleRounded(length, width, radius), z_top - z_bot)
+
+
+def _along_y(radius, length):
+    return Rot(90, 0, 0) * Cylinder(radius, length)
+
+
+def _along_x(radius, length):
+    return Rot(0, 90, 0) * Cylinder(radius, length)
+
+
+def usb_windows(x_from, x_to):
+    """Two plug-sized tunnels running along x between the given positions."""
+    out = None
+    for yb in p.USB_Y:
+        _, y = p.board_xy(0, yb)
+        box = Pos((x_from + x_to) / 2, y, -p.board_depth(p.USB_H)) * Box(
+            abs(x_to - x_from), p.USB_WINDOW[0], p.USB_WINDOW[1])
+        out = box if out is None else out + box
+    return out
+
+
+def mic_points():
+    return [p.board_xy(*m) for m in p.MICS]
+
+
+def clip_z():
+    return -(p.MOD_D - p.CLIP_FROM_BACK)
+
+
+def cup():
+    """Cream bezel with walls: the front half of the module. Prints face down."""
+    part = slab(p.MODULE_L, p.MODULE_W, p.BEZEL_R, 0, -p.MOD_D)
+    part -= slab(p.OPEN_L, p.OPEN_W, p.OPEN_R, 1, -p.LIP_T - 0.01)                 # opening
+    part -= slab(p.CAV1_L, p.CAV1_W, p.GLASS_R + p.GLASS_CLEAR, -p.LIP_T, -p.PLATE_Z)   # glass + display
+    part -= slab(p.CAV2_L, p.CAV2_W, p.GLASS_R + p.GLASS_CLEAR + p.LEDGE,
+                 -p.PLATE_Z, -p.MOD_D - 1)                                         # plate, battery, cover
+    part -= usb_windows(-p.MODULE_L / 2 - 1, -p.GLASS_L / 2 + 1)
+    wall_y = -(p.MODULE_W / 2 + p.CAV1_W / 2) / 2                                  # middle of the upper wall
+    reach = p.BEZEL_WALL + 3
+    for xb in p.BUTTONS_X:                                                         # paperclip holes
+        x, _ = p.board_xy(xb, 0)
+        part -= Pos(x, wall_y, -p.board_depth(p.BUTTON_H)) * _along_y(p.BUTTON_PIN_D / 2, reach)
+    sd_x, _ = p.board_xy(sum(p.SD_X) / 2, 0)
+    part -= Pos(sd_x, wall_y, -p.board_depth(p.SD_H)) * Box(p.SD_SLOT[0], reach, p.SD_SLOT[1])
+    for side in (-1, 1):
+        for x in p.CLIP_X:                                                         # grooves the frame clips bite into
+            part -= Pos(x, side * (p.MODULE_W / 2 + p.CLIP_R - p.CLIP_BUMP - 0.1), clip_z()) * _along_x(
+                p.CLIP_R + 0.1, p.CLIP_W)
+        part -= Pos(0, side * p.CAV2_W / 2, -(p.MOD_D - 3.0)) * Box(                # groove for the back-cover snap
+            p.SNAP_LEN + 2, 2 * (p.SNAP_BUMP + 0.1), 1.6)
+    return part
+
+
+def plate():
+    """Carrier plate: the board screws to it, and it divides board from battery."""
+    length, width = p.CAV2_L - 2 * p.PLATE_CLEAR, p.CAV2_W - 2 * p.PLATE_CLEAR
+    radius = p.GLASS_R + p.GLASS_CLEAR + p.LEDGE - p.PLATE_CLEAR
+    part = slab(length, width, radius, -p.PLATE_Z, -p.PLATE_Z - p.PLATE_T)
+    for xb, yb in p.STANDOFFS:                                                     # screws go in from the battery side
+        x, y = p.board_xy(xb, yb)
+        part -= Pos(x, y, -p.PLATE_Z - p.PLATE_T) * Rot(180, 0, 0) * CounterSinkHole(
+            p.SCREW_D / 2, p.SCREW_HEAD_D / 2, p.PLATE_T)
+    for x0, y0, x1, y1 in (p.HEADER_BOX, p.J5_BOX):                                # parts taller than the standoffs
+        ax, ay = p.board_xy(x0, y0)
+        bx, by = p.board_xy(x1, y1)
+        part -= Pos((ax + bx) / 2, (ay + by) / 2, -p.PLATE_Z - p.PLATE_T / 2) * Box(
+            abs(bx - ax) + 2, abs(by - ay) + 2, p.PLATE_T + 1)
+    for x, y in mic_points():
+        part -= Pos(x, y, -p.PLATE_Z - p.PLATE_T / 2) * Cylinder(p.MIC_CLEAR_D / 2, p.PLATE_T + 1)
+    part -= Pos(-length / 2 + p.WIRE_NOTCH[1] / 2, 0, -p.PLATE_Z - p.PLATE_T / 2) * Box(
+        p.WIRE_NOTCH[1] + 0.01, p.WIRE_NOTCH[0], p.PLATE_T + 1)
+    return part
+
+
+def battery_stop_x():
+    """Battery sits against the +x end; everything left of this line stays free
+    for the mics, the accelerometer and the wires."""
+    inner_half = p.CAV2_L / 2 - p.COVER_CLEAR - p.COVER_RIM
+    return inner_half - 0.5 - p.BATT_L - 0.5
+
+
+def cover():
+    """Back cover: a shallow tub that snaps into the cup and holds the battery."""
+    length, width = p.CAV2_L - 2 * p.COVER_CLEAR, p.CAV2_W - 2 * p.COVER_CLEAR
+    radius = p.GLASS_R + p.GLASS_CLEAR + p.LEDGE - p.COVER_CLEAR
+    top = -(p.PLATE_Z + p.PLATE_T)
+    part = slab(length, width, radius, top, -p.MOD_D)
+    part -= slab(length - 2 * p.COVER_RIM, width - 2 * p.COVER_RIM, max(radius - p.COVER_RIM, 0.5),
+                 top + 1, -p.MOD_D + p.COVER_FLOOR)
+    rib_h = 6.0
+    part += Pos(battery_stop_x() - 0.6, 0, -p.MOD_D + p.COVER_FLOOR + rib_h / 2) * Box(
+        1.2, width - 2 * p.COVER_RIM - 16, rib_h)                                  # battery stop
+    for side in (-1, 1):
+        part += Pos(0, side * width / 2, -(p.MOD_D - 3.0)) * Box(p.SNAP_LEN, 2 * p.SNAP_BUMP, 1.2)
+    for x, y in mic_points():                                                      # the LyricFlash mic hole
+        part -= Pos(x, y, -p.MOD_D + p.COVER_FLOOR / 2) * Cylinder(p.MIC_HOLE_D / 2, p.COVER_FLOOR + 1)
+    part -= Pos(length / 2 - 1.2, 0, -p.MOD_D + 0.6) * Box(2.4, 14, 1.3)            # fingernail notch
+    return part
+
+
+def frame():
+    """Rigid PETG sleeve that lives in the body. The module clips into it."""
+    floor_z = -(p.MOD_D + p.FRAME_CLEAR)
+    inner_l, inner_w = p.MODULE_L + 2 * p.FRAME_CLEAR, p.MODULE_W + 2 * p.FRAME_CLEAR
+    part = slab(p.FRAME_L, p.FRAME_W, p.FRAME_R, -p.FRAME_TOP, floor_z - p.FRAME_FLOOR)
+    part -= slab(inner_l, inner_w, p.BEZEL_R + p.FRAME_CLEAR, 1, floor_z)
+    part -= Pos(0, 0, floor_z - p.FRAME_FLOOR / 2) * Cylinder(p.PUSH_HOLE_D / 2, p.FRAME_FLOOR + 1)
+    for x, y in mic_points():
+        part -= Pos(x, y, floor_z - p.FRAME_FLOOR / 2) * Cylinder(p.MIC_CLEAR_D / 2, p.FRAME_FLOOR + 1)
+    part -= usb_windows(-p.FRAME_L / 2 - 1, -p.MODULE_L / 2 + 1)
+    tip = clip_z() + 3.0                                                           # free end, towards the front
+    for side in (-1, 1):
+        y_wall = side * (inner_w / 2 + p.FRAME_WALL / 2)
+        for x in p.CLIP_X:
+            for dx in (-1, 1):                                                     # slots either side of the finger
+                part -= Pos(x + dx * (p.CLIP_W + p.CLIP_SLOT) / 2, y_wall, tip - p.CLIP_LEN / 2) * Box(
+                    p.CLIP_SLOT, p.FRAME_WALL + 1, p.CLIP_LEN)
+            part -= Pos(x, y_wall, tip + p.CLIP_SLOT / 2) * Box(
+                p.CLIP_W + 2 * p.CLIP_SLOT, p.FRAME_WALL + 1, p.CLIP_SLOT)          # slot across the tip
+            bump = Pos(x, side * (inner_w / 2 + p.CLIP_R - p.CLIP_BUMP - p.FRAME_CLEAR), clip_z()) * _along_x(
+                p.CLIP_R, p.CLIP_W - 2)
+            part += bump
+    return part
+
+
+def body_cutter():
+    """Everything removed from the body's front wall, in the module frame."""
+    cut = slab(p.MODULE_L + 2 * p.SEAM, p.MODULE_W + 2 * p.SEAM, p.BEZEL_R + p.SEAM, 1, -p.FRAME_TOP)
+    cut += slab(p.FRAME_L + 2 * p.FRAME_FIT, p.FRAME_W + 2 * p.FRAME_FIT, p.FRAME_R + p.FRAME_FIT,
+                -p.FRAME_TOP, -p.POCKET_D)
+    skin_z = -p.POCKET_D - p.BACK_SKIN / 2
+    cut += Pos(0, 0, skin_z) * Cylinder(p.PUSH_HOLE_D / 2, p.BACK_SKIN + 2)
+    for x, y in mic_points():
+        cut += Pos(x, y, skin_z) * Cylinder(p.MIC_CLEAR_D / 2, p.BACK_SKIN + 2)
+    cut += usb_windows(-p.BODY_WIDTH / 2 - 1, -p.FRAME_L / 2 + 1)
+    tip = clip_z() + 3.0
+    for side in (-1, 1):                                                           # room for the clips to flex
+        for x in p.CLIP_X:
+            cut += Pos(x, side * (p.FRAME_W / 2 + p.FRAME_FIT), tip - p.CLIP_LEN / 2) * Box(
+                p.CLIP_W + 2 * p.CLIP_SLOT, 2 * (p.CLIP_BUMP + 0.3), p.CLIP_LEN + 1)
+    return cut
+
+
+def firm_zone():
+    """Modifier volume for Bambu Studio: the stiff region around the frame pocket."""
+    m = p.FIRM_ZONE_MARGIN
+    return slab(p.FRAME_L + 2 * m, p.FRAME_W + 2 * m, p.FRAME_R + m, 5, -p.POCKET_D - p.BACK_SKIN - 5)
+
+
+# --- stand-ins for the bought parts (renders and checks only) -------------------
+def glass():
+    return slab(p.GLASS_L, p.GLASS_W, p.GLASS_R, -p.GLASS_RECESS, -p.GLASS_RECESS - 1.3)
+
+
+def view():
+    return slab(p.VIEW_L, p.VIEW_W, 0.5, -p.GLASS_RECESS + 0.1, -p.GLASS_RECESS - 0.05)
+
+
+def display():
+    """LCD + board + parts as one block, up to the standoff tops."""
+    x_mid = p.BOARD_X0 + p.BOARD_L / 2
+    return Pos(x_mid, 0, 0) * slab(p.BOARD_L + 0.2, p.BOARD_W + 0.2, 1.0,
+                                   -p.GLASS_RECESS - 1.3, -p.PLATE_Z)
+
+
+def battery():
+    x_mid = battery_stop_x() + 0.5 + p.BATT_L / 2
+    top = -(p.PLATE_Z + p.PLATE_T + p.BATT_GAP)
+    return Pos(x_mid, 0, 0) * slab(p.BATT_L, p.BATT_W, 2.0, top, top - p.BATT_T)
+
+
+def accelerometer():
+    x_mid = battery_stop_x() - 1.5 - p.ACC_W / 2
+    top = -(p.PLATE_Z + p.PLATE_T)
+    return Pos(x_mid, 0, top - p.ACC_T / 2) * Box(p.ACC_W, p.ACC_L, p.ACC_T)

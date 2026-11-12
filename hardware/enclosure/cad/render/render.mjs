@@ -34,6 +34,6 @@ page.on('console', m => { if (m.type() === 'error') console.error('page:', m.tex
 page.on('pageerror', e => console.error('page error:', e.message));
 await page.goto(`http://127.0.0.1:${server.address().port}/?scene=${encodeURIComponent(path.basename(scenePath))}`);
 await page.waitForFunction('window.done === true', null, { timeout: 120000 });
-await page.screenshot({ path: outPng });
+await page.locator('#grid').screenshot({ path: outPng });
 await browser.close(); server.close();
 console.log('wrote', outPng);
