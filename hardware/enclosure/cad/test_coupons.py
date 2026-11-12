@@ -8,6 +8,7 @@ Run:  python test_coupons.py
 Every coupon is laid flat in its print orientation. Per-object slicer settings are
 listed in ../COUPON-RESULTS.md; the 3MF carries shapes and names only.
 """
+import math
 from pathlib import Path
 
 from build123d import Box, Cylinder, Mesher, Pos, Rot, Text, export_stl, extrude
@@ -21,11 +22,12 @@ SCENES = peak.OUT / "coupons"                                    # scratch: rend
 ENGRAVE = 0.6
 
 
-def engrave_top(part, text, size, at=None):
+def engrave_top(part, text, size, at=None, angle=0):
     """Sink `text` into the top face."""
     bb = part.bounding_box()
     x, y = at if at else (bb.center().X, bb.center().Y)
-    return part - Pos(x, y, bb.max.Z - ENGRAVE) * extrude(Text(text, size), ENGRAVE + 0.1)
+    letters = Rot(0, 0, angle) * extrude(Text(text, size), ENGRAVE + 0.1)
+    return part - Pos(x, y, bb.max.Z - ENGRAVE) * letters
 
 
 def lay_flat(part, flip=False):
@@ -38,9 +40,15 @@ def lay_flat(part, flip=False):
 
 def material_slice(label):
     """A short slice of the real triangle outline, lying on its side."""
-    solid = peak.shell(width=p.MATERIAL_SLICE_T, soft_edges=False)
-    solid = lay_flat(Rot(-90, 0, 0) * solid)                 # profile flat on the bed
-    return engrave_top(solid, label, 12, at=(46, 38))        # in the thick front wall
+    solid = Rot(-90, 0, 0) * peak.shell(width=p.MATERIAL_SLICE_T, soft_edges=False)   # profile flat on the bed
+    corner = solid.bounding_box().min
+    solid = lay_flat(solid)
+    # Label in the middle of the thick front wall, running up the slope.
+    fa = math.radians(p.FRONT_ANGLE)
+    _, _, centre = peak.profile()
+    x = centre[0] + math.sin(fa) * p.FRONT_T / 2 - corner.X
+    y = centre[1] - math.cos(fa) * p.FRONT_T / 2 - corner.Y
+    return engrave_top(solid, label, 14, at=(x, y), angle=p.FRONT_ANGLE)
 
 
 def body_local():
