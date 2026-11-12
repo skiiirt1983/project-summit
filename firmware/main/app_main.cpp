@@ -1,6 +1,8 @@
 // Project Summit firmware entry point.
 // Phase 0: framework wiring (bus, state, settings, panel registry) and the update
 // engine with its post-boot health gate. Shell and panels start once the display BSP lands.
+#include <memory>
+
 #include "esp_app_desc.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
@@ -10,6 +12,8 @@
 #include "summit/event_bus.h"
 #include "summit/modules.h"
 #include "summit/recipes/module.h"
+#include "summit/recipes/panel.h"
+#include "summit/recipes/store.h"
 #include "summit/registry.h"
 #include "summit/settings.h"
 #include "summit/sd_card.h"
@@ -48,6 +52,10 @@ extern "C" void app_main(void)
     static summit::PanelRegistry registry;  // panels register here (later steps)
 
     summit::SettingsSchema schema = summit::system_settings_schema();
+    // microSD card (untested on hardware): publishes storage/sd_present, storage/sd_free_mb.
+    static summit::recipes::RecipeStore recipe_store(summit::sd_card_start(state));
+    registry.add(std::make_unique<summit::recipes::RecipesPanel>(recipe_store));
+
     // Modules ship in the firmware but start uninstalled (ARCHITECTURE.md "Modules").
     static summit::ModuleManager modules;
     modules.add(summit::recipes::module_manifest());
@@ -74,8 +82,6 @@ extern "C" void app_main(void)
     probes.settings_ok = r != summit::LoadResult::InvalidSchema;
     summit::update::ota_guard_start(probes, bus, state);
     summit::update::update_service_start({SUMMIT_HARDWARE_ID, SUMMIT_CHIP_REV_FAMILY}, bus, state, settings);
-    // microSD card (untested on hardware): publishes storage/sd_present, storage/sd_free_mb.
-    summit::sd_card_start(state);
     // Config portal; reachable once Wi-Fi is up (network service, Phase 1).
     summit::web::web_server_start(bus, state, settings, &modules);
 

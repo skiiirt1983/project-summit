@@ -424,7 +424,9 @@ void Shell::apply_layout(bool morph)
 void Shell::show_current(int slide_dir)
 {
     const std::string &id = pager_->current();
-    for (const std::string &other : pager_->ids()) {
+    // Every registered panel, not just the current pages: a module's panel may have
+    // just been removed from the pages while it was showing.
+    for (const std::string &other : d_.registry.ids()) {
         if (d_.host.state(other) == PanelState::Shown) d_.host.hide(other);
     }
     lv_obj_clean(page_);  // hidden panels hold no LVGL objects
@@ -577,6 +579,7 @@ void Shell::tick(uint32_t now_ms)
         lv_obj_set_y(sheet_, s.h);  // the sheet sits below the strip, expanded or not
     }
 
+    d_.host.tick(now_ms);  // shown panels
     refresh_chips(false);
     updates_->tick();
     if (modules_) modules_->tick();
@@ -820,7 +823,8 @@ void Shell::on_input(lv_event_t *e)
         drag_horizontal_ = false;
         const Rect &c = layout_.content;
         const bool over_strip = strip_visible() && p.y < layout_.strip.h;
-        dragging_ = !sheet_open_ && !updates_->is_open() && !(modules_ && modules_->is_open()) && !over_strip && p.y >= c.y && p.y < c.y + c.h;
+        // A panel can take horizontal swipes for itself (e.g. next step in a recipe).
+        dragging_ = !state_bool(d_.state, topics::kSwipeLock) && !sheet_open_ && !updates_->is_open() && !(modules_ && modules_->is_open()) && !over_strip && p.y >= c.y && p.y < c.y + c.h;
         return;
     }
     // RELEASED

@@ -23,6 +23,8 @@
 #define LV_FONT_MONTSERRAT_48 1
 #define LV_FONT_DEFAULT &lv_font_montserrat_20
 
+#define LV_USE_QRCODE 1
+
 #ifndef SUMMIT_SIM_SDL
 #define SUMMIT_SIM_SDL 0
 #endif

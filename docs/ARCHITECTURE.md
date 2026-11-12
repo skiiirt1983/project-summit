@@ -283,6 +283,12 @@ The state store and event bus are the public API between services, panels and th
 | `shell/current_panel` | string: panel id | shell | diagnostics, web UI |
 | `system/hardware_id` | string, e.g. "waveshare-p4-wifi6-lcd5-rev3" | boot (`app_main`) | Updates screen, web UI |
 | `system/firmware_version` | string: running app version | boot (`app_main`) | Updates screen, web UI |
+| `ui/swipe_lock` | bool: the shown panel takes horizontal swipes itself | shown panel (Recipes, while a recipe is open) | shell (no page swipe) |
+| `ui/keep_awake` | bool: keep the screen on (30 min safety timeout) | shown panel (Recipes, while a recipe is open) | power service |
+| `input/double_tap` | event: bool, double-tap on the case | IMU service (LIS2DW12) | Recipes (next step / page) |
+| `recipes/cooking` | string: title of the open recipe; empty = none | Recipes panel | glance strip ("Cooking now" chip, R5) |
+| `timers/start` | event: string "<seconds>\|<name>" | Recipes panel | timer service (R5) |
+| `time/unix` | int: unix time, once synced | time service | Recipes ("recently cooked") |
 | `storage/sd_present` | bool | storage service | Modules screen (requirements), module panels |
 | `storage/sd_free_mb` | int: free space on the SD card | storage service | Modules screen (requirements) |
 | `diag/warnings` | string: newline-separated warnings, e.g. a missing add-on; empty = none | health gate (add-on checks) | web UI diagnostics |
@@ -455,6 +461,13 @@ Decided in DECISIONS.md D-008; built in steps R1–R7 (see `docs/KICKOFF.md`). T
 - No PDF parsing on the device: the web UI converts PDFs in the browser with pdf.js (pages → JPEG, text → draft recipe, edit screen), from an upload or from `/recipes/inbox/` on the SD card. A pasted recipe URL is fetched by the device and read from its schema.org `Recipe` JSON-LD.
 - Storage: `/recipes/<id>/recipe.json` (format 1), `pages/NNN.jpg`, `photo.jpg`, `original.pdf`; `/recipes/index.json` is a rebuildable index.
 - Kitchen features: library with search/tags, step timers (glance chip, several at once), servings scaling with fractions, tick off ingredients, double-tap the case for next step/page, screen stays on while cooking (30 min safety timeout), "Cooking now" chip.
+
+### Recipes panel (library and card mode)
+
+- **Library:** recipe cards (recently cooked first), search by title, tag filter buttons, and a notice with a QR code to the web UI when `/recipes/inbox/` holds PDFs. Without a card: "Insert the SD card with your recipes".
+- **Card mode:** ingredients (left in landscape, above in portrait) with servings − / + and tap-to-tick; one big step at a time with Back / Next, and a timer button for each time found in the step.
+- While a recipe is open the panel takes horizontal swipes (left = next step, right = previous; `ui/swipe_lock`), keeps the screen on (`ui/keep_awake`) and reports `recipes/cooking`. A double-tap on the case (`input/double_tap`) is Next. Leaving the page restores normal swiping and dimming; the recipe stays open on its step.
+- The panel reads recipes through `RecipeStore` (the storage interface), given to it when it is created. Book mode (page images) is the next step.
 
 ### Storage layer
 

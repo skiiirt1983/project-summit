@@ -84,6 +84,10 @@ public:
     // Own settings only: key is relative to "panels/<id>/".
     virtual Value setting(const std::string &key) const = 0;
     virtual SetResult set_setting(const std::string &key, Value value) = 0;
+    // Panels may also publish events and state they own (e.g. timers/start, ui/keep_awake).
+    // Topics must be in ARCHITECTURE.md "State topics".
+    virtual bool publish(const std::string &topic, Value value) = 0;
+    virtual bool set_state(const std::string &key, Value value) = 0;
 };
 
 class Panel {
