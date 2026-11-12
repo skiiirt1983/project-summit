@@ -44,6 +44,7 @@ ul{margin:0;padding-left:18px}
   <button role="tab" data-tab="status" aria-selected="true">Status</button>
   <button role="tab" data-tab="wifi">Wi-Fi</button>
   <button role="tab" data-tab="firmware">Firmware</button>
+  <button role="tab" data-tab="modules">Modules</button>
   <button role="tab" data-tab="settings">Settings</button>
   <button role="tab" data-tab="diagnostics">Diagnostics</button>
 </nav>
@@ -90,6 +91,12 @@ ul{margin:0;padding-left:18px}
     <progress id="fw-upload-progress" max="100" value="0" hidden></progress>
     <div class="msg" id="fw-upload-msg"></div>
   </div>
+</section>
+
+<section id="modules">
+  <div id="mod-list"></div>
+  <p class="muted" id="mod-none" hidden>No modules in this firmware.</p>
+  <div class="msg" id="mod-msg"></div>
 </section>
 
 <section id="settings">
@@ -249,6 +256,27 @@ $("fw-upload").addEventListener("click", () => {
   xhr.onerror = () => { msg("fw-upload-msg", "Upload failed: connection lost", "err"); bar.hidden = true; $("fw-upload").disabled = false; };
   xhr.send(file);
 });
+
+// ---- modules
+loaders.modules = async () => {
+  const m = await api("/api/modules");
+  const list = $("mod-list"); list.replaceChildren();
+  for (const mod of m.modules) {
+    const card = el("div", undefined, "card"); card.dataset.module = mod.id;
+    card.append(el("h2", mod.name), el("p", mod.description, "muted"));
+    const state = mod.installed ? "Installed" + (mod.missing.length ? ". " + mod.missing[0] : "") : (mod.missing[0] || mod.requirements);
+    const st = el("p", state, (mod.missing.length ? "msg err" : "muted")); st.dataset.role = "status"; card.append(st);
+    const btn = el("button", mod.installed ? "Remove" : "Install", "btn" + (mod.installed ? "" : " primary"));
+    btn.addEventListener("click", async () => {
+      try { await api("/api/modules/" + (mod.installed ? "remove" : "install"), { method: "POST", json: { id: mod.id } });
+        msg("mod-msg", mod.installed ? "Removed. Its data on the SD card was kept." : "Installed.", "ok"); }
+      catch (err) { msg("mod-msg", err.message, "err"); }
+      loaders.modules();
+    });
+    card.append(btn); list.append(card);
+  }
+  $("mod-none").hidden = m.modules.length > 0;
+};
 
 // ---- settings (form rendered from the schema)
 let schema = null;

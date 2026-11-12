@@ -1,3 +1,22 @@
+# Next steps (handoff — read this first)
+
+Updated after every merge so a new session can continue (D-009).
+
+- **Phase 0 (steps 1–6): done and merged.** Phase 1 waits for hardware.
+- **Now: Recipe reader module (D-008), built without the board (D-009).** Work mode: merge each step when CI is green, log defaults in `docs/OPEN_QUESTIONS.md`, hardware-only items in `docs/HARDWARE_TODO.md`. Stop only for the items D-009 lists.
+
+| Step | What | Status |
+| --- | --- | --- |
+| R1 | Modules screen (device + web UI), module manifest + requirements | in progress |
+| R2 | `recipe.json` format 1: validator, scaling, fractions, step-time detection, index rebuild | todo |
+| R3 | Storage interface + local-folder fake "SD card" for host/simulator | todo |
+| R4 | Recipes panel: library, card mode, book mode, both orientations | todo |
+| R5 | Recipe timers, timer chip, "Cooking now" chip | todo |
+| R6 | Web UI import: PDF upload, pdf.js conversion, edit screen, inbox | todo |
+| R7 | Recipe URL import: JSON-LD extraction (device fetch coded, untested) | todo |
+
+How to work here: branch `recipes/stepN-...` from `main`, `bash tests/run_tests.sh`, build the simulator (`firmware/sim/README.md`), run `summit_sim --selftest` and `node tests/web/e2e.mjs`, open a PR, merge when CI is green.
+
 # Kickoff — Phase 0 (before hardware arrives)
 
 Paste this into Claude Code from the repo root:

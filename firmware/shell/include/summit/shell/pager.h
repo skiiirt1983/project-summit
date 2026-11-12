@@ -11,7 +11,9 @@ constexpr const char *kHomePanel = "home_clock";
 // Page order from the ui/page_order setting: comma-separated panel ids.
 // Home first (if registered), then listed ids that are registered, then any
 // remaining registered panels in registration order. Unknown/duplicate ids are ignored.
-std::vector<std::string> page_order(const std::vector<std::string> &registered, const std::string &setting);
+// Panels in `hidden` (those of uninstalled modules) are left out.
+std::vector<std::string> page_order(const std::vector<std::string> &registered, const std::string &setting,
+                                    const std::vector<std::string> &hidden = {});
 
 class Pager {
 public:

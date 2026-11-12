@@ -36,7 +36,7 @@ def used():
     # Update engine, Updates screen and the simulator's fake service: every topic-shaped literal.
     for path in ("services/update/src/status_topics.cpp", "services/update/esp/update_service.cpp",
                  "services/update/esp/ota_guard.cpp", "shell/src/updates_screen.cpp", "sim/fake_update.cpp",
-                 "web/src/api.cpp"):
+                 "web/src/api.cpp", "shell/src/modules_screen.cpp"):
         add(path, r'"[a-z0-9_]+(?:/[a-z0-9_]+)+"')
     return found
 

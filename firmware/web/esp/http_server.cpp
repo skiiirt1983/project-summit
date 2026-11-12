@@ -202,7 +202,7 @@ esp_err_t upload_handler(httpd_req_t *req)
 
 }  // namespace
 
-bool web_server_start(EventBus &bus, StateStore &state, Settings &settings)
+bool web_server_start(EventBus &bus, StateStore &state, Settings &settings, const ModuleManager *modules)
 {
     if (g) return true;
     esp_err_t err = esp_netif_init();
@@ -212,6 +212,7 @@ bool web_server_start(EventBus &bus, StateStore &state, Settings &settings)
     }
     g = new Server;
     g->api = std::make_unique<WebApi>(bus, state, settings, g->control, g->wifi, g->facts);
+    g->api->set_modules(modules);
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
     cfg.uri_match_fn = httpd_uri_match_wildcard;
     cfg.stack_size = 8192;

@@ -57,6 +57,7 @@ struct FakeFacts : DeviceFacts {
 static SettingsSchema schema_with_secret()
 {
     SettingsSchema s = system_settings_schema();
+    s.defs.push_back(SettingDef("modules/recipes/installed", false));
     s.defs.push_back({"printer/access_code", std::string(""), {}, "Printer access code", "From the printer's screen", true});
     return s;
 }
@@ -69,10 +70,19 @@ struct Rig {
     FakeUpdate update;
     FakeWifi wifi;
     FakeFacts facts;
+    ModuleManager modules;
     WebApi api{bus, state, settings, update, wifi, facts};
     std::vector<std::string> events;
     Rig()
     {
+        ModuleManifest m;
+        m.id = "recipes";
+        m.name = "Recipe reader";
+        m.description = "Cook from your own recipes.";
+        m.requires_.sd_card = true;
+        m.requires_.min_free_mb = 200;
+        modules.add(m);
+        api.set_modules(&modules);
         settings.load();
         state.set("system/firmware_version", std::string("0.1.0"));
         state.set("system/hardware_id", std::string("waveshare-p4-wifi6-lcd5-rev3"));
@@ -311,6 +321,28 @@ TEST(secrets_left_out_of_exports_unless_asked)
           other.wifi.pw == "wifi-secret-pw");
 }
 
+TEST(modules_list_install_remove)
+{
+    Rig r;
+    Json l(r.get("/api/modules").body);
+    const cJSON *m = cJSON_GetArrayItem(l.at("modules"), 0);
+    CHECK(std::string(cJSON_GetObjectItemCaseSensitive(m, "requirements")->valuestring) ==
+          "Needs a microSD card with 200 MB free");
+    CHECK(cJSON_IsFalse(cJSON_GetObjectItemCaseSensitive(m, "installed")));
+    Response no = r.post("/api/modules/install", R"({"id":"recipes"})");
+    CHECK(no.status == 409 && Json(no.body).s("error") == "Insert a microSD card");
+    r.state.set("storage/sd_present", true);
+    r.state.set("storage/sd_free_mb", int64_t{5000});
+    CHECK(r.post("/api/modules/install", R"({"id":"recipes"})").status == 200);
+    CHECK(std::get<bool>(r.settings.get("modules/recipes/installed")));
+    CHECK(r.post("/api/modules/install", R"({"id":"recipes"})").status == 409);
+    CHECK(r.post("/api/modules/install", R"({"id":"nope"})").status == 404);
+    CHECK(r.post("/api/modules/install", "{}").status == 400);
+    CHECK(r.post("/api/modules/remove", R"({"id":"recipes"})").status == 200);
+    CHECK(!std::get<bool>(r.settings.get("modules/recipes/installed")));
+    CHECK(r.post("/api/modules/remove", R"({"id":"recipes"})").status == 409);
+}
+
 int main()
 {
     RUN(routing_and_request_guards);
@@ -323,5 +355,6 @@ int main()
     RUN(diagnostics_lists_addon_warnings);
     RUN(import_is_validated_first_and_refused_cleanly);
     RUN(secrets_left_out_of_exports_unless_asked);
+    RUN(modules_list_install_remove);
     return report("web api");
 }

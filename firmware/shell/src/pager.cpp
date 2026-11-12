@@ -4,10 +4,12 @@
 
 namespace summit::shell {
 
-std::vector<std::string> page_order(const std::vector<std::string> &registered, const std::string &setting)
+std::vector<std::string> page_order(const std::vector<std::string> &registered, const std::string &setting,
+                                    const std::vector<std::string> &hidden)
 {
     std::vector<std::string> out;
     auto add = [&](const std::string &id) {
+        if (std::find(hidden.begin(), hidden.end(), id) != hidden.end()) return;
         if (std::find(registered.begin(), registered.end(), id) != registered.end() &&
             std::find(out.begin(), out.end(), id) == out.end())
             out.push_back(id);

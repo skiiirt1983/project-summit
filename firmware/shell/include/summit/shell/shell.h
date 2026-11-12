@@ -18,6 +18,8 @@
 #include "summit/shell/rotation.h"
 #include "summit/shell/strip_state.h"
 #include "summit/shell/updates_screen.h"
+#include "summit/shell/modules_screen.h"
+#include "summit/modules.h"
 #include "summit/state_store.h"
 
 namespace summit::shell {
@@ -48,6 +50,7 @@ public:
         Settings &settings;
         PanelRegistry &registry;
         PanelHost &host;
+        const ModuleManager *modules;  // may be null: no modules
     };
     // Rotates the physical display (device: lv_display_set_rotation; simulator:
     // new resolution). The shell re-lays out from the display's new size.
@@ -93,6 +96,8 @@ public:
     const Pager &pager() const { return *pager_; }
     const RotationController &rotation() const { return rotation_; }
     UpdatesScreen &updates() { return *updates_; }
+    ModulesScreen *modules_screen() { return modules_.get(); }
+    lv_obj_t *modules_button() const { return modules_btn_; }
 
 private:
     struct ChipUi {
@@ -119,6 +124,7 @@ private:
     void update_hide_reasons();
     void on_toast(const Value &v, bool critical);
     void rebuild_pages();
+    void on_modules_changed();
     void on_input(lv_event_t *e);
 
     static void chip_clicked_cb(lv_event_t *e);
@@ -143,6 +149,11 @@ private:
     EventBus::SubscriptionId order_sub_ = 0;
     EventBus::SubscriptionId open_sub_ = 0;
     std::unique_ptr<UpdatesScreen> updates_;
+    std::unique_ptr<ModulesScreen> modules_;
+    std::vector<EventBus::SubscriptionId> module_subs_;
+    lv_obj_t *modules_btn_ = nullptr;
+    lv_obj_t *updates_btn_ = nullptr;
+    lv_obj_t *more_box_ = nullptr;
 
     lv_obj_t *screen_ = nullptr;
     lv_obj_t *content_ = nullptr;

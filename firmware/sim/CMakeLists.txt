@@ -42,17 +42,18 @@ add_executable(summit_sim
     main.cpp demo_panels.cpp png.cpp fake_update.cpp http_sim.cpp
     ${FW}/framework/src/value.cpp ${FW}/framework/src/event_bus.cpp
     ${FW}/framework/src/state_store.cpp ${FW}/framework/src/settings.cpp
-    ${FW}/framework/src/registry.cpp ${FW}/framework/src/system_settings.cpp ${FW}/framework/src/json_writer.cpp
+    ${FW}/framework/src/registry.cpp ${FW}/framework/src/system_settings.cpp ${FW}/framework/src/json_writer.cpp ${FW}/framework/src/modules.cpp
+    ${FW}/panels/recipes/src/module.cpp
     ${FW}/shell/src/layout.cpp ${FW}/shell/src/glance.cpp ${FW}/shell/src/strip_state.cpp
     ${FW}/shell/src/rotation.cpp ${FW}/shell/src/pager.cpp ${FW}/shell/src/shell_ui.cpp
-    ${FW}/shell/src/updates_screen.cpp
+    ${FW}/shell/src/updates_screen.cpp ${FW}/shell/src/modules_screen.cpp
     ${FW}/services/update/src/version.cpp ${FW}/services/update/src/catalog.cpp
     ${FW}/services/update/src/preflight.cpp ${FW}/services/update/src/image_check.cpp
     ${FW}/services/update/src/engine.cpp ${FW}/services/update/src/health_gate.cpp
     ${FW}/services/update/src/status_topics.cpp
     ${FW}/web/src/api.cpp ${FW}/../third_party/cjson/cJSON.c)
 target_include_directories(summit_sim PRIVATE ${FW}/framework/include ${FW}/shell/include
-    ${FW}/services/update/include ${FW}/web/include ${FW}/../third_party/cjson ${FW}/../tests/host)
+    ${FW}/services/update/include ${FW}/web/include ${FW}/panels/recipes/include ${FW}/../third_party/cjson ${FW}/../tests/host)
 target_link_libraries(summit_sim PRIVATE lvgl ZLIB::ZLIB)
 target_compile_options(summit_sim PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Werror>)
 target_compile_definitions(summit_sim PRIVATE SUMMIT_WEB_PAGE="${FW}/web/page/index.html")

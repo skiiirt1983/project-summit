@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "summit/event_bus.h"
+#include "summit/modules.h"
 #include "summit/settings.h"
 #include "summit/state_store.h"
 
@@ -70,6 +71,9 @@ public:
            DeviceFacts &facts)
         : bus_(bus), state_(state), settings_(settings), update_(update), wifi_(wifi), facts_(facts) {}
 
+    // Optional: enables /api/modules.
+    void set_modules(const ModuleManager *modules) { modules_ = modules; }
+
     // Everything except the firmware upload body.
     Response handle(const Request &req);
 
@@ -99,6 +103,8 @@ private:
     Response settings_reset(const std::string &body);
     Response settings_backup();
     Response diagnostics();
+    Response modules_get();
+    Response modules_command(const std::string &cmd, const std::string &body);
 
     std::string str(const char *key) const;
 
@@ -108,6 +114,7 @@ private:
     UpdateControl &update_;
     WifiStore &wifi_;
     DeviceFacts &facts_;
+    const ModuleManager *modules_ = nullptr;
 };
 
 // Settings file format for export/import (pure; tested on the host).
