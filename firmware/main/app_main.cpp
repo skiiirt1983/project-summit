@@ -19,6 +19,7 @@
 #include "summit/sd_card.h"
 #include "summit/state_store.h"
 #include "summit/system_settings.h"
+#include "summit/timers.h"
 #include "summit/update/device.h"
 #include "summit/web/device.h"
 
@@ -84,6 +85,9 @@ extern "C" void app_main(void)
     summit::update::update_service_start({SUMMIT_HARDWARE_ID, SUMMIT_CHIP_REV_FAMILY}, bus, state, settings);
     // Config portal; reachable once Wi-Fi is up (network service, Phase 1).
     summit::web::web_server_start(bus, state, settings, &modules);
+
+    // Kitchen timers. They are ticked from the UI loop, which starts with the display BSP (Phase 1).
+    static summit::TimerService timers(bus, state);
 
     static summit::PanelHost host(registry, bus, state, settings);
     state.set("system/hardware_id", std::string(SUMMIT_HARDWARE_ID));

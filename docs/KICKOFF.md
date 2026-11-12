@@ -12,8 +12,8 @@ Updated after every merge so a new session can continue (D-009).
 | R3 | Storage interface + local-folder fake "SD card" for host/simulator | done (#9) |
 | R4a | Recipes panel: library + card mode, both orientations | done (#10) |
 | R4b | Book mode: page images (JPEG decode in the simulator), zoom, page swipe | done (#11) |
-| R5 | Recipe timers, timer chip, "Cooking now" chip | next |
-| R6 | Web UI import: PDF upload, pdf.js conversion, edit screen, inbox | todo |
+| R5 | Recipe timers, timer chip, "Cooking now" chip | done (#12) |
+| R6 | Web UI import: PDF upload, pdf.js conversion, edit screen, inbox | next |
 | R7 | Recipe URL import: JSON-LD extraction (device fetch coded, untested) | todo |
 
 How to work here: branch `recipes/stepN-...` from `main`, `bash tests/run_tests.sh`, build the simulator (`firmware/sim/README.md`), run `summit_sim --selftest` and `node tests/web/e2e.mjs`, open a PR, merge when CI is green.

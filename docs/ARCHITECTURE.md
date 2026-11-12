@@ -286,8 +286,14 @@ The state store and event bus are the public API between services, panels and th
 | `ui/swipe_lock` | bool: the shown panel takes horizontal swipes itself | shown panel (Recipes, while a recipe is open) | shell (no page swipe) |
 | `ui/keep_awake` | bool: keep the screen on (30 min safety timeout) | shown panel (Recipes, while a recipe is open) | power service |
 | `input/double_tap` | event: bool, double-tap on the case | IMU service (LIS2DW12) | Recipes (next step / page) |
-| `recipes/cooking` | string: title of the open recipe; empty = none | Recipes panel | glance strip ("Cooking now" chip, R5) |
-| `timers/start` | event: string "<seconds>\|<name>" | Recipes panel | timer service (R5) |
+| `recipes/cooking` | string: title of the open recipe; empty = none | Recipes panel | web UI, diagnostics |
+| `timers/start` | event: string "<seconds>\|<name>" | Recipes panel | timer service |
+| `timers/cancel` | event: int timer id | Recipes panel | timer service |
+| `timers/dismiss` | event: bool, stop every ringing timer | Recipes panel | timer service |
+| `timers/chip_text` | string: "12:34", "12:34 +2", "Timer done"; empty = no timers | timer service | glance strip (timer chip) |
+| `timers/list` | string: one line per timer, soonest first: "<id>\|<remaining_s>\|<0/1 ringing>\|<name>" | timer service | Recipes panel (timers bar) |
+| `timers/ringing` | bool: a finished timer is waiting to be stopped | timer service | audio service (alarm sound) |
+| `recipes/cooking_chip` | string: short recipe title while a recipe is open on another page; empty otherwise | Recipes panel | glance strip ("Cooking now" chip) |
 | `time/unix` | int: unix time, once synced | time service | Recipes ("recently cooked") |
 | `storage/sd_present` | bool | storage service | Modules screen (requirements), module panels |
 | `storage/sd_free_mb` | int: free space on the SD card | storage service | Modules screen (requirements) |
@@ -469,6 +475,13 @@ Decided in DECISIONS.md D-008; built in steps R1–R7 (see `docs/KICKOFF.md`). T
 - While a recipe is open the panel takes horizontal swipes (left = next step, right = previous; `ui/swipe_lock`), keeps the screen on (`ui/keep_awake`) and reports `recipes/cooking`. A double-tap on the case (`input/double_tap`) is Next. Leaving the page restores normal swiping and dimming; the recipe stays open on its step.
 - **Book mode:** the original pages as images, one at a time: Back / Next, swipe, or a double-tap on the case. Fit = full width in landscape (scroll down to read on) and the whole page in portrait; the Zoom button or a double-tap on the page doubles it and dragging pans. A recipe with steps and pages has "Pages" / "Steps" buttons to switch; a scan (pages only) opens straight in book mode.
 - The panel reads recipes through `RecipeStore` (the storage interface) and gets page images through an image-source function, both given to it when it is created. JPEG decoding is the platform's job: libjpeg-turbo in the simulator; the device decoder is not written yet (HARDWARE_TODO).
+
+### Kitchen timers
+
+- `firmware/services/timers`: up to 8 named timers at once (1 s to 48 h). Tapping a time in a step raises `timers/start`; the service counts down and publishes `timers/chip_text`, `timers/list` and `timers/ringing`.
+- When a timer ends it raises a critical toast ("Timer done: <name>", shown even in full-screen modes) and rings until stopped; if nobody stops it, it stops by itself after 1 minute.
+- **Glance chips** (declared in the Recipes panel's manifest): a timer chip with the soonest countdown (never dropped at narrow widths) and a "Cooking now" chip with the recipe title while a recipe is open on another page. Tapping either returns to the Recipes page.
+- The Recipes panel lists running timers above every view with Cancel, and Stop for a finished one.
 
 ### Storage layer
 
