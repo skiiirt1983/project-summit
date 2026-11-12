@@ -2,6 +2,13 @@
 
 Each entry: the question, the choice made, why. Newest first. Say if any should change.
 
+## R3 — Storage
+
+- **One storage implementation for device and host.** Choice: `PosixStorage` over a mounted folder (`/sdcard` on the device, a local folder in the simulator and tests). Why: the same code is tested on the host; only mounting is hardware-specific.
+- **The device never formats a card.** Choice: `format_if_mount_failed = false`; an unreadable card just shows as "no card". Why: formatting deletes user data.
+- **SD wiring assumptions** (slot 0 default pins, 4-bit, LDO channel 4) are guesses from the usual ESP32-P4 layout, not from the board. Listed in HARDWARE_TODO.md.
+- **Saving a recipe rebuilds the whole index.** Choice: simple and always consistent; fine for hundreds of recipes. Revisit if SD scans are slow on hardware.
+
 ## R2 — recipe.json format
 
 - **`source` shape.** D-008 lists "source" without a shape. Choice: an object `{type: pdf|url|manual, name?, url?}`. Why: room for the file name and the page address without a format bump.

@@ -456,6 +456,13 @@ Decided in DECISIONS.md D-008; built in steps R1–R7 (see `docs/KICKOFF.md`). T
 - Storage: `/recipes/<id>/recipe.json` (format 1), `pages/NNN.jpg`, `photo.jpg`, `original.pdf`; `/recipes/index.json` is a rebuildable index.
 - Kitchen features: library with search/tags, step timers (glance chip, several at once), servings scaling with fractions, tick off ingredients, double-tap the case for next step/page, screen stays on while cooking (30 min safety timeout), "Cooking now" chip.
 
+### Storage layer
+
+- `summit::Storage` (`firmware/framework/include/summit/storage.h`) is the only way code reaches the SD card: `present`, `free_mb`, `exists`, `read`, `write` (temp file + rename, parents created), `list`, `make_dir`. Paths are absolute within the card and validated (no `..`).
+- `PosixStorage` implements it over a mounted folder: `/sdcard` on the device, a local folder in the simulator and host tests (the "fake SD card").
+- `RecipeStore` (`firmware/panels/recipes`) implements the `/recipes/` layout on top: load / rebuild the index, load / save a recipe, new ids, mark cooked, list the inbox PDFs.
+- The device SD service (`firmware/services/storage`, untested on hardware) mounts the card without ever formatting it, re-checks every 3 s, and publishes `storage/sd_present` and `storage/sd_free_mb`.
+
 ### `recipe.json` format 1
 
 Code: `firmware/panels/recipes` (`recipe.h`, `quantity.h`, `step_time.h`), host-tested in `tests/host/test_recipes.cpp`.

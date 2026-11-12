@@ -8,4 +8,5 @@ Code here compiles in CI but has never run on the device. Do not treat it as wor
 | Health-gate probes (UI heartbeat, frames, touch, I2C scan, SD present) | `app_main.cpp` (unset) | Wire probes once display/touch BSP exists; unplug accelerometer and SD and confirm warnings only |
 | Web server on the device | `firmware/web/esp/http_server.cpp` | Needs Wi-Fi bring-up (esp_hosted, WPA2 setup AP + QR); open the portal from a phone |
 | Settings in NVS | `firmware/services/nvs_settings/` | Change a setting, reboot, confirm it persists; export/import/reset |
-| SD card presence / free space (`storage/sd_present`, `storage/sd_free_mb`) | not written yet (R3) | Insert/remove card; Modules screen requirement text changes |
+| SD card mount, hot-plug, free space (`storage/sd_present`, `storage/sd_free_mb`) | `firmware/services/storage/esp/sd_card.cpp` | Assumes SDMMC slot 0 on default P4 pins, 4-bit, on-chip LDO channel 4: check against the schematic. Insert/remove a FAT32 card and watch the Modules screen; confirm a card is never formatted; time reading a 300 KB page image |
+| Writes on FAT are not atomic (remove + rename) | `firmware/framework/src/storage.cpp` | Pull power while saving a recipe; the old or new file must survive and `index.json` must rebuild |

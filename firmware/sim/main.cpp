@@ -25,6 +25,8 @@
 #include "summit/settings.h"
 #include "summit/shell/shell.h"
 #include "summit/state_store.h"
+#include "summit/recipes/store.h"
+#include "summit/storage.h"
 #include "summit/system_settings.h"
 
 #if SUMMIT_SIM_SDL
@@ -88,6 +90,9 @@ struct App {
     PanelRegistry registry;
     FakeStorage storage;
     ModuleManager modules;
+    std::string sd_dir;                 // local folder standing in for the SD card
+    std::unique_ptr<PosixStorage> sd;
+    int64_t sd_free = 14200;            // simulated free space (MB)
     std::unique_ptr<Settings> settings;
     std::unique_ptr<PanelHost> host;
     std::unique_ptr<shell::Shell> shell;
@@ -99,6 +104,7 @@ void run_ms(App &app, uint32_t ms)
     const uint32_t end = g_ms + ms;
     while (g_ms < end) {
         g_ms += 4;
+        if (app.sd) publish_storage_state(*app.sd, app.state);
         app.bus.dispatch();
         if (app.updates) app.updates->tick(g_ms);
         app.shell->tick(g_ms);
@@ -545,17 +551,17 @@ void selftest(App &app)
                "module listed with requirements (%s)", ms.status_text("recipes").c_str());
         shot("15-landscape-modules");
 
-        app.state.set("storage/sd_present", false);
+        app.sd->set_present(false);
         click(ms.action_button("recipes"));
         EXPECT(ms.status_text("recipes") == "Insert a microSD card" && !has_page("recipes"),
                "install without a card explains what is missing (%s)", ms.status_text("recipes").c_str());
         shot("16-landscape-modules-missing-sd");
-        app.state.set("storage/sd_present", true);
-        app.state.set("storage/sd_free_mb", int64_t{120});
+        app.sd->set_present(true);
+        app.sd_free = 120;
         click(ms.action_button("recipes"));
         EXPECT(ms.status_text("recipes").find("200 MB needed, 120 MB free") != std::string::npos, "low space explained (%s)",
                ms.status_text("recipes").c_str());
-        app.state.set("storage/sd_free_mb", int64_t{14200});
+        app.sd_free = 14200;
         click(ms.action_button("recipes"));
         EXPECT(ms.action_text("recipes") == "Remove" && ms.status_text("recipes") == "Installed" && has_page("recipes") &&
                    pages().back() == "recipes",
@@ -565,11 +571,11 @@ void selftest(App &app)
         run_ms(app, 100);
         check_panel_inside_content(app, "recipes placeholder");
         // Card pulled later: still installed, the panel says what to do.
-        app.state.set("storage/sd_present", false);
+        app.sd->set_present(false);
         run_ms(app, 100);
         EXPECT(has_page("recipes") && current_panel(app) == "recipes", "module stays installed without the card");
         shot("17-landscape-recipes-no-sd");
-        app.state.set("storage/sd_present", true);
+        app.sd->set_present(true);
         // Remove while its page is showing: back to Home, page gone, setting off.
         app.bus.publish(shell::topics::kOpenScreen, std::string("settings/modules"));
         run_ms(app, 100);
@@ -632,6 +638,16 @@ int start_app(App &app, shell::Shell::ApplyOrientation apply)
     app.host = std::make_unique<PanelHost>(app.registry, app.bus, app.state, *app.settings);
     app.updates = std::make_unique<sim::FakeUpdateService>(app.bus, app.state, *app.settings, "0.0.1");
     sim::publish_placeholders(app.state);
+    {
+        // The "SD card": a fresh temp folder seeded with two recipes.
+        char tmpl[] = "/tmp/summit-sim-sd-XXXXXX";
+        app.sd_dir = mkdtemp(tmpl);
+        App *a = &app;
+        app.sd = std::make_unique<PosixStorage>(app.sd_dir, [a] { return a->sd_free; });
+        recipes::RecipeStore store(*app.sd);
+        sim::seed_recipes(store);
+        publish_storage_state(*app.sd, app.state);
+    }
     app.shell = std::make_unique<shell::Shell>(
         shell::Shell::Deps{app.bus, app.state, *app.settings, app.registry, *app.host, &app.modules}, std::move(apply));
     std::string err;
