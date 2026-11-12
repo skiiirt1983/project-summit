@@ -1,6 +1,6 @@
 # Recipe reader module (D-008). Pure logic here is host-tested; the LVGL panel arrives in step R4.
 idf_component_register(
-    SRCS "src/module.cpp" "src/recipe.cpp" "src/quantity.cpp" "src/step_time.cpp"
+    SRCS "src/module.cpp" "src/recipe.cpp" "src/quantity.cpp" "src/step_time.cpp" "src/store.cpp"
     INCLUDE_DIRS "include"
     REQUIRES framework
     PRIV_REQUIRES json)

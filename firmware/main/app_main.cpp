@@ -12,6 +12,7 @@
 #include "summit/recipes/module.h"
 #include "summit/registry.h"
 #include "summit/settings.h"
+#include "summit/sd_card.h"
 #include "summit/state_store.h"
 #include "summit/system_settings.h"
 #include "summit/update/device.h"
@@ -73,6 +74,8 @@ extern "C" void app_main(void)
     probes.settings_ok = r != summit::LoadResult::InvalidSchema;
     summit::update::ota_guard_start(probes, bus, state);
     summit::update::update_service_start({SUMMIT_HARDWARE_ID, SUMMIT_CHIP_REV_FAMILY}, bus, state, settings);
+    // microSD card (untested on hardware): publishes storage/sd_present, storage/sd_free_mb.
+    summit::sd_card_start(state);
     // Config portal; reachable once Wi-Fi is up (network service, Phase 1).
     summit::web::web_server_start(bus, state, settings, &modules);
 

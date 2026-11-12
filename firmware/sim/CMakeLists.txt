@@ -42,8 +42,9 @@ add_executable(summit_sim
     main.cpp demo_panels.cpp png.cpp fake_update.cpp http_sim.cpp
     ${FW}/framework/src/value.cpp ${FW}/framework/src/event_bus.cpp
     ${FW}/framework/src/state_store.cpp ${FW}/framework/src/settings.cpp
-    ${FW}/framework/src/registry.cpp ${FW}/framework/src/system_settings.cpp ${FW}/framework/src/json_writer.cpp ${FW}/framework/src/modules.cpp
-    ${FW}/panels/recipes/src/module.cpp
+    ${FW}/framework/src/registry.cpp ${FW}/framework/src/system_settings.cpp ${FW}/framework/src/json_writer.cpp ${FW}/framework/src/modules.cpp ${FW}/framework/src/storage.cpp
+    ${FW}/panels/recipes/src/module.cpp ${FW}/panels/recipes/src/recipe.cpp ${FW}/panels/recipes/src/quantity.cpp
+    ${FW}/panels/recipes/src/step_time.cpp ${FW}/panels/recipes/src/store.cpp
     ${FW}/shell/src/layout.cpp ${FW}/shell/src/glance.cpp ${FW}/shell/src/strip_state.cpp
     ${FW}/shell/src/rotation.cpp ${FW}/shell/src/pager.cpp ${FW}/shell/src/shell_ui.cpp
     ${FW}/shell/src/updates_screen.cpp ${FW}/shell/src/modules_screen.cpp

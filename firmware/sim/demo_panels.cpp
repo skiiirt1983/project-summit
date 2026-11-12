@@ -226,10 +226,27 @@ void register_demo_panels(PanelRegistry &reg)
 
 void register_demo_modules(ModuleManager &modules) { modules.add(summit::recipes::module_manifest()); }
 
+void seed_recipes(recipes::RecipeStore &store)
+{
+    using namespace recipes;
+    Recipe r;
+    std::string err;
+    parse_recipe(R"({"format":1,"title":"Pancakes","servings":4,
+      "ingredients":[{"qty":1.5,"unit":"cup","item":"flour","note":"sifted"},{"qty":2,"unit":"","item":"eggs"},
+                     {"qty":250,"unit":"ml","item":"milk"},{"qty":null,"unit":"","item":"salt","note":"to taste"}],
+      "steps":[{"text":"Whisk the flour, eggs and milk until smooth."},{"text":"Rest the batter for 30 minutes.","timer_s":1800},
+               {"text":"Fry 2-3 minutes per side until golden."}],
+      "source":{"type":"manual"},"tags":["breakfast","quick"],"created":"2026-11-12T09:00:00"})", r, &err);
+    store.save("pancakes", r);
+    parse_recipe(R"({"format":1,"title":"Tomato soup","servings":2,
+      "ingredients":[{"qty":800,"unit":"g","item":"tomatoes"},{"qty":1,"unit":"","item":"onion"},{"qty":0.5,"unit":"l","item":"stock"}],
+      "steps":[{"text":"Soften the onion for 5 minutes."},{"text":"Add tomatoes and stock; simmer 20 to 25 minutes."},{"text":"Blend until smooth."}],
+      "source":{"type":"manual"},"tags":["dinner"],"created":"2026-11-12T09:05:00"})", r, &err);
+    store.save("tomato-soup", r);
+}
+
 void publish_placeholders(StateStore &s)
 {
-    s.set("storage/sd_present", true);
-    s.set("storage/sd_free_mb", int64_t{14200});
     s.set("time/now_text", std::string("09:41"));
     s.set("time/date_text", std::string("Saturday 7 November"));
     s.set("calendar/next_text", std::string("Standup in 19 min"));
