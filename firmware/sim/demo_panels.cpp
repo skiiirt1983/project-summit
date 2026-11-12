@@ -3,6 +3,8 @@
 // chips declared in the manifest, and a single root object per panel.
 #include "demo_panels.h"
 
+#include "summit/recipes/module.h"
+
 #include <functional>
 #include <memory>
 
@@ -210,10 +212,24 @@ void register_demo_panels(PanelRegistry &reg)
         lv_obj_set_style_opa(arc, LV_OPA_TRANSP, LV_PART_KNOB);
         label(root, str(ctx, "printer/progress_text", "Idle"), t.text_m);
     }));
+
+    // Placeholder for the Recipe reader panel (real panel: step R4). Hidden until installed.
+    reg.add(std::make_unique<DemoPanel>(
+        manifest("recipes", "Recipes", {"storage/sd_present"}),
+        [](lv_obj_t *root, PanelContext &ctx, const PanelView &v) {
+            Value sd = ctx.state("storage/sd_present");
+            const bool present = std::get_if<bool>(&sd) && std::get<bool>(sd);
+            label(root, present ? "Your recipes will appear here." : "Insert the SD card with your recipes",
+                  v.tokens.text_m);
+        }));
 }
+
+void register_demo_modules(ModuleManager &modules) { modules.add(summit::recipes::module_manifest()); }
 
 void publish_placeholders(StateStore &s)
 {
+    s.set("storage/sd_present", true);
+    s.set("storage/sd_free_mb", int64_t{14200});
     s.set("time/now_text", std::string("09:41"));
     s.set("time/date_text", std::string("Saturday 7 November"));
     s.set("calendar/next_text", std::string("Standup in 19 min"));

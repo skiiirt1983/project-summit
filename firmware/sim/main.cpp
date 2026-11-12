@@ -87,6 +87,7 @@ struct App {
     StateStore state{bus};
     PanelRegistry registry;
     FakeStorage storage;
+    ModuleManager modules;
     std::unique_ptr<Settings> settings;
     std::unique_ptr<PanelHost> host;
     std::unique_ptr<shell::Shell> shell;
@@ -520,6 +521,66 @@ void selftest(App &app)
         for (int i = 0; i < 100 && app.shell->toast_showing(); ++i) run_ms(app, 200);
     }
 
+    // --- Modules screen: requirements, install adds the page, remove hides it ---
+    {
+        auto &ms = *app.shell->modules_screen();
+        auto click = [&](lv_obj_t *o) {
+            lv_area_t a;
+            lv_obj_get_coords(o, &a);
+            tap(app, (a.x1 + a.x2) / 2, (a.y1 + a.y2) / 2);
+            run_ms(app, 60);
+        };
+        auto pages = [&] { return app.shell->pager().ids(); };
+        auto has_page = [&](const char *id) {
+            for (const auto &p : pages())
+                if (p == id) return true;
+            return false;
+        };
+        EXPECT(!has_page("recipes"), "uninstalled module has no page");
+        app.shell->open_quick_settings();
+        run_ms(app, 300);
+        click(app.shell->modules_button());
+        EXPECT(ms.is_open() && !app.shell->quick_settings_open(), "Modules opens from quick settings");
+        EXPECT(ms.action_text("recipes") == "Install" && ms.status_text("recipes") == "Needs a microSD card with 200 MB free",
+               "module listed with requirements (%s)", ms.status_text("recipes").c_str());
+        shot("15-landscape-modules");
+
+        app.state.set("storage/sd_present", false);
+        click(ms.action_button("recipes"));
+        EXPECT(ms.status_text("recipes") == "Insert a microSD card" && !has_page("recipes"),
+               "install without a card explains what is missing (%s)", ms.status_text("recipes").c_str());
+        shot("16-landscape-modules-missing-sd");
+        app.state.set("storage/sd_present", true);
+        app.state.set("storage/sd_free_mb", int64_t{120});
+        click(ms.action_button("recipes"));
+        EXPECT(ms.status_text("recipes").find("200 MB needed, 120 MB free") != std::string::npos, "low space explained (%s)",
+               ms.status_text("recipes").c_str());
+        app.state.set("storage/sd_free_mb", int64_t{14200});
+        click(ms.action_button("recipes"));
+        EXPECT(ms.action_text("recipes") == "Remove" && ms.status_text("recipes") == "Installed" && has_page("recipes") &&
+                   pages().back() == "recipes",
+               "install adds the page at the end");
+        ms.close();
+        app.shell->go_to_panel("recipes", false);
+        run_ms(app, 100);
+        check_panel_inside_content(app, "recipes placeholder");
+        // Card pulled later: still installed, the panel says what to do.
+        app.state.set("storage/sd_present", false);
+        run_ms(app, 100);
+        EXPECT(has_page("recipes") && current_panel(app) == "recipes", "module stays installed without the card");
+        shot("17-landscape-recipes-no-sd");
+        app.state.set("storage/sd_present", true);
+        // Remove while its page is showing: back to Home, page gone, setting off.
+        app.bus.publish(shell::topics::kOpenScreen, std::string("settings/modules"));
+        run_ms(app, 100);
+        click(ms.action_button("recipes"));
+        EXPECT(!has_page("recipes") && current_panel(app) == "home_clock" && ms.action_text("recipes") == "Install",
+               "remove hides the page and returns to Home (%s)", current_panel(app).c_str());
+        EXPECT(std::get<bool>(app.settings->get("modules/recipes/installed")) == false, "setting cleared");
+        ms.close();
+        for (int i = 0; i < 100 && app.shell->toast_showing(); ++i) run_ms(app, 200);
+    }
+
     // --- Rotate to portrait 720x1280 (400 ms debounce, then re-layout) ---
     app.shell->go_to_panel("home_clock", false);
     app.state.set("sensor/orientation", std::string("portrait"));
@@ -563,14 +624,16 @@ int start_app(App &app, shell::Shell::ApplyOrientation apply)
 {
     sim::register_demo_panels(app.registry);
     SettingsSchema schema = system_settings_schema();
+    sim::register_demo_modules(app.modules);
     for (const auto &d : app.registry.setting_defs()) schema.defs.push_back(d);
+    for (const auto &d : app.modules.setting_defs()) schema.defs.push_back(d);
     app.settings = std::make_unique<Settings>(schema, app.storage, &app.bus);
     app.settings->load();
     app.host = std::make_unique<PanelHost>(app.registry, app.bus, app.state, *app.settings);
     app.updates = std::make_unique<sim::FakeUpdateService>(app.bus, app.state, *app.settings, "0.0.1");
     sim::publish_placeholders(app.state);
     app.shell = std::make_unique<shell::Shell>(
-        shell::Shell::Deps{app.bus, app.state, *app.settings, app.registry, *app.host}, std::move(apply));
+        shell::Shell::Deps{app.bus, app.state, *app.settings, app.registry, *app.host, &app.modules}, std::move(apply));
     std::string err;
     if (!app.shell->start(g_ms, &err)) {
         std::printf("shell start failed: %s\n", err.c_str());
@@ -672,6 +735,7 @@ int run_web(int port)
     SimWifi wifi;
     SimFacts facts;
     web::WebApi api(app.bus, app.state, *app.settings, control, wifi, facts);
+    api.set_modules(&app.modules);
     sim::HttpSim http(api, SUMMIT_WEB_PAGE);
     if (!http.listen(port)) {
         std::printf("cannot listen on 127.0.0.1:%d\n", port);

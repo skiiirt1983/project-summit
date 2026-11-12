@@ -245,10 +245,13 @@ Response WebApi::handle(const Request &req)
     if (p == "/api/settings/reset" && post) return settings_reset(req.body);
     if (p == "/api/settings/backup" && get) return settings_backup();
     if (p == "/api/diagnostics" && get) return diagnostics();
+    if (modules_ && p == "/api/modules" && get) return modules_get();
+    if (modules_ && post && (p == "/api/modules/install" || p == "/api/modules/remove"))
+        return modules_command(p.substr(13), req.body);
     static const char *known[] = {"/api/status", "/api/wifi", "/api/firmware", "/api/settings",
                                   "/api/settings/export", "/api/settings/import", "/api/settings/reset",
                                   "/api/settings/backup", "/api/settings/import/validate", "/api/settings/undo",
-                                  "/api/diagnostics"};
+                                  "/api/diagnostics", "/api/modules", "/api/modules/install", "/api/modules/remove"};
     for (const char *k : known)
         if (p == k) return error(405, "method not allowed");
     return error(404, "not found");
@@ -524,6 +527,50 @@ Response WebApi::diagnostics()
 }
 
 Response WebApi::upload_refused() { return error(403, "firmware uploads need the X-Summit-Upload: 1 header"); }
+
+static ModuleEnv module_env(StateStore &state)
+{
+    ModuleEnv e;
+    Value p = state.get("storage/sd_present"), f = state.get("storage/sd_free_mb");
+    e.sd_present = std::get_if<bool>(&p) && std::get<bool>(p);
+    e.sd_free_mb = std::get_if<int64_t>(&f) ? std::get<int64_t>(f) : 0;
+    return e;
+}
+
+Response WebApi::modules_get()
+{
+    const ModuleEnv env = module_env(state_);
+    JsonWriter w;
+    w.begin_object().key("modules").begin_array();
+    for (const ModuleManifest &m : modules_->modules()) {
+        w.begin_object().key("id").value(m.id).key("name").value(m.name).key("description").value(m.description);
+        w.key("installed").value(modules_->installed(settings_, m.id));
+        w.key("requirements").value(requirements_text(m.requires_)).key("missing").begin_array();
+        for (const auto &x : missing_requirements(m.requires_, env)) w.value(x);
+        w.end_array().end_object();
+    }
+    w.end_array().end_object();
+    return json(200, w.str());
+}
+
+Response WebApi::modules_command(const std::string &cmd, const std::string &body)
+{
+    JsonPtr j = parse(body);
+    const cJSON *id = j ? cJSON_GetObjectItemCaseSensitive(j.get(), "id") : nullptr;
+    if (!cJSON_IsString(id)) return error(400, "id required");
+    std::vector<std::string> missing;
+    ModuleResult r = cmd == "install" ? modules_->install(settings_, id->valuestring, module_env(state_), &missing)
+                                      : modules_->remove(settings_, id->valuestring);  // remove keeps the data
+    switch (r) {
+    case ModuleResult::Ok: return json(200, "{\"ok\":true}");
+    case ModuleResult::UnknownModule: return error(404, "unknown module");
+    case ModuleResult::AlreadyInstalled: return error(409, "already installed");
+    case ModuleResult::NotInstalled: return error(409, "not installed");
+    case ModuleResult::MissingRequirements: return error(409, missing.empty() ? "requirements not met" : missing.front());
+    case ModuleResult::SettingsError: break;
+    }
+    return error(500, "could not save the setting");
+}
 
 bool WebApi::upload_begin(int64_t length, Response *err)
 {

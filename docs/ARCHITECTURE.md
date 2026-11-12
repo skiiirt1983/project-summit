@@ -283,11 +283,13 @@ The state store and event bus are the public API between services, panels and th
 | `shell/current_panel` | string: panel id | shell | diagnostics, web UI |
 | `system/hardware_id` | string, e.g. "waveshare-p4-wifi6-lcd5-rev3" | boot (`app_main`) | Updates screen, web UI |
 | `system/firmware_version` | string: running app version | boot (`app_main`) | Updates screen, web UI |
+| `storage/sd_present` | bool | storage service | Modules screen (requirements), module panels |
+| `storage/sd_free_mb` | int: free space on the SD card | storage service | Modules screen (requirements) |
 | `diag/warnings` | string: newline-separated warnings, e.g. a missing add-on; empty = none | health gate (add-on checks) | web UI diagnostics |
 | `system/settings_notice` | string; empty = none | boot (`app_main`), shell (clears after reset) | shell (toast + quick settings), web UI |
 | `notify/toast` | event: string | any service or panel | shell (toast) |
 | `notify/toast_critical` | event: string | alarm, power service | shell (toast, shown even in full-screen) |
-| `ui/open_screen` | event: string screen id, e.g. "settings/updates" | shell (update chip) | shell (opens the Updates screen) |
+| `ui/open_screen` | event: string screen id: "settings/updates", "settings/modules" | shell (update chip, quick settings) | shell (opens the screen) |
 | `settings/<key>` | event: the new value | settings (on every change) | shell (`settings/ui/page_order`), update engine (`settings/update/channel`: re-check), services |
 | `settings/reset` | event: bool | settings | services, UI |
 
@@ -433,6 +435,26 @@ One panel per page, horizontal swipe. Home is always the first page; the order o
 - System chip taps: time → Home; update → Settings → Updates; rotation lock → turns the lock off; Wi-Fi and battery → quick-settings sheet.
 - Notifications (print done, update available, etc.) briefly expand the strip as a toast, then collapse. Toasts wait while the strip is hidden, except critical ones (alarm, low battery), which show immediately even in full-screen. Duplicates merge into one; queued toasts expire after 10 min.
 - Hidden during: LyricFlash full-screen visuals, ringing alarm, night/ambient clock, update progress (tap reveals it for 3 s).
+
+## Modules and Recipe reader
+
+Decided in DECISIONS.md D-008; built in steps R1–R7 (see `docs/KICKOFF.md`). This section is extended as each step lands.
+
+### Modules (v1 "installable")
+
+- v1 modules ship inside the firmware but start uninstalled. Downloadable code modules stay a v2 item (WASM).
+- A **Modules** screen on the device and in the web UI lists each module: name, icon, short description, requirements, Install / Remove.
+- Each module has a manifest (`firmware/framework/include/summit/modules.h`): id, name, icon, description, the panel it provides, and requirements (`sd_card`, `min_free_mb`). Install checks them and explains what is missing ("Insert a microSD card").
+- Install = setting `modules/<id>/installed` = true (additive key, no schema bump) and the module's panel joins the pages (after the existing ones unless `ui/page_order` lists it). Remove = hidden from pages; its data on the SD card is kept. ("Delete recipes" on removal is specified but not built until approved: it deletes user data.)
+- If the SD card is removed later the module stays installed; its panel shows "Insert the SD card with your recipes".
+- Web API: `GET /api/modules`, `POST /api/modules/install`, `POST /api/modules/remove` (`{"id": ...}`).
+
+### Recipe reader (summary of D-008)
+
+- Two modes: **card mode** (parsed recipe: ingredients + one big step at a time) and **book mode** (original PDF pages as images).
+- No PDF parsing on the device: the web UI converts PDFs in the browser with pdf.js (pages → JPEG, text → draft recipe, edit screen), from an upload or from `/recipes/inbox/` on the SD card. A pasted recipe URL is fetched by the device and read from its schema.org `Recipe` JSON-LD.
+- Storage: `/recipes/<id>/recipe.json` (format 1), `pages/NNN.jpg`, `photo.jpg`, `original.pdf`; `/recipes/index.json` is a rebuildable index.
+- Kitchen features: library with search/tags, step timers (glance chip, several at once), servings scaling with fractions, tick off ingredients, double-tap the case for next step/page, screen stays on while cooking (30 min safety timeout), "Cooking now" chip.
 
 ## "Oh nice" features
 

@@ -147,6 +147,18 @@ try {
   await page.waitForFunction(() => document.querySelector("#set-display-brightness").value === "80");
   check(true, "undo import restores the previous settings");
 
+  // Modules: install (requirements met in the simulator), then remove
+  await tab("modules");
+  await page.waitForSelector('[data-module=recipes]');
+  check((await page.textContent('[data-module=recipes] [data-role=status]')) === "Needs a microSD card with 200 MB free", "module requirements shown");
+  await page.click('[data-module=recipes] button');
+  await page.waitForFunction(() => document.querySelector('[data-module=recipes] button').textContent === "Remove");
+  check((await page.textContent('[data-module=recipes] [data-role=status]')) === "Installed", "module installed from the web UI");
+  await shot("06b-modules");
+  await page.click('[data-module=recipes] button');
+  await page.waitForFunction(() => document.querySelector('[data-module=recipes] button').textContent === "Install");
+  check((await page.textContent("#mod-msg")).includes("data on the SD card was kept"), "remove keeps data");
+
   // Diagnostics
   await tab("diagnostics");
   await page.waitForSelector("#diag-warnings li");

@@ -8,6 +8,8 @@
 #include "hardware_id.h"
 #include "nvs_settings_storage.h"
 #include "summit/event_bus.h"
+#include "summit/modules.h"
+#include "summit/recipes/module.h"
 #include "summit/registry.h"
 #include "summit/settings.h"
 #include "summit/state_store.h"
@@ -45,7 +47,11 @@ extern "C" void app_main(void)
     static summit::PanelRegistry registry;  // panels register here (later steps)
 
     summit::SettingsSchema schema = summit::system_settings_schema();
+    // Modules ship in the firmware but start uninstalled (ARCHITECTURE.md "Modules").
+    static summit::ModuleManager modules;
+    modules.add(summit::recipes::module_manifest());
     for (const auto &d : registry.setting_defs()) schema.defs.push_back(d);
+    for (const auto &d : modules.setting_defs()) schema.defs.push_back(d);
 
     static NvsSettingsStorage storage;
     static summit::Settings settings(schema, storage, &bus);
@@ -68,7 +74,7 @@ extern "C" void app_main(void)
     summit::update::ota_guard_start(probes, bus, state);
     summit::update::update_service_start({SUMMIT_HARDWARE_ID, SUMMIT_CHIP_REV_FAMILY}, bus, state, settings);
     // Config portal; reachable once Wi-Fi is up (network service, Phase 1).
-    summit::web::web_server_start(bus, state, settings);
+    summit::web::web_server_start(bus, state, settings, &modules);
 
     static summit::PanelHost host(registry, bus, state, settings);
     state.set("system/hardware_id", std::string(SUMMIT_HARDWARE_ID));

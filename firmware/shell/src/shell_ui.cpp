@@ -105,6 +105,7 @@ Shell::~Shell()
 {
     for (auto id : {toast_sub_, critical_sub_, order_sub_, open_sub_})
         if (id) d_.bus.unsubscribe(id);
+    for (auto id : module_subs_) d_.bus.unsubscribe(id);
 }
 
 void Shell::rebuild_pages()
@@ -112,8 +113,18 @@ void Shell::rebuild_pages()
     Value v = d_.settings.get("ui/page_order");
     const std::string *order = std::get_if<std::string>(&v);
     const std::string current = pager_ ? pager_->current() : std::string();
-    pager_ = std::make_unique<Pager>(page_order(d_.registry.ids(), order ? *order : std::string()));
+    std::vector<std::string> hidden;
+    if (d_.modules) hidden = d_.modules->hidden_panels(d_.settings);  // uninstalled modules
+    pager_ = std::make_unique<Pager>(page_order(d_.registry.ids(), order ? *order : std::string(), hidden));
     if (!current.empty()) pager_->go_to(current);  // stay on the same panel
+}
+
+void Shell::on_modules_changed()
+{
+    const std::string before = pager_->current();
+    rebuild_pages();
+    // The page being shown was removed: fall back to the first page.
+    if (pager_->current() != before) show_current(0);
 }
 
 bool Shell::start(uint32_t now_ms, std::string *error)
@@ -140,6 +151,14 @@ bool Shell::start(uint32_t now_ms, std::string *error)
     page_ = plain(content_);
     updates_ = std::make_unique<UpdatesScreen>(d_.bus, d_.state, d_.settings);
     updates_->build(screen_);  // above the page, below the strip (top layer)
+    if (d_.modules) {
+        modules_ = std::make_unique<ModulesScreen>(d_.bus, d_.state, d_.settings, *d_.modules);
+        modules_->build(screen_);
+        auto changed = [this](const std::string &, const Value &) { on_modules_changed(); };
+        for (const ModuleManifest &m : d_.modules->modules())
+            module_subs_.push_back(d_.bus.subscribe("settings/" + ModuleManager::installed_key(m.id), changed));
+        module_subs_.push_back(d_.bus.subscribe("settings/reset", changed));
+    }
 
     for (const GlanceChipDef &def : defs) {
         ChipUi c;
@@ -156,7 +175,12 @@ bool Shell::start(uint32_t now_ms, std::string *error)
         const std::string *s = std::get_if<std::string>(&v);
         if (s && *s == "settings/updates") {
             close_quick_settings();
+            if (modules_) modules_->close();
             updates_->open();
+        } else if (s && *s == "settings/modules" && modules_) {
+            close_quick_settings();
+            updates_->close();
+            modules_->open();
         }
     });
     order_sub_ = d_.bus.subscribe("settings/ui/page_order",
@@ -260,6 +284,27 @@ void Shell::build_quick_settings()
     lv_buttonmatrix_set_one_checked(rotation_buttons_, true);
     dnd_ = lv_switch_create(row("Do not disturb"));
 
+    // System screens (there is no settings menu yet).
+    {
+        lv_obj_t *r = row("More");
+        lv_obj_t *box = plain(r);
+        lv_obj_set_size(box, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+        lv_obj_set_flex_flow(box, LV_FLEX_FLOW_ROW);
+        auto make = [&](const char *text) {
+            lv_obj_t *b = lv_button_create(box);
+            lv_obj_set_style_bg_color(b, lv_color_hex(kChipBg), 0);
+            lv_obj_set_style_shadow_width(b, 0, 0);
+            lv_obj_t *l = lv_label_create(b);
+            lv_label_set_text(l, text);
+            lv_obj_set_style_text_color(l, lv_color_hex(kText), 0);
+            lv_obj_add_event_cb(b, sheet_event_cb, LV_EVENT_CLICKED, this);
+            return b;
+        };
+        if (d_.modules) modules_btn_ = make("Modules");
+        updates_btn_ = make("Updates");
+        more_box_ = box;
+    }
+
     // Settings notice (newer version / unreadable) with an explicit, two-tap reset.
     notice_row_ = plain(sheet_);
     lv_obj_set_width(notice_row_, lv_pct(100));
@@ -330,6 +375,13 @@ void Shell::style_strip_fonts()
     lv_obj_set_style_pad_gap(rotation_buttons_, t.space_s / 2, LV_PART_MAIN);
     lv_obj_set_size(dnd_, t.unit * 3 / 2, t.space_m + t.space_s);
     lv_obj_set_style_pad_column(notice_row_, t.space_m, 0);
+    lv_obj_set_style_pad_column(more_box_, t.space_s, 0);
+    for (lv_obj_t *b : {modules_btn_, updates_btn_}) {
+        if (!b) continue;
+        lv_obj_set_style_pad_hor(b, t.space_m, 0);
+        lv_obj_set_style_pad_ver(b, t.space_s, 0);
+        lv_obj_set_style_radius(b, t.radius, 0);
+    }
     lv_obj_set_style_pad_all(reset_btn_, t.space_s, 0);
     lv_obj_set_style_radius(reset_btn_, t.radius, 0);
 }
@@ -364,6 +416,7 @@ void Shell::apply_layout(bool morph)
                          old.orientation != layout_.orientation;
     if (changed && pager_) show_current(0);
     if (updates_) updates_->apply_layout(layout_);
+    if (modules_) modules_->apply_layout(layout_);
     fit_chip_row();
     if (morph) anim_opa(content_, RotationController::kMorphMs);
 }
@@ -526,6 +579,7 @@ void Shell::tick(uint32_t now_ms)
 
     refresh_chips(false);
     updates_->tick();
+    if (modules_) modules_->tick();
     refresh_settings_notice();
     refresh_strip_visibility();
 
@@ -735,6 +789,10 @@ void Shell::sheet_event_cb(lv_event_t *e)
             self->d_.settings.set("ui/rotation_lock", std::string(kRotationValues[i]));
             self->rotation_.set_lock(kRotationValues[i]);
         }
+    } else if (t == self->modules_btn_ && t) {
+        self->d_.bus.publish(topics::kOpenScreen, std::string("settings/modules"));
+    } else if (t == self->updates_btn_) {
+        self->d_.bus.publish(topics::kOpenScreen, std::string("settings/updates"));
     } else if (t == self->reset_btn_) {
         self->request_settings_reset();
     } else if (t == self->dnd_) {
@@ -762,7 +820,7 @@ void Shell::on_input(lv_event_t *e)
         drag_horizontal_ = false;
         const Rect &c = layout_.content;
         const bool over_strip = strip_visible() && p.y < layout_.strip.h;
-        dragging_ = !sheet_open_ && !updates_->is_open() && !over_strip && p.y >= c.y && p.y < c.y + c.h;
+        dragging_ = !sheet_open_ && !updates_->is_open() && !(modules_ && modules_->is_open()) && !over_strip && p.y >= c.y && p.y < c.y + c.h;
         return;
     }
     // RELEASED

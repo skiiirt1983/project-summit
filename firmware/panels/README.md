@@ -1,3 +1,3 @@
 # firmware/panels
 
-Panels: home_clock, calendar, weather, news, lyricflash, printer. Panels talk only to the framework.
+Panels and modules. `recipes/`: the Recipe reader module (D-008). Panels talk only to the framework.
