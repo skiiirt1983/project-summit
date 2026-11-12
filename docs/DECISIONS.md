@@ -2,6 +2,24 @@
 
 Newest first. Each entry answers a question Claude Code asked. Apply it, update ARCHITECTURE.md where noted, then continue.
 
+## D-009 — Work mode until the board arrives (2026-11-12)
+
+Paul has no hardware yet and limited time with this model. Maximise progress with minimal stops. This replaces "propose a plan and wait" in D-008.
+
+1. **Plan, then build without waiting.** Write the D-008 step plan into `docs/KICKOFF.md`, then start immediately. Merge each step yourself once CI is green, post a 2–3 line summary, and start the next step.
+2. **Build everything that can be tested without the board**, in this order:
+   1. Modules screen + module manifest/requirements (simulator + host tests).
+   2. `recipe.json` format 1: validator, quantity scaling, fraction formatting, step-time detection, index rebuild (host tests).
+   3. Storage layer behind an interface, with a host/simulator fake that uses a local folder as the "SD card".
+   4. Recipes panel: library, card mode, book mode, both orientations (simulator).
+   5. Recipe timers + glance-strip chip + "Cooking now" chip (simulator).
+   6. Web UI import: PDF upload, pdf.js conversion, edit screen, inbox conversion (browser test harness, sample PDFs in `tests/fixtures/`).
+   7. Recipe URL import: JSON-LD extraction (host tests on saved sample pages; the device-side fetch is coded but marked untested).
+3. **Questions:** if a sensible default fits ARCHITECTURE.md and DECISIONS.md, pick it, log it in `docs/OPEN_QUESTIONS.md` (question, choice made, why), and keep going. Paul reviews that file in batches.
+   **Only stop and ask** for: partition table, settings versioning rule, health gate / rollback / update catalog, licence, anything that deletes user data, or anything that can't be undone.
+4. **Hardware-only code** (real SD card driver, double-tap on the LIS2DW12, screen-on while cooking, battery behaviour): write it behind the same interfaces, never claim it works, and list each item in `docs/HARDWARE_TODO.md` with how to test it in Phase 1.
+5. **Handoff:** after every merge, update a short "Next steps" section at the top of `docs/KICKOFF.md` so a new session (possibly a different model) can pick up exactly where this one stopped.
+
 ## D-008 — First installable module: Recipe reader (2026-11-12)
 
 New feature, planned after Phase 0. Add a "Modules and Recipe reader" section to ARCHITECTURE.md from this entry, then propose a step plan (small steps, as before) and wait for Paul's go-ahead before building.
