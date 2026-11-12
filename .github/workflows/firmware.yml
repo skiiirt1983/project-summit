@@ -38,7 +38,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install build deps (SDL2 so the window mode is compiled too)
-        run: sudo apt-get update -q && sudo apt-get install -y -q ninja-build libsdl2-dev zlib1g-dev
+        run: sudo apt-get update -q && sudo apt-get install -y -q ninja-build libsdl2-dev zlib1g-dev libjpeg-turbo8-dev
       - name: Build simulator
         run: |
           cmake -S firmware/sim -B build/sim -G Ninja

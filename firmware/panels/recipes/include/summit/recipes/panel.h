@@ -1,7 +1,8 @@
 // The Recipes panel (D-008): library, card mode (ingredients + one big step), and
-// book mode (original pages; arrives in the next step). LVGL front end over
+// book mode (original pages as images). LVGL front end over
 // cook.h / store.h. Lays out with size tokens for both orientations.
 #pragma once
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -14,9 +15,13 @@ namespace summit::recipes {
 
 class RecipesPanel : public Panel {
 public:
-    enum class View { NoCard, Library, Card, PagesOnly };
+    enum class View { NoCard, Library, Card, Book };
+    // Turns a card path ("/recipes/x/pages/001.jpg") into an LVGL image source
+    // ("S:/..."); the platform also provides the JPEG decoder. Without it book mode
+    // explains that page images are unavailable.
+    using ImageSource = std::function<std::string(const std::string &card_path)>;
 
-    explicit RecipesPanel(RecipeStore &store);
+    explicit RecipesPanel(RecipeStore &store, ImageSource image_source = nullptr);
 
     const PanelManifest &manifest() const override { return manifest_; }
     bool create(PanelContext &ctx) override;
@@ -36,13 +41,17 @@ public:
     const CookSession &session() const { return session_; }
     lv_obj_t *find(int action, int index = 0) const;  // a clickable by action code
 
-    enum Action { kOpen = 1, kBack, kTag, kNext, kPrev, kMinus, kPlus, kTick, kTimer };
+    enum Action { kOpen = 1, kBack, kTag, kNext, kPrev, kMinus, kPlus, kTick, kTimer, kPages, kSteps, kZoom };
+    bool zoomed() const { return zoomed_; }
+    lv_obj_t *page_image() const { return page_img_; }
 
 private:
     void render();
     void render_library();
     void render_grid();
     void render_card();
+    void render_book();
+    void size_page_image();
     void render_message(const std::string &text, bool with_back);
     void sync_flags();
     void act(int action, int index);
@@ -53,6 +62,9 @@ private:
 
     PanelManifest manifest_;
     RecipeStore &store_;
+    ImageSource image_source_;
+    bool zoomed_ = false;
+    lv_obj_t *page_area_ = nullptr, *page_img_ = nullptr;
     PanelContext *ctx_ = nullptr;
     PanelView pv_;
     bool shown_ = false, dirty_ = false;

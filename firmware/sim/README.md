@@ -12,3 +12,5 @@ Mouse = touch: swipe pages, tap chips, swipe down / long-press the strip.
 Headless mode uses a virtual clock and a scripted pointer, so gestures go through LVGL's real input
 handling and runs are deterministic. It shows the shell's layout and behaviour on a PC only: frame rate,
 touch feel and rotation on the real panel still need the Phase 1 hardware spike.
+
+Build needs `zlib1g-dev` and `libjpeg-turbo8-dev` (recipe page images); `libsdl2-dev` is optional. The simulated SD card is a temp folder seeded from `tests/fixtures/sd` (regenerate with `tools/make_recipe_fixtures.py`).

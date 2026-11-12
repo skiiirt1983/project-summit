@@ -11,8 +11,8 @@ Updated after every merge so a new session can continue (D-009).
 | R2 | `recipe.json` format 1: validator, scaling, fractions, step-time detection, index rebuild | done (#8) |
 | R3 | Storage interface + local-folder fake "SD card" for host/simulator | done (#9) |
 | R4a | Recipes panel: library + card mode, both orientations | done (#10) |
-| R4b | Book mode: page images (JPEG decode in the simulator), zoom, page swipe | next |
-| R5 | Recipe timers, timer chip, "Cooking now" chip | todo |
+| R4b | Book mode: page images (JPEG decode in the simulator), zoom, page swipe | done (#11) |
+| R5 | Recipe timers, timer chip, "Cooking now" chip | next |
 | R6 | Web UI import: PDF upload, pdf.js conversion, edit screen, inbox | todo |
 | R7 | Recipe URL import: JSON-LD extraction (device fetch coded, untested) | todo |
 

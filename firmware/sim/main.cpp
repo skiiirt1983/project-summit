@@ -17,7 +17,9 @@
 #include "fake_update.h"
 #include "http_sim.h"
 #include "summit/web/api.h"
+#include <algorithm>
 #include <chrono>
+#include <filesystem>
 #include <thread>
 #include "png.h"
 #include "summit/event_bus.h"
@@ -155,6 +157,18 @@ void check_panel_inside_content(App &app, const char *where)
         if (o == app.shell->page() || lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN)) continue;
         lv_area_t a;
         lv_obj_get_coords(o, &a);
+        // What is drawn: the object clipped by its ancestors (scrolled content is clipped).
+        bool visible = true;
+        for (lv_obj_t *anc = lv_obj_get_parent(o); anc && anc != app.shell->page() && visible; anc = lv_obj_get_parent(anc)) {
+            lv_area_t pa;
+            lv_obj_get_coords(anc, &pa);
+            a.x1 = std::max(a.x1, pa.x1);
+            a.y1 = std::max(a.y1, pa.y1);
+            a.x2 = std::min(a.x2, pa.x2);
+            a.y2 = std::min(a.y2, pa.y2);
+            visible = a.x1 <= a.x2 && a.y1 <= a.y2;
+        }
+        if (!visible) continue;
         ++n;
         if (a.y1 < c.y || a.x1 < c.x || a.x2 >= c.x + c.w || a.y2 >= c.y + c.h) {
             if (bad++ < 3)
@@ -609,19 +623,19 @@ void selftest(App &app)
         app.shell->go_to_panel("recipes", false);
         run_ms(app, 100);
         EXPECT(rp.view() == RecipesPanel::View::Library &&
-                   (rp.visible_ids() == std::vector<std::string>{"pancakes", "tomato-soup"}),
+                   (rp.visible_ids() == std::vector<std::string>{"apple-pie", "grandmas-stew", "pancakes", "tomato-soup"}),
                "library lists the recipes on the card");
         check_panel_inside_content(app, "recipes library");
         shot("20-landscape-recipes-library");
         rp.set_search("SOUP");
         EXPECT((rp.visible_ids() == std::vector<std::string>{"tomato-soup"}), "search by title");
         rp.set_search("");
-        click(rp.find(RecipesPanel::kTag, 1));  // first tag: "breakfast"
+        click(rp.find(RecipesPanel::kTag, 2));  // tags: baking, breakfast, ...
         EXPECT((rp.visible_ids() == std::vector<std::string>{"pancakes"}), "filter by tag");
         click(rp.find(RecipesPanel::kTag, 0));
-        EXPECT(rp.visible_ids().size() == 2, "All shows everything");
+        EXPECT(rp.visible_ids().size() == 4, "All shows everything");
 
-        click(rp.find(RecipesPanel::kOpen, 0));
+        click(rp.find(RecipesPanel::kOpen, 2));
         EXPECT(rp.view() == RecipesPanel::View::Card && rp.session().recipe().title == "Pancakes", "tap opens card mode");
         EXPECT(flag("ui/swipe_lock") && flag("ui/keep_awake") &&
                    std::get<std::string>(app.state.get("recipes/cooking")) == "Pancakes",
@@ -671,6 +685,62 @@ void selftest(App &app)
                    std::get<std::string>(app.state.get("recipes/cooking")).empty(),
                "back returns to the library");
 
+        // Book mode: the original pages as images.
+        {
+            auto img_w = [&] { return rp.page_image() ? lv_obj_get_width(rp.page_image()) : 0; };
+            auto img_h = [&] { return rp.page_image() ? lv_obj_get_height(rp.page_image()) : 0; };
+            rp.open_recipe("apple-pie");
+            run_ms(app, 100);
+            EXPECT(rp.view() == RecipesPanel::View::Card && rp.session().book(), "recipe with steps and pages opens in card mode");
+            click(rp.find(RecipesPanel::kPages));
+            EXPECT(rp.view() == RecipesPanel::View::Book && rp.session().page() == 1 && rp.page_image(), "Pages shows book mode");
+            const int32_t area_w = lv_obj_get_content_width(lv_obj_get_parent(rp.page_image()));
+            EXPECT(img_w() == area_w && img_h() == area_w * 1280 / 905, "landscape: page fits the width (%dx%d in %d)",
+                   (int)img_w(), (int)img_h(), (int)area_w);
+            check_panel_inside_content(app, "book mode landscape");
+            shot("26-landscape-recipe-book");
+            // The page really decoded: the image area is not one flat colour.
+            {
+                lv_refr_now(g_hw.disp);
+                lv_area_t a;
+                lv_obj_get_coords(rp.page_image(), &a);
+                int distinct = 0;
+                uint32_t first = 0;
+                for (int32_t y = a.y1 + 10; y < a.y1 + 300 && y < g_hw.h(); y += 7)
+                    for (int32_t x = a.x1 + 10; x < a.x2 - 10; x += 11) {
+                        uint32_t px;
+                        std::memcpy(&px, &g_hw.fb[(static_cast<size_t>(y) * g_hw.w() + x) * 4], 4);
+                        if (distinct == 0) first = px, distinct = 1;
+                        else if (px != first) ++distinct;
+                    }
+                EXPECT(distinct > 50, "page image pixels are drawn (%d differing samples)", distinct);
+            }
+            click(rp.find(RecipesPanel::kNext));
+            EXPECT(rp.session().page() == 2, "Next = page 2");
+            click(rp.find(RecipesPanel::kZoom, 1));
+            EXPECT(rp.zoomed() && img_w() == 2 * area_w, "zoom doubles the page");
+            shot("27-landscape-recipe-book-zoom");
+            click(rp.find(RecipesPanel::kZoom, 1));
+            EXPECT(!rp.zoomed() && img_w() == area_w, "fit again");
+            press(app, 500, 300);
+            move_to(app, 900, 305, 8);
+            release(app);
+            run_ms(app, 100);
+            EXPECT(rp.session().page() == 1 && current_panel(app) == "recipes", "swipe right = previous page");
+            app.bus.publish("input/double_tap", true);
+            run_ms(app, 60);
+            EXPECT(rp.session().page() == 2, "double-tap on the case = next page");
+            click(rp.find(RecipesPanel::kSteps));
+            EXPECT(rp.view() == RecipesPanel::View::Card, "Steps returns to card mode");
+            rp.open_recipe("grandmas-stew");
+            run_ms(app, 100);
+            EXPECT(rp.view() == RecipesPanel::View::Book && rp.session().pages() == 3 && !rp.find(RecipesPanel::kSteps),
+                   "a scan (pages only) opens straight in book mode");
+            shot("28-landscape-recipe-scan");
+            rp.back_to_library();
+            run_ms(app, 100);
+        }
+
         // New PDFs in the inbox: notice with the web UI address.
         app.state.set("net/ip", std::string("192.168.1.42"));
         app.sd->write("/recipes/inbox/grandmas-stew.pdf", "%PDF-1.4");
@@ -688,7 +758,7 @@ void selftest(App &app)
         EXPECT(rp.view() == RecipesPanel::View::NoCard, "no card: message instead of the library");
         app.sd->set_present(true);
         run_ms(app, 100);
-        EXPECT(rp.view() == RecipesPanel::View::Library && rp.visible_ids().size() == 2, "card back: library again");
+        EXPECT(rp.view() == RecipesPanel::View::Library && rp.visible_ids().size() == 4, "card back: library again");
         app.shell->go_to_panel("home_clock", false);
         run_ms(app, 100);
     }
@@ -732,6 +802,14 @@ void selftest(App &app)
         EXPECT(rp.view() == recipes::RecipesPanel::View::Card, "card mode in portrait");
         check_panel_inside_content(app, "recipe card portrait");
         shot("25-portrait-recipe-card");
+        rp.open_recipe("grandmas-stew");
+        run_ms(app, 100);
+        lv_obj_t *area = lv_obj_get_parent(rp.page_image());
+        EXPECT(lv_obj_get_height(rp.page_image()) <= lv_obj_get_content_height(area) &&
+                   lv_obj_get_width(rp.page_image()) <= lv_obj_get_content_width(area),
+               "portrait: the whole page is visible");
+        check_panel_inside_content(app, "book mode portrait");
+        shot("29-portrait-recipe-book");
         rp.back_to_library();
         run_ms(app, 100);
         app.shell->go_to_panel("home_clock", false);
@@ -758,9 +836,16 @@ int start_app(App &app, shell::Shell::ApplyOrientation apply)
         app.sd_dir = mkdtemp(tmpl);
         App *a = &app;
         app.sd = std::make_unique<PosixStorage>(app.sd_dir, [a] { return a->sd_free; });
+        // Sample card (tests/fixtures/sd: recipes with page images) plus two seeded recipes.
+        std::error_code ec;
+        std::filesystem::copy(SUMMIT_FIXTURE_SD, app.sd_dir, std::filesystem::copy_options::recursive, ec);
         app.recipe_store = std::make_unique<recipes::RecipeStore>(*app.sd);
         sim::seed_recipes(*app.recipe_store);
-        auto panel = std::make_unique<recipes::RecipesPanel>(*app.recipe_store);
+        PosixStorage *sd = app.sd.get();
+        auto panel = std::make_unique<recipes::RecipesPanel>(*app.recipe_store, [sd](const std::string &card_path) {
+            const std::string host = sd->host_path(card_path);
+            return host.empty() || !sd->exists(card_path) ? std::string() : "S:" + host;
+        });
         app.recipes_panel = panel.get();
         app.registry.add(std::move(panel));  // last: a module's page is appended
     }

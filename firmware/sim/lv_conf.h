@@ -25,6 +25,15 @@
 
 #define LV_USE_QRCODE 1
 
+// Recipe page images: files from the "SD card" folder, decoded with libjpeg-turbo.
+// (Device: hardware JPEG decoder, see docs/HARDWARE_TODO.md.)
+#define LV_USE_FS_POSIX 1
+#define LV_FS_POSIX_LETTER 'S'
+#define LV_FS_POSIX_PATH ""
+#define LV_USE_LIBJPEG_TURBO 1
+#define LV_CACHE_DEF_SIZE (24 * 1024 * 1024)
+#define LV_IMAGE_HEADER_CACHE_DEF_CNT 16
+
 #ifndef SUMMIT_SIM_SDL
 #define SUMMIT_SIM_SDL 0
 #endif

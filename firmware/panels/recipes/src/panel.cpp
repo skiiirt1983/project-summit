@@ -51,7 +51,8 @@ intptr_t pack(int action, int index) { return (static_cast<intptr_t>(action) << 
 
 }  // namespace
 
-RecipesPanel::RecipesPanel(RecipeStore &store) : store_(store)
+RecipesPanel::RecipesPanel(RecipeStore &store, ImageSource image_source)
+    : store_(store), image_source_(std::move(image_source))
 {
     manifest_.id = kPanelId;
     manifest_.name = "Recipes";
@@ -80,7 +81,7 @@ void RecipesPanel::hide(PanelContext &ctx)
 {
     shown_ = false;
     if (root_) lv_obj_delete(root_);  // hidden panels hold no LVGL objects
-    root_ = grid_ = search_box_ = keyboard_ = nullptr;
+    root_ = grid_ = search_box_ = keyboard_ = page_area_ = page_img_ = nullptr;
     // Back to normal while another page is showing; the open recipe is kept.
     ctx.set_state("ui/swipe_lock", false);
     ctx.set_state("ui/keep_awake", false);
@@ -98,15 +99,15 @@ void RecipesPanel::on_event(PanelContext &, const std::string &topic, const Valu
 {
     if (topic == "storage/sd_present") {
         dirty_ = true;  // card inserted or removed
-    } else if (topic == "input/double_tap" && view_ == View::Card) {
-        act(kNext, 0);  // double-tap the case: next step
+    } else if (topic == "input/double_tap" && (view_ == View::Card || view_ == View::Book)) {
+        act(kNext, 0);  // double-tap the case: next step / next page
     }
 }
 
 void RecipesPanel::sync_flags()
 {
     if (!ctx_ || !shown_) return;
-    const bool cooking = view_ == View::Card || view_ == View::PagesOnly;
+    const bool cooking = view_ == View::Card || view_ == View::Book;
     ctx_->set_state("ui/swipe_lock", cooking);
     ctx_->set_state("ui/keep_awake", cooking);  // screen stays on while a recipe is open
 }
@@ -120,7 +121,8 @@ bool RecipesPanel::open_recipe(const std::string &id)
         if (e.id == id) pages = e.pages;
     session_ = CookSession(r, pages);
     open_id_ = id;
-    view_ = session_.card() ? View::Card : View::PagesOnly;
+    view_ = session_.card() ? View::Card : View::Book;  // pages only: straight to book mode
+    zoomed_ = false;
     if (ctx_) {
         ctx_->set_state("recipes/cooking", r.title);
         Value now = ctx_->state("time/unix");
@@ -193,7 +195,7 @@ void RecipesPanel::render()
 {
     if (!root_) return;
     lv_obj_clean(root_);
-    grid_ = search_box_ = keyboard_ = nullptr;
+    grid_ = search_box_ = keyboard_ = page_area_ = page_img_ = nullptr;
     const SizeTokens &t = pv_.tokens;
     lv_obj_set_style_pad_all(root_, t.space_l, 0);
     lv_obj_set_style_pad_row(root_, t.space_m, 0);
@@ -204,7 +206,7 @@ void RecipesPanel::render()
         if (view_ == View::NoCard) view_ = View::Library;
         if (view_ == View::Library) render_library();
         else if (view_ == View::Card) render_card();
-        else render_message("This recipe has pages only. Page view arrives in the next step.", true);
+        else render_book();
     }
     sync_flags();
 }
@@ -315,6 +317,7 @@ void RecipesPanel::render_card()
     button(header, LV_SYMBOL_LEFT, kBack, 0);
     lv_obj_t *title = label(header, session_.recipe().title, t.text_l);
     lv_obj_set_flex_grow(title, 1);
+    if (session_.book()) button(header, "Pages", kPages, 0);
 
     lv_obj_t *body = box(root_, landscape ? LV_FLEX_FLOW_ROW : LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_grow(body, 1);
@@ -376,6 +379,76 @@ void RecipesPanel::render_card()
     if (session_.step() + 1 >= session_.step_count()) lv_obj_add_state(next, LV_STATE_DISABLED);
 }
 
+void RecipesPanel::render_book()
+{
+    const SizeTokens &t = pv_.tokens;
+    lv_obj_t *header = box(root_, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(header, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(header, t.space_m, 0);
+    button(header, LV_SYMBOL_LEFT, kBack, 0);
+    lv_obj_t *title = label(header, session_.recipe().title, t.text_l);
+    lv_obj_set_flex_grow(title, 1);
+    if (session_.card()) button(header, "Steps", kSteps, 0);
+
+    page_area_ = box(root_, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_grow(page_area_, 1);
+    lv_obj_set_flex_align(page_area_, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_add_flag(page_area_, LV_OBJ_FLAG_SCROLLABLE);  // pan when the page is larger than the area
+    lv_obj_set_style_bg_color(page_area_, lv_color_hex(kCard), 0);
+    lv_obj_set_style_bg_opa(page_area_, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(page_area_, t.radius, 0);
+    const std::string src = image_source_ ? image_source_(RecipeStore::page_path(open_id_, session_.page())) : "";
+    if (src.empty()) {
+        label(page_area_, "Page images are not available on this build.", t.text_m, kMuted);
+    } else {
+        page_img_ = lv_image_create(page_area_);
+        lv_image_set_src(page_img_, src.c_str());
+        lv_image_set_inner_align(page_img_, LV_IMAGE_ALIGN_STRETCH);
+        lv_obj_add_flag(page_img_, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_set_user_data(page_img_, reinterpret_cast<void *>(pack(kZoom, 0)));
+        lv_obj_add_event_cb(page_img_, event_cb, LV_EVENT_DOUBLE_CLICKED, this);  // double-tap the page: zoom
+    }
+
+    lv_obj_t *nav = box(root_, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(nav, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_t *prev = button(nav, std::string(LV_SYMBOL_LEFT) + "  Back", kPrev, 0);
+    lv_obj_t *mid = box(nav, LV_FLEX_FLOW_ROW);
+    lv_obj_set_width(mid, LV_SIZE_CONTENT);
+    lv_obj_set_flex_align(mid, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(mid, t.space_m, 0);
+    lv_obj_t *count = label(mid, "Page " + std::to_string(session_.page()) + " of " + std::to_string(session_.pages()),
+                            t.text_m, kMuted);
+    lv_obj_set_width(count, LV_SIZE_CONTENT);
+    button(mid, zoomed_ ? LV_SYMBOL_MINUS "  Fit" : LV_SYMBOL_PLUS "  Zoom", kZoom, 1);
+    lv_obj_t *next = button(nav, "Next  " LV_SYMBOL_RIGHT, kNext, 0, true);
+    for (lv_obj_t *b : {prev, next}) lv_obj_set_style_pad_ver(b, t.space_m, 0);
+    if (session_.page() <= 1) lv_obj_add_state(prev, LV_STATE_DISABLED);
+    if (session_.page() >= session_.pages()) lv_obj_add_state(next, LV_STATE_DISABLED);
+    size_page_image();
+}
+
+// Fit: the whole page in portrait, the full width in landscape (scroll down to read
+// on). Zoom: twice that, pan by dragging.
+void RecipesPanel::size_page_image()
+{
+    if (!page_img_) return;
+    lv_image_header_t h;
+    if (lv_image_decoder_get_info(lv_image_get_src(page_img_), &h) != LV_RESULT_OK || h.w == 0 || h.h == 0) return;
+    lv_obj_update_layout(root_);
+    const int32_t aw = lv_obj_get_content_width(page_area_), ah = lv_obj_get_content_height(page_area_);
+    int32_t w = aw, hh = static_cast<int32_t>(static_cast<int64_t>(aw) * h.h / h.w);
+    if (pv_.orientation == kPortrait && hh > ah) {  // whole page visible
+        hh = ah;
+        w = static_cast<int32_t>(static_cast<int64_t>(ah) * h.w / h.h);
+    }
+    if (zoomed_) {
+        w *= 2;
+        hh *= 2;
+    }
+    lv_obj_set_size(page_img_, w, hh);
+    lv_obj_scroll_to(page_area_, 0, 0, LV_ANIM_OFF);
+}
+
 void RecipesPanel::act(int action, int index)
 {
     switch (action) {
@@ -384,8 +457,26 @@ void RecipesPanel::act(int action, int index)
         break;
     case kBack: back_to_library(); break;
     case kTag: set_tag(index == 0 || static_cast<size_t>(index) > tags_.size() ? "" : tags_[index - 1]); break;
-    case kNext: dirty_ = session_.next_step() || dirty_; break;
-    case kPrev: dirty_ = session_.prev_step() || dirty_; break;
+    case kNext:
+        dirty_ = (view_ == View::Book ? session_.next_page() : session_.next_step()) || dirty_;
+        if (view_ == View::Book && dirty_) zoomed_ = false;
+        break;
+    case kPrev:
+        dirty_ = (view_ == View::Book ? session_.prev_page() : session_.prev_step()) || dirty_;
+        if (view_ == View::Book && dirty_) zoomed_ = false;
+        break;
+    case kPages:
+        if (session_.book()) view_ = View::Book;
+        dirty_ = true;
+        break;
+    case kSteps:
+        if (session_.card()) view_ = View::Card;
+        dirty_ = true;
+        break;
+    case kZoom:
+        zoomed_ = !zoomed_;
+        dirty_ = true;
+        break;
     case kMinus: dirty_ = session_.change_servings(-1) || dirty_; break;
     case kPlus: dirty_ = session_.change_servings(+1) || dirty_; break;
     case kTick:
@@ -434,7 +525,8 @@ void RecipesPanel::search_cb(lv_event_t *e)
 void RecipesPanel::gesture_cb(lv_event_t *e)
 {
     auto *self = static_cast<RecipesPanel *>(lv_event_get_user_data(e));
-    if (self->view_ != View::Card) return;
+    if (self->view_ != View::Card && self->view_ != View::Book) return;
+    if (self->view_ == View::Book && self->zoomed_) return;  // dragging pans a zoomed page
     const lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_active());
     if (dir == LV_DIR_LEFT) self->act(kNext, 0);
     if (dir == LV_DIR_RIGHT) self->act(kPrev, 0);

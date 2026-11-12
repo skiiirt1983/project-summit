@@ -37,6 +37,8 @@ if(SUMMIT_SIM_SDL)
 endif()
 
 find_package(ZLIB REQUIRED)
+find_package(JPEG REQUIRED)  # libjpeg-turbo: recipe page images
+target_link_libraries(lvgl PUBLIC JPEG::JPEG)
 
 add_executable(summit_sim
     main.cpp demo_panels.cpp png.cpp fake_update.cpp http_sim.cpp
@@ -58,4 +60,5 @@ target_include_directories(summit_sim PRIVATE ${FW}/framework/include ${FW}/shel
     ${FW}/services/update/include ${FW}/web/include ${FW}/panels/recipes/include ${FW}/../third_party/cjson ${FW}/../tests/host)
 target_link_libraries(summit_sim PRIVATE lvgl ZLIB::ZLIB)
 target_compile_options(summit_sim PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Werror>)
-target_compile_definitions(summit_sim PRIVATE SUMMIT_WEB_PAGE="${FW}/web/page/index.html")
+target_compile_definitions(summit_sim PRIVATE SUMMIT_WEB_PAGE="${FW}/web/page/index.html"
+    SUMMIT_FIXTURE_SD="${FW}/../tests/fixtures/sd")
