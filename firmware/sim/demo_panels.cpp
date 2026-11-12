@@ -212,16 +212,6 @@ void register_demo_panels(PanelRegistry &reg)
         lv_obj_set_style_opa(arc, LV_OPA_TRANSP, LV_PART_KNOB);
         label(root, str(ctx, "printer/progress_text", "Idle"), t.text_m);
     }));
-
-    // Placeholder for the Recipe reader panel (real panel: step R4). Hidden until installed.
-    reg.add(std::make_unique<DemoPanel>(
-        manifest("recipes", "Recipes", {"storage/sd_present"}),
-        [](lv_obj_t *root, PanelContext &ctx, const PanelView &v) {
-            Value sd = ctx.state("storage/sd_present");
-            const bool present = std::get_if<bool>(&sd) && std::get<bool>(sd);
-            label(root, present ? "Your recipes will appear here." : "Insert the SD card with your recipes",
-                  v.tokens.text_m);
-        }));
 }
 
 void register_demo_modules(ModuleManager &modules) { modules.add(summit::recipes::module_manifest()); }

@@ -2,6 +2,16 @@
 
 Each entry: the question, the choice made, why. Newest first. Say if any should change.
 
+## R4 — Recipes panel
+
+- **Swipes inside a recipe.** D-008 wants swipe = next page/step, but a horizontal swipe also changes pages in the shell. Choice: while a recipe is open the panel takes horizontal swipes (`ui/swipe_lock`); you leave with the Back button or the time chip (Home). In the library, swipes change pages as usual.
+- **Panels and storage (hard rule 2).** Choice: the panel gets a `RecipeStore` (over the `Storage` interface in the framework) when it is created; it never touches the SD driver. `PanelContext` gained `publish` and `set_state` so panels can raise events and own state.
+- **Thumbnails in the library.** Choice: none yet (text cards). Decoding full 1280 px pages for a grid would be slow on the device; plan: the web converter also writes a small `thumb.jpg` (R6) and the grid shows it.
+- **Timer request format.** Choice: event `timers/start` = `"<seconds>|<name>"`, name = "<recipe>: Step N of M". The timer service arrives in R5.
+- **Search keyboard.** Choice: LVGL's on-screen keyboard appears when the search box is tapped.
+- **"Recently cooked"** is recorded only when the clock is synced (`time/unix`).
+- **Fixed while building R4:** removing a module while its page was showing left the panel un-hidden (crash on the next page change). The shell now hides every shown panel.
+
 ## R3 — Storage
 
 - **One storage implementation for device and host.** Choice: `PosixStorage` over a mounted folder (`/sdcard` on the device, a local folder in the simulator and tests). Why: the same code is tested on the host; only mounting is hardware-specific.

@@ -112,8 +112,8 @@ std::vector<GlanceChipDef> PanelRegistry::glance_chips() const
 
 class PanelHost::Context : public PanelContext {
 public:
-    Context(std::string id, StateStore &state, Settings &settings)
-        : id_(std::move(id)), state_(state), settings_(settings) {}
+    Context(std::string id, EventBus &bus, StateStore &state, Settings &settings)
+        : id_(std::move(id)), bus_(bus), state_(state), settings_(settings) {}
     Value state(const std::string &key) const override { return state_.get(key); }
     Value setting(const std::string &key) const override
     {
@@ -124,8 +124,12 @@ public:
         return settings_.set(panel_setting_key(id_, key), std::move(value));
     }
 
+    bool publish(const std::string &topic, Value value) override { return bus_.publish(topic, std::move(value)); }
+    bool set_state(const std::string &key, Value value) override { return state_.set(key, std::move(value)); }
+
 private:
     std::string id_;
+    EventBus &bus_;
     StateStore &state_;
     Settings &settings_;
 };
@@ -148,7 +152,7 @@ PanelHost::Slot *PanelHost::slot(const std::string &id)
     if (!p) return nullptr;
     Slot &s = slots_[id];
     s.panel = p;
-    s.ctx = std::make_unique<Context>(id, state_, settings_);
+    s.ctx = std::make_unique<Context>(id, bus_, state_, settings_);
     return &s;
 }
 

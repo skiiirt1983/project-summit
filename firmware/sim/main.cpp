@@ -25,6 +25,7 @@
 #include "summit/settings.h"
 #include "summit/shell/shell.h"
 #include "summit/state_store.h"
+#include "summit/recipes/panel.h"
 #include "summit/recipes/store.h"
 #include "summit/storage.h"
 #include "summit/system_settings.h"
@@ -93,6 +94,8 @@ struct App {
     std::string sd_dir;                 // local folder standing in for the SD card
     std::unique_ptr<PosixStorage> sd;
     int64_t sd_free = 14200;            // simulated free space (MB)
+    std::unique_ptr<recipes::RecipeStore> recipe_store;
+    recipes::RecipesPanel *recipes_panel = nullptr;  // owned by the registry
     std::unique_ptr<Settings> settings;
     std::unique_ptr<PanelHost> host;
     std::unique_ptr<shell::Shell> shell;
@@ -587,6 +590,109 @@ void selftest(App &app)
         for (int i = 0; i < 100 && app.shell->toast_showing(); ++i) run_ms(app, 200);
     }
 
+    // --- Recipes panel: library, search/tags, card mode ---
+    {
+        using recipes::RecipesPanel;
+        RecipesPanel &rp = *app.recipes_panel;
+        auto click = [&](lv_obj_t *o) {
+            EXPECT(o != nullptr, "control exists");
+            if (!o) return;
+            lv_obj_scroll_to_view_recursive(o, LV_ANIM_OFF);
+            lv_area_t a;
+            lv_obj_get_coords(o, &a);
+            tap(app, (a.x1 + a.x2) / 2, (a.y1 + a.y2) / 2);
+            run_ms(app, 60);
+        };
+        auto flag = [&](const char *k) { Value v = app.state.get(k); return std::get_if<bool>(&v) && std::get<bool>(v); };
+        EXPECT(app.modules.install(*app.settings, "recipes", {true, 14200}) == ModuleResult::Ok, "module installed");
+        run_ms(app, 50);
+        app.shell->go_to_panel("recipes", false);
+        run_ms(app, 100);
+        EXPECT(rp.view() == RecipesPanel::View::Library &&
+                   (rp.visible_ids() == std::vector<std::string>{"pancakes", "tomato-soup"}),
+               "library lists the recipes on the card");
+        check_panel_inside_content(app, "recipes library");
+        shot("20-landscape-recipes-library");
+        rp.set_search("SOUP");
+        EXPECT((rp.visible_ids() == std::vector<std::string>{"tomato-soup"}), "search by title");
+        rp.set_search("");
+        click(rp.find(RecipesPanel::kTag, 1));  // first tag: "breakfast"
+        EXPECT((rp.visible_ids() == std::vector<std::string>{"pancakes"}), "filter by tag");
+        click(rp.find(RecipesPanel::kTag, 0));
+        EXPECT(rp.visible_ids().size() == 2, "All shows everything");
+
+        click(rp.find(RecipesPanel::kOpen, 0));
+        EXPECT(rp.view() == RecipesPanel::View::Card && rp.session().recipe().title == "Pancakes", "tap opens card mode");
+        EXPECT(flag("ui/swipe_lock") && flag("ui/keep_awake") &&
+                   std::get<std::string>(app.state.get("recipes/cooking")) == "Pancakes",
+               "open recipe: swipes stay in the recipe, screen kept awake, cooking flagged");
+        check_panel_inside_content(app, "recipe card landscape");
+        shot("21-landscape-recipe-card");
+        click(rp.find(RecipesPanel::kPlus));
+        click(rp.find(RecipesPanel::kPlus));
+        EXPECT(rp.session().servings() == 6 && rp.session().ingredient_text(0) == "2 1/4 cup flour, sifted",
+               "servings + scales quantities (%s)", rp.session().ingredient_text(0).c_str());
+        click(rp.find(RecipesPanel::kTick, 1));
+        EXPECT(rp.session().ticked(1), "tap ticks an ingredient");
+        click(rp.find(RecipesPanel::kNext));
+        EXPECT(rp.session().step() == 1, "Next goes to step 2");
+        std::string timer;
+        auto tsub = app.bus.subscribe("timers/start", [&](const std::string &, const Value &v) { timer = std::get<std::string>(v); });
+        click(rp.find(RecipesPanel::kTimer, 0));
+        EXPECT(timer == "1800|Pancakes: Step 2 of 3", "tap a time requests a timer (%s)", timer.c_str());
+        app.bus.unsubscribe(tsub);
+        shot("22-landscape-recipe-step-timer");
+        press(app, 1100, 420);  // swipe left on the step: next step, not next page
+        move_to(app, 700, 425, 8);
+        release(app);
+        run_ms(app, 100);
+        EXPECT(rp.session().step() == 2 && current_panel(app) == "recipes", "swipe left = next step, page unchanged");
+        press(app, 700, 420);
+        move_to(app, 1100, 425, 8);
+        release(app);
+        run_ms(app, 100);
+        EXPECT(rp.session().step() == 1, "swipe right = previous step");
+        app.bus.publish("input/double_tap", true);  // double-tap on the case
+        run_ms(app, 60);
+        EXPECT(rp.session().step() == 2, "double-tap = next step");
+
+        // Another page: normal swiping and dimming again; the recipe stays open.
+        app.shell->go_to_panel("home_clock", false);
+        run_ms(app, 100);
+        EXPECT(!flag("ui/swipe_lock") && !flag("ui/keep_awake") &&
+                   std::get<std::string>(app.state.get("recipes/cooking")) == "Pancakes",
+               "leaving the page restores swipes and idle dim; still cooking");
+        app.shell->go_to_panel("recipes", false);
+        run_ms(app, 100);
+        EXPECT(rp.view() == RecipesPanel::View::Card && rp.session().step() == 2 && rp.session().ticked(1),
+               "coming back resumes the same step");
+        click(rp.find(RecipesPanel::kBack));
+        EXPECT(rp.view() == RecipesPanel::View::Library && !flag("ui/swipe_lock") &&
+                   std::get<std::string>(app.state.get("recipes/cooking")).empty(),
+               "back returns to the library");
+
+        // New PDFs in the inbox: notice with the web UI address.
+        app.state.set("net/ip", std::string("192.168.1.42"));
+        app.sd->write("/recipes/inbox/grandmas-stew.pdf", "%PDF-1.4");
+        app.sd->write("/recipes/inbox/scan0001.pdf", "%PDF-1.4");
+        app.shell->go_to_panel("home_clock", false);
+        app.shell->go_to_panel("recipes", false);
+        run_ms(app, 100);
+        EXPECT(app.recipe_store->inbox().size() == 2, "inbox PDFs found");
+        check_panel_inside_content(app, "recipes library with inbox notice");
+        shot("23-landscape-recipes-inbox");
+
+        // Card pulled / re-inserted.
+        app.sd->set_present(false);
+        run_ms(app, 100);
+        EXPECT(rp.view() == RecipesPanel::View::NoCard, "no card: message instead of the library");
+        app.sd->set_present(true);
+        run_ms(app, 100);
+        EXPECT(rp.view() == RecipesPanel::View::Library && rp.visible_ids().size() == 2, "card back: library again");
+        app.shell->go_to_panel("home_clock", false);
+        run_ms(app, 100);
+    }
+
     // --- Rotate to portrait 720x1280 (400 ms debounce, then re-layout) ---
     app.shell->go_to_panel("home_clock", false);
     app.state.set("sensor/orientation", std::string("portrait"));
@@ -614,6 +720,23 @@ void selftest(App &app)
         check_panel_inside_content(app, id);
         shot(std::string("08-portrait-") + id);
     }
+    {
+        // Recipes in portrait: library, then card mode (ingredients above, step below).
+        recipes::RecipesPanel &rp = *app.recipes_panel;
+        app.shell->go_to_panel("recipes", false);
+        run_ms(app, 100);
+        check_panel_inside_content(app, "recipes library portrait");
+        shot("24-portrait-recipes-library");
+        rp.open_recipe("tomato-soup");
+        run_ms(app, 100);
+        EXPECT(rp.view() == recipes::RecipesPanel::View::Card, "card mode in portrait");
+        check_panel_inside_content(app, "recipe card portrait");
+        shot("25-portrait-recipe-card");
+        rp.back_to_library();
+        run_ms(app, 100);
+        app.shell->go_to_panel("home_clock", false);
+        run_ms(app, 100);
+    }
     app.shell->updates().open();
     run_ms(app, 100);
     shot("14-portrait-updates");
@@ -629,6 +752,18 @@ void selftest(App &app)
 int start_app(App &app, shell::Shell::ApplyOrientation apply)
 {
     sim::register_demo_panels(app.registry);
+    {
+        // The "SD card": a fresh temp folder seeded with sample recipes.
+        char tmpl[] = "/tmp/summit-sim-sd-XXXXXX";
+        app.sd_dir = mkdtemp(tmpl);
+        App *a = &app;
+        app.sd = std::make_unique<PosixStorage>(app.sd_dir, [a] { return a->sd_free; });
+        app.recipe_store = std::make_unique<recipes::RecipeStore>(*app.sd);
+        sim::seed_recipes(*app.recipe_store);
+        auto panel = std::make_unique<recipes::RecipesPanel>(*app.recipe_store);
+        app.recipes_panel = panel.get();
+        app.registry.add(std::move(panel));  // last: a module's page is appended
+    }
     SettingsSchema schema = system_settings_schema();
     sim::register_demo_modules(app.modules);
     for (const auto &d : app.registry.setting_defs()) schema.defs.push_back(d);
@@ -638,16 +773,7 @@ int start_app(App &app, shell::Shell::ApplyOrientation apply)
     app.host = std::make_unique<PanelHost>(app.registry, app.bus, app.state, *app.settings);
     app.updates = std::make_unique<sim::FakeUpdateService>(app.bus, app.state, *app.settings, "0.0.1");
     sim::publish_placeholders(app.state);
-    {
-        // The "SD card": a fresh temp folder seeded with two recipes.
-        char tmpl[] = "/tmp/summit-sim-sd-XXXXXX";
-        app.sd_dir = mkdtemp(tmpl);
-        App *a = &app;
-        app.sd = std::make_unique<PosixStorage>(app.sd_dir, [a] { return a->sd_free; });
-        recipes::RecipeStore store(*app.sd);
-        sim::seed_recipes(store);
-        publish_storage_state(*app.sd, app.state);
-    }
+    publish_storage_state(*app.sd, app.state);
     app.shell = std::make_unique<shell::Shell>(
         shell::Shell::Deps{app.bus, app.state, *app.settings, app.registry, *app.host, &app.modules}, std::move(apply));
     std::string err;

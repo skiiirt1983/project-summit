@@ -2,6 +2,7 @@
 #include <vector>
 
 #include "check.h"
+#include "summit/recipes/cook.h"
 #include "summit/recipes/quantity.h"
 #include "summit/recipes/recipe.h"
 #include "summit/recipes/step_time.h"
@@ -170,6 +171,53 @@ TEST(index_rebuild_from_folders)
         CHECK(!parse_index(bad, back) && back.empty());
 }
 
+TEST(library_search_and_tags)
+{
+    std::vector<IndexEntry> lib(3);
+    lib[0].id = "a"; lib[0].title = "Apple Pie"; lib[0].tags = {"dessert", "baking"};
+    lib[1].id = "b"; lib[1].title = "Pancakes"; lib[1].tags = {"breakfast"};
+    lib[2].id = "c"; lib[2].title = "Pineapple cake"; lib[2].tags = {"dessert"};
+    CHECK((all_tags(lib) == std::vector<std::string>{"baking", "breakfast", "dessert"}));
+    CHECK(filter_library(lib, "", "").size() == 3);
+    auto r = filter_library(lib, "APPLE", "");
+    CHECK(r.size() == 2 && r[0].id == "a" && r[1].id == "c");  // order kept
+    CHECK(filter_library(lib, "apple", "baking").size() == 1);
+    CHECK(filter_library(lib, "", "dessert").size() == 2 && filter_library(lib, "zzz", "").empty());
+}
+
+TEST(cook_session)
+{
+    Recipe r;
+    std::string err;
+    parse_recipe(kPancakes, r, &err);
+    CookSession s(r, 2);
+    CHECK(s.card() && s.book() && s.servings() == 4 && s.can_scale());
+    CHECK(s.ingredient_text(0) == "1 1/2 cup flour, sifted");
+    CHECK(s.change_servings(+2) && s.servings() == 6 && s.ingredient_text(0) == "2 1/4 cup flour, sifted");
+    for (int i = 0; i < 10; ++i) s.change_servings(-1);
+    CHECK(s.servings() == 1 && !s.change_servings(-1) && s.ingredient_text(1) == "1/2 eggs");
+    s.toggle(1);
+    CHECK(s.ticked(1) && !s.ticked(0));
+    s.toggle(1);
+    CHECK(!s.ticked(1));
+
+    CHECK(s.step_label() == "Step 1 of 3" && !s.prev_step() && s.step_times().empty());
+    CHECK(s.next_step() && s.step_times().size() == 1 && s.step_times()[0].seconds == 1800);
+    CHECK(s.next_step() && s.step_times()[0].seconds == 120 && !s.next_step() && s.step_label() == "Step 3 of 3");
+    CHECK(s.page() == 1 && !s.prev_page() && s.next_page() && !s.next_page() && s.page() == 2);
+
+    // A step with a timer but no time in its text still offers the timer.
+    Recipe t;
+    parse_recipe(R"({"format":1,"title":"x","ingredients":[{"item":"a"}],"steps":[{"text":"Wait.","timer_s":300}]})", t, &err);
+    CookSession ts(t, 0);
+    CHECK(ts.step_times().size() == 1 && ts.step_times()[0].seconds == 300 && !ts.can_scale() && !ts.change_servings(1) &&
+          !ts.book());
+    // Scan-only recipe: no card.
+    Recipe scan;
+    parse_recipe(R"({"format":1,"title":"scan"})", scan, &err);
+    CHECK(!CookSession(scan, 3).card() && CookSession(scan, 3).step_label().empty());
+}
+
 int main()
 {
     RUN(recipe_parse_and_round_trip);
@@ -179,5 +227,7 @@ int main()
     RUN(step_time_detection);
     RUN(recipe_ids);
     RUN(index_rebuild_from_folders);
+    RUN(library_search_and_tags);
+    RUN(cook_session);
     return report("recipes");
 }
