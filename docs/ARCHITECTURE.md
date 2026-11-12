@@ -456,6 +456,35 @@ Decided in DECISIONS.md D-008; built in steps R1–R7 (see `docs/KICKOFF.md`). T
 - Storage: `/recipes/<id>/recipe.json` (format 1), `pages/NNN.jpg`, `photo.jpg`, `original.pdf`; `/recipes/index.json` is a rebuildable index.
 - Kitchen features: library with search/tags, step timers (glance chip, several at once), servings scaling with fractions, tick off ingredients, double-tap the case for next step/page, screen stays on while cooking (30 min safety timeout), "Cooking now" chip.
 
+### `recipe.json` format 1
+
+Code: `firmware/panels/recipes` (`recipe.h`, `quantity.h`, `step_time.h`), host-tested in `tests/host/test_recipes.cpp`.
+
+```json
+{
+  "format": 1,
+  "title": "Pancakes",
+  "servings": 4,
+  "ingredients": [
+    {"qty": 1.5, "unit": "cup", "item": "flour", "note": "sifted"},
+    {"qty": null, "unit": "", "item": "salt", "note": "to taste"}
+  ],
+  "steps": [{"text": "Rest the batter for 30 minutes.", "timer_s": 1800}],
+  "source": {"type": "pdf", "name": "pancakes.pdf"},
+  "tags": ["breakfast"],
+  "created": "2026-11-12T09:00:00",
+  "cooked": 1765000000
+}
+```
+
+- `format` and `title` are required. Unknown fields are ignored; a `format` above 1 is refused ("newer format"). Limits: 300 ingredients / steps / tags, 4000 characters per text.
+- `qty` is a number or null; ingredients without a number are never scaled. `source.type` is `pdf`, `url` or `manual`. `cooked` (unix time, optional) is when the recipe was last opened for cooking.
+- Card mode exists when there is at least one ingredient and one step. Book mode exists when the folder has `pages/`.
+- Recipe ids (folder names): lowercase letters, digits and `-`, up to 48 characters, made from the title; `inbox` is reserved.
+- **Scaling:** quantity × (wanted servings ÷ recipe servings). Non-metric quantities show as fractions (halves, thirds, quarters, eighths when within 0.02, e.g. `1 1/2 cup`); metric units (g, kg, mg, ml, cl, dl, l) show decimals (`375 ml`, `1.25 kg`).
+- **Step times:** found in the step text for tap-to-start timers: `60 minutes`, `25–30 minutes` (range → lower bound), `10 to 12 min`, `1 hour 30 minutes`, `1 1/2 hours`, `30-minute`, `45 sec`. Numbers without a time unit (350 degrees, 3 eggs) are ignored.
+- **Index** `/recipes/index.json`: `{format: 1, recipes: [{id, title, tags, has_card, has_pages, has_photo, pages, cooked}]}`, recently cooked first, then by title. If it is missing or corrupt it is rebuilt from the folders; folders with a bad name or unreadable `recipe.json` are skipped and reported.
+
 ## "Oh nice" features
 
 | Feature | Trigger | What happens |

@@ -2,6 +2,14 @@
 
 Each entry: the question, the choice made, why. Newest first. Say if any should change.
 
+## R2 — recipe.json format
+
+- **`source` shape.** D-008 lists "source" without a shape. Choice: an object `{type: pdf|url|manual, name?, url?}`. Why: room for the file name and the page address without a format bump.
+- **"Recently cooked first" needs a timestamp.** Choice: optional `cooked` (unix time) in `recipe.json`, copied into the index. Why: survives an index rebuild.
+- **Metric quantities.** Choice: grams/millilitres etc. show decimals (`375 ml`, `1.25 kg`), not fractions; everything else snaps to halves, thirds, quarters, eighths within 0.02. Why: "187 1/2 g" reads wrong.
+- **Time ranges.** Choice: lower bound ("25–30 minutes" → 25 min), as in D-008's example.
+- **Invalid recipes.** Choice: any invalid field refuses the whole `recipe.json` (it is skipped in the library and reported), rather than loading it partly.
+
 ## R1 — Modules
 
 - **D-007 item 4 (web UI pairing lock) is still in DECISIONS.md, but Paul said in chat (2026-11-08) it was pasted by mistake and to remove it.** Choice: not built; ARCHITECTURE.md says "no login". Please delete D-007.4 or confirm you want it after all.

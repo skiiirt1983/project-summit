@@ -7,9 +7,9 @@ Updated after every merge so a new session can continue (D-009).
 
 | Step | What | Status |
 | --- | --- | --- |
-| R1 | Modules screen (device + web UI), module manifest + requirements | in progress |
-| R2 | `recipe.json` format 1: validator, scaling, fractions, step-time detection, index rebuild | todo |
-| R3 | Storage interface + local-folder fake "SD card" for host/simulator | todo |
+| R1 | Modules screen (device + web UI), module manifest + requirements | done (#7) |
+| R2 | `recipe.json` format 1: validator, scaling, fractions, step-time detection, index rebuild | done (#8) |
+| R3 | Storage interface + local-folder fake "SD card" for host/simulator | next |
 | R4 | Recipes panel: library, card mode, book mode, both orientations | todo |
 | R5 | Recipe timers, timer chip, "Cooking now" chip | todo |
 | R6 | Web UI import: PDF upload, pdf.js conversion, edit screen, inbox | todo |
