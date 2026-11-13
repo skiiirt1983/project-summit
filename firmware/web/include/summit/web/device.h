@@ -5,7 +5,11 @@
 #include "summit/modules.h"
 #include "summit/settings.h"
 #include "summit/state_store.h"
+#include "summit/storage.h"
+#include "summit/web/api.h"
 
 namespace summit::web {
-bool web_server_start(EventBus &bus, StateStore &state, Settings &settings, const ModuleManager *modules = nullptr);
+// extension: extra endpoints (e.g. recipes); storage: for responses that stream a card file.
+bool web_server_start(EventBus &bus, StateStore &state, Settings &settings, const ModuleManager *modules = nullptr,
+                      ApiExtension *extension = nullptr, Storage *storage = nullptr);
 }

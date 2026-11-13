@@ -97,6 +97,7 @@ struct Server {
     NvsWifi wifi;
     EspFacts facts;
     std::unique_ptr<WebApi> api;
+    Storage *storage = nullptr;
 };
 Server *g = nullptr;
 
@@ -114,6 +115,7 @@ const char *status_line(int code)
     case 413: return "413 Payload Too Large";
     case 415: return "415 Unsupported Media Type";
     case 422: return "422 Unprocessable Entity";
+    case 507: return "507 Insufficient Storage";
     default: return "500 Internal Server Error";
     }
 }
@@ -150,6 +152,8 @@ esp_err_t page(httpd_req_t *req)
                            index_html_gz_end - index_html_gz_start);
 }
 
+esp_err_t module_upload_handler(httpd_req_t *req);
+
 esp_err_t api_handler(httpd_req_t *req)
 {
     Request r;
@@ -161,6 +165,7 @@ esp_err_t api_handler(httpd_req_t *req)
         r.path.resize(q);
     }
     r.content_type = header(req, "Content-Type");
+    if (req->method == HTTP_POST && header(req, "X-Summit-Upload") == "1") return module_upload_handler(req);
     if (req->method == HTTP_POST) {
         if (req->content_len > static_cast<size_t>(WebApi::kMaxJsonBody)) {
             return send(req, g->api->handle({"POST", r.path, r.content_type, std::string(WebApi::kMaxJsonBody + 1, ' ')}));
@@ -174,7 +179,45 @@ esp_err_t api_handler(httpd_req_t *req)
             got += static_cast<size_t>(n);
         }
     }
-    return send(req, g->api->handle(r));
+    Response resp = g->api->handle(r);
+    if (resp.storage_path.empty()) return send(req, resp);
+    // Stream a file from the SD card in chunks.
+    if (!g->storage || g->storage->size(resp.storage_path) < 0) return send(req, json_error(404, "not found"));
+    httpd_resp_set_type(req, resp.content_type.c_str());
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    std::string part;
+    for (int64_t off = 0;; off += static_cast<int64_t>(part.size())) {
+        if (!g->storage->read_chunk(resp.storage_path, off, 8192, part)) return ESP_FAIL;
+        if (part.empty()) break;
+        if (httpd_resp_send_chunk(req, part.data(), static_cast<ssize_t>(part.size())) != ESP_OK) return ESP_FAIL;
+    }
+    return httpd_resp_send_chunk(req, nullptr, 0);
+}
+
+// Streamed uploads to module endpoints (recipe pages, photos, PDFs).
+esp_err_t module_upload_handler(httpd_req_t *req)
+{
+    Request r;
+    r.method = "POST";
+    r.path = req->uri;
+    size_t q = r.path.find('?');
+    if (q != std::string::npos) {
+        r.query = r.path.substr(q + 1);
+        r.path.resize(q);
+    }
+    Response err;
+    std::unique_ptr<UploadSink> sink = g->api->open_upload(r, static_cast<int64_t>(req->content_len), err);
+    static char buf[4096];
+    size_t left = req->content_len;
+    bool ok = sink != nullptr;
+    while (left > 0) {  // drain the body even when refused, so the browser gets the answer
+        int n = httpd_req_recv(req, buf, left < sizeof buf ? left : sizeof buf);
+        if (n == HTTPD_SOCK_ERR_TIMEOUT) continue;
+        if (n <= 0) return ESP_FAIL;  // sink destroyed: nothing half-written is kept
+        left -= static_cast<size_t>(n);
+        if (ok) ok = sink->chunk(reinterpret_cast<const uint8_t *>(buf), static_cast<size_t>(n));
+    }
+    return send(req, sink ? sink->finish() : err);
 }
 
 esp_err_t upload_handler(httpd_req_t *req)
@@ -202,7 +245,8 @@ esp_err_t upload_handler(httpd_req_t *req)
 
 }  // namespace
 
-bool web_server_start(EventBus &bus, StateStore &state, Settings &settings, const ModuleManager *modules)
+bool web_server_start(EventBus &bus, StateStore &state, Settings &settings, const ModuleManager *modules,
+                      ApiExtension *extension, Storage *storage)
 {
     if (g) return true;
     esp_err_t err = esp_netif_init();
@@ -213,6 +257,8 @@ bool web_server_start(EventBus &bus, StateStore &state, Settings &settings, cons
     g = new Server;
     g->api = std::make_unique<WebApi>(bus, state, settings, g->control, g->wifi, g->facts);
     g->api->set_modules(modules);
+    if (extension) g->api->add_extension(extension);
+    g->storage = storage;
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
     cfg.uri_match_fn = httpd_uri_match_wildcard;
     cfg.stack_size = 8192;

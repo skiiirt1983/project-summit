@@ -103,11 +103,19 @@ void HttpSim::serve(int fd)
     std::string query = target.find('?') == std::string::npos ? "" : target.substr(target.find('?') + 1);
     std::string body = buf.substr(header_end + 4);
 
-    if (method == "GET" && (path == "/" || path == "/index.html")) {
-        std::ifstream f(page_path_, std::ios::binary);
+    // Static files of the web UI: the page, its modules and the vendored pdf.js.
+    if (method == "GET" && path.compare(0, 5, "/api/") != 0) {
+        std::string rel = path == "/" ? "/index.html" : path;
         Response r;
-        r.content_type = "text/html; charset=utf-8";
-        r.body.assign(std::istreambuf_iterator<char>(f), {});
+        if (rel.find("..") != std::string::npos) {
+            r.status = 404;
+        } else {
+            std::ifstream f(page_path_ + rel, std::ios::binary);
+            if (!f) r.status = 404;
+            else r.body.assign(std::istreambuf_iterator<char>(f), {});
+        }
+        const bool js = rel.size() > 4 && rel.compare(rel.size() - 4, 4, ".mjs") == 0;
+        r.content_type = r.status == 404 ? "text/plain" : js ? "text/javascript" : "text/html; charset=utf-8";
         respond(fd, r);
         return;
     }
@@ -139,6 +147,26 @@ void HttpSim::serve(int fd)
         respond(fd, api_.upload_finish());
         return;
     }
+    if (method == "POST" && upload_hdr == "1") {
+        // Streamed upload to a module endpoint (recipe pages, photos, PDFs).
+        summit::web::Request ureq("POST", path, content_type, "", query);
+        Response err;
+        auto sink = api_.open_upload(ureq, length, err);
+        int64_t got = 0;
+        bool ok = sink != nullptr;
+        auto feed = [&](const char *p, size_t n) {
+            if (ok) ok = sink->chunk(reinterpret_cast<const uint8_t *>(p), n);
+            got += static_cast<int64_t>(n);
+        };
+        feed(body.data(), body.size());
+        while (got < length) {  // drain the body even when refused, so the client gets the answer
+            ssize_t n = ::recv(fd, chunk, sizeof chunk, 0);
+            if (n <= 0) return;
+            feed(chunk, static_cast<size_t>(n));
+        }
+        respond(fd, sink ? sink->finish() : err);
+        return;
+    }
     while (static_cast<int64_t>(body.size()) < length && length <= summit::web::WebApi::kMaxJsonBody + 1) {
         ssize_t n = ::recv(fd, chunk, sizeof chunk, 0);
         if (n <= 0) break;
@@ -150,7 +178,26 @@ void HttpSim::serve(int fd)
     req.query = query;
     req.content_type = content_type;
     req.body = body;
-    respond(fd, api_.handle(req));
+    Response resp = api_.handle(req);
+    if (!resp.storage_path.empty()) {
+        // Stream a file from the "SD card".
+        const int64_t size = storage_ ? storage_->size(resp.storage_path) : -1;
+        if (size < 0) {
+            respond(fd, summit::web::json_error(404, "not found"));
+            return;
+        }
+        std::ostringstream h;
+        h << "HTTP/1.1 200 X\r\nContent-Type: " << resp.content_type << "\r\nContent-Length: " << size
+          << "\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n";
+        send_all(fd, h.str());
+        std::string part;
+        for (int64_t off = 0; off < size; off += static_cast<int64_t>(part.size())) {
+            if (!storage_->read_chunk(resp.storage_path, off, 64 * 1024, part) || part.empty()) break;
+            send_all(fd, part);
+        }
+        return;
+    }
+    respond(fd, resp);
 }
 
 }  // namespace sim

@@ -4,6 +4,7 @@
 #pragma once
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -21,6 +22,15 @@ struct DirEntry {
 // characters, at most 255 bytes. "/" is the card root.
 bool valid_storage_path(const std::string &path);
 
+// A file being written in pieces (uploads). Nothing appears under the final name
+// until commit(); destroying the writer without commit() discards it.
+class StorageWriter {
+public:
+    virtual ~StorageWriter() = default;
+    virtual bool write(const uint8_t *data, size_t len) = 0;
+    virtual bool commit() = 0;
+};
+
 class Storage {
 public:
     virtual ~Storage() = default;
@@ -32,6 +42,12 @@ public:
     virtual bool write(const std::string &path, const std::string &data) = 0;
     virtual bool list(const std::string &dir, std::vector<DirEntry> &out) = 0;  // sorted by name
     virtual bool make_dir(const std::string &dir) = 0;                          // with parents
+    // Streaming: large files never sit in RAM as a whole.
+    virtual std::unique_ptr<StorageWriter> begin_write(const std::string &path) = 0;
+    virtual int64_t size(const std::string &path) = 0;  // -1 if not a file
+    virtual bool read_chunk(const std::string &path, int64_t offset, size_t max_bytes, std::string &out) = 0;
+    // Renames a file within the card (parents of `to` created). Fails if `to` exists.
+    virtual bool move(const std::string &from, const std::string &to) = 0;
 };
 
 // Storage on a mounted POSIX file system: a local folder on the host / simulator,
@@ -49,6 +65,10 @@ public:
     bool write(const std::string &path, const std::string &data) override;
     bool list(const std::string &dir, std::vector<DirEntry> &out) override;
     bool make_dir(const std::string &dir) override;
+    std::unique_ptr<StorageWriter> begin_write(const std::string &path) override;
+    int64_t size(const std::string &path) override;
+    bool read_chunk(const std::string &path, int64_t offset, size_t max_bytes, std::string &out) override;
+    bool move(const std::string &from, const std::string &to) override;
     // Host file name for a card path ("" if invalid), e.g. for LVGL's file system driver.
     std::string host_path(const std::string &path) const;
 

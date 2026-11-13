@@ -17,3 +17,4 @@ Code here compiles in CI but has never run on the device. Do not treat it as wor
 | Pinch to zoom | not written (multi-touch gestures) | Pinch on a page with two fingers; compare with the Zoom button |
 | Timer ringing sound (`timers/ringing`) | service sets the flag; no audio service yet | Let a timer end on battery with the screen dimmed: it must ring through the speaker and wake the screen |
 | UI loop on the device (bus dispatch, `TimerService::tick`, shell tick) | not written: starts with the display BSP | Timers count down and fire on the device |
+| Recipe uploads/downloads over Wi-Fi (streamed to/from the SD card) | `firmware/web/esp/http_server.cpp`, `firmware/panels/recipes/src/web_api.cpp` | Import a 10-page PDF from a phone; time it; pull the card mid-upload and check nothing half-written remains |

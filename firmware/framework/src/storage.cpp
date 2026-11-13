@@ -144,6 +144,93 @@ bool PosixStorage::list(const std::string &dir, std::vector<DirEntry> &out)
     return true;
 }
 
+namespace {
+
+class PosixWriter : public StorageWriter {
+public:
+    PosixWriter(std::string final_path, std::string tmp_path, FILE *f)
+        : final_(std::move(final_path)), tmp_(std::move(tmp_path)), f_(f) {}
+    ~PosixWriter() override
+    {
+        if (f_) {
+            fclose(f_);
+            ::remove(tmp_.c_str());
+        }
+    }
+    bool write(const uint8_t *data, size_t len) override
+    {
+        if (!f_ || failed_) return false;
+        failed_ = len != 0 && fwrite(data, 1, len, f_) != len;
+        return !failed_;
+    }
+    bool commit() override
+    {
+        if (!f_) return false;
+        const bool ok = !failed_ && fflush(f_) == 0;
+        fclose(f_);
+        f_ = nullptr;
+        if (ok) {
+            ::remove(final_.c_str());  // FAT can't rename over an existing file
+            if (rename(tmp_.c_str(), final_.c_str()) == 0) return true;
+        }
+        ::remove(tmp_.c_str());
+        return false;
+    }
+
+private:
+    std::string final_, tmp_;
+    FILE *f_;
+    bool failed_ = false;
+};
+
+}  // namespace
+
+std::unique_ptr<StorageWriter> PosixStorage::begin_write(const std::string &path)
+{
+    const std::string p = host_path(path);
+    if (!present() || p.empty() || path == "/") return nullptr;
+    if (!make_dir(path.substr(0, std::max<size_t>(1, path.rfind('/'))))) return nullptr;
+    const std::string tmp = p + ".tmp";
+    FILE *f = fopen(tmp.c_str(), "wb");
+    if (!f) return nullptr;
+    return std::make_unique<PosixWriter>(p, tmp, f);
+}
+
+int64_t PosixStorage::size(const std::string &path)
+{
+    struct stat st;
+    const std::string p = host_path(path);
+    if (!present() || p.empty() || stat(p.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) return -1;
+    return static_cast<int64_t>(st.st_size);
+}
+
+bool PosixStorage::read_chunk(const std::string &path, int64_t offset, size_t max_bytes, std::string &out)
+{
+    const std::string p = host_path(path);
+    if (!present() || p.empty() || offset < 0) return false;
+    FILE *f = fopen(p.c_str(), "rb");
+    if (!f) return false;
+    std::string data(max_bytes, '\0');
+    size_t n = 0;
+    const bool ok = fseek(f, static_cast<long>(offset), SEEK_SET) == 0;
+    if (ok && max_bytes) n = fread(&data[0], 1, max_bytes, f);
+    fclose(f);
+    if (!ok) return false;
+    data.resize(n);
+    out = std::move(data);
+    return true;
+}
+
+bool PosixStorage::move(const std::string &from, const std::string &to)
+{
+    const std::string a = host_path(from), b = host_path(to);
+    struct stat st;
+    if (!present() || a.empty() || b.empty() || stat(a.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) return false;
+    if (stat(b.c_str(), &st) == 0) return false;  // never overwrite
+    if (!make_dir(to.substr(0, std::max<size_t>(1, to.rfind('/'))))) return false;
+    return rename(a.c_str(), b.c_str()) == 0;
+}
+
 void publish_storage_state(Storage &storage, StateStore &state)
 {
     const bool present = storage.present();

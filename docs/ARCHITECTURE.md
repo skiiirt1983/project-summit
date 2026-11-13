@@ -476,6 +476,22 @@ Decided in DECISIONS.md D-008; built in steps R1–R7 (see `docs/KICKOFF.md`). T
 - **Book mode:** the original pages as images, one at a time: Back / Next, swipe, or a double-tap on the case. Fit = full width in landscape (scroll down to read on) and the whole page in portrait; the Zoom button or a double-tap on the page doubles it and dragging pans. A recipe with steps and pages has "Pages" / "Steps" buttons to switch; a scan (pages only) opens straight in book mode.
 - The panel reads recipes through `RecipeStore` (the storage interface) and gets page images through an image-source function, both given to it when it is created. JPEG decoding is the platform's job: libjpeg-turbo in the simulator; the device decoder is not written yet (HARDWARE_TODO).
 
+### Recipe web API (for import in the browser)
+
+Provided by the Recipe reader as an extension of the web API (`firmware/panels/recipes/src/web_api.cpp`, host-tested). Nothing here deletes a recipe.
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/recipes` | library index, inbox PDF names, folders that could not be read |
+| `GET /api/recipes/get?id=` | a recipe's `recipe.json` |
+| `POST /api/recipes/save` | `{"id"?, "recipe": {...}}`: validated with the device's parser; a new id is made from the title when `id` is absent |
+| `POST /api/recipes/file?id=&name=` | streamed upload (header `X-Summit-Upload: 1`) of `pages/NNN.jpg` (1–200), `photo.jpg`, `thumb.jpg`, `original.pdf`; images up to 2 MB, PDFs up to 32 MB; nothing is kept from an incomplete upload |
+| `GET /api/recipes/file?id=&name=` | those files back, streamed from the card |
+| `GET /api/recipes/inbox?name=` | a PDF waiting in `/recipes/inbox/` |
+| `POST /api/recipes/inbox/done` | `{"name", "id"}`: moves the inbox PDF into the recipe as `original.pdf` (kept for re-conversion) |
+
+Large bodies are streamed in both directions (`StorageWriter`, `read_chunk`), never held whole in RAM. Without a card every endpoint answers 409 "Insert a microSD card".
+
 ### Kitchen timers
 
 - `firmware/services/timers`: up to 8 named timers at once (1 s to 48 h). Tapping a time in a step raises `timers/start`; the service counts down and publishes `timers/chip_text`, `timers/list` and `timers/ringing`.
@@ -485,7 +501,7 @@ Decided in DECISIONS.md D-008; built in steps R1–R7 (see `docs/KICKOFF.md`). T
 
 ### Storage layer
 
-- `summit::Storage` (`firmware/framework/include/summit/storage.h`) is the only way code reaches the SD card: `present`, `free_mb`, `exists`, `read`, `write` (temp file + rename, parents created), `list`, `make_dir`. Paths are absolute within the card and validated (no `..`).
+- `summit::Storage` (`firmware/framework/include/summit/storage.h`) is the only way code reaches the SD card: `present`, `free_mb`, `exists`, `read`, `write` (temp file + rename, parents created), `list`, `make_dir`, streaming `begin_write` / `read_chunk`, `size`, and `move` (never overwrites). There is no delete. Paths are absolute within the card and validated (no `..`).
 - `PosixStorage` implements it over a mounted folder: `/sdcard` on the device, a local folder in the simulator and host tests (the "fake SD card").
 - `RecipeStore` (`firmware/panels/recipes`) implements the `/recipes/` layout on top: load / rebuild the index, load / save a recipe, new ids, mark cooked, list the inbox PDFs.
 - The device SD service (`firmware/services/storage`, untested on hardware) mounts the card without ever formatting it, re-checks every 3 s, and publishes `storage/sd_present` and `storage/sd_free_mb`.
