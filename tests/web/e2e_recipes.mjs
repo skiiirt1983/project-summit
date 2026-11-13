@@ -136,6 +136,41 @@ try {
   check((await page.textContent("#rec-url-msg")).includes("https://"), "local address refused");
   await shot("13-recipes-url-import");
 
+  // 7. Edit a saved recipe: same id, text replaced, source/photo/timers kept.
+  const getRecipe = async (id) => (await page.request.get(base + "/api/recipes/get?id=" + id)).json();
+  await page.click('#rec-list button[data-edit="classic-banana-bread"]');
+  await page.waitForSelector("#rec-edit:not([hidden])");
+  check((await page.textContent("#rec-edit-title")) === "Edit recipe" && (await page.inputValue("#rec-title")) === "Classic Banana Bread", "edit form filled from the saved recipe");
+  const stepsBefore = (await page.inputValue("#rec-steps")).split("\n");
+  await page.fill("#rec-title", "Banana bread (ours)");
+  await page.fill("#rec-tags", "baking, family");
+  await page.fill("#rec-steps", [...stepsBefore, "Cool before slicing."].join("\n"));
+  await shot("14-recipes-edit");
+  await page.click("#rec-save");
+  await page.waitForSelector("#rec-edit", { state: "hidden" });
+  const after = await getRecipe("classic-banana-bread");
+  check(after.title === "Banana bread (ours)" && after.steps.length === stepsBefore.length + 1 && after.tags.join() === "baking,family", "edit saved under the same id");
+  check(after.source.type === "url", "source kept");
+  const again = (await library()).recipes.find((r) => r.id === "classic-banana-bread");
+  check(again && again.title === "Banana bread (ours)" && again.has_photo, "library shows the new title; photo kept");
+  const pan = await getRecipe("pancakes");
+  if (pan.title) {
+    await page.click('#rec-list button[data-edit="pancakes"]');
+    await page.waitForSelector("#rec-edit:not([hidden])");
+    await page.fill("#rec-tags", "breakfast");
+    await page.click("#rec-save");
+    await page.waitForSelector("#rec-edit", { state: "hidden" });
+    const pan2 = await getRecipe("pancakes");
+    check(pan2.steps[1].timer_s === 1800 && pan2.created === pan.created && pan2.tags.join() === "breakfast", "unchanged step keeps its timer");
+  } else check(false, "seeded pancakes recipe missing");
+  // An empty title is refused in the form.
+  await page.click('#rec-list button[data-edit="pancakes"]');
+  await page.waitForSelector("#rec-edit:not([hidden])");
+  await page.fill("#rec-title", " ");
+  await page.click("#rec-save");
+  check((await page.textContent("#rec-save-msg")) === "Give the recipe a title.", "empty title refused");
+  await page.click("#rec-cancel");
+
   // 5. Not a PDF.
   await page.setInputFiles("#rec-file", { name: "notes.pdf", mimeType: "application/pdf", buffer: Buffer.from("this is not a pdf") });
   await page.waitForSelector("#rec-msg.err", { timeout: 30000 });

@@ -17,11 +17,12 @@ Updated after every merge so a new session can continue (D-009).
 | R6b | Web UI import page: pdf.js conversion, text parser, edit screen, inbox conversion, sample PDFs, browser test | done (#14) |
 | R7 | Recipe URL import: JSON-LD extraction (device fetch coded, untested) | done (#15) |
 | D-010 | "Delete recipes" button with count confirm (device + web UI); web UI lock withdrawn | done (#16) |
+| F1 | Edit a saved recipe in the web UI (also covers fixing URL imports) | done (#17) |
 
 **All planned Recipe reader steps (R1–R7) are built for the simulator.** What is left, in suggested order:
 
 1. Nothing is waiting on Paul: D-010 answered the open items (R1-R3 defaults accepted). Defaults for R4-R7 are in `docs/OPEN_QUESTIONS.md` for review when convenient.
-2. Small follow-ups that need no hardware: library thumbnails on the device (`thumb.jpg`), editing a saved recipe in the web UI, an edit screen for URL imports, saving timers across restarts.
+2. Small follow-ups that need no hardware: library thumbnails on the device (`thumb.jpg`), saving timers across restarts.
 3. Phase 1 on the board: everything in `docs/HARDWARE_TODO.md` (display/touch BSP and UI loop first; then SD card, Wi-Fi, JPEG decoder, double-tap, audio).
 
 How to work here: branch `recipes/stepN-...` from `main`, `bash tests/run_tests.sh`, build the simulator (`firmware/sim/README.md`), run `summit_sim --selftest`, `node tests/web/e2e.mjs` and `node tests/web/e2e_recipes.mjs`, open a PR, merge when CI is green.

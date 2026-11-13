@@ -146,6 +146,18 @@ export function buildRecipe({ title, servings, tags, ingredientsText, stepsText,
   return recipe;
 }
 
+// Editing a saved recipe: the form replaces title, servings, tags, ingredients and steps.
+// Everything else (source, created, fields this page does not know) is kept, and a step
+// whose text is unchanged keeps its timer.
+export function applyEdit(original, form) {
+  const edited = buildRecipe({ ...form, source: original.source });
+  const timers = new Map((original.steps || []).filter((s) => s.timer_s).map((s) => [s.text.trim(), s.timer_s]));
+  const out = { ...original, title: edited.title, ingredients: edited.ingredients, tags: edited.tags,
+    steps: edited.steps.map((s) => (timers.has(s.text) ? { text: s.text, timer_s: timers.get(s.text) } : s)) };
+  if (edited.servings) out.servings = edited.servings; else delete out.servings;
+  return out;
+}
+
 export function ingredientToLine(g) {
   const frac = (q) => {
     const whole = Math.floor(q), rest = q - whole;
