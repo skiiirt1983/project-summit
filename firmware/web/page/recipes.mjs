@@ -1,5 +1,5 @@
 // Recipes tab: library list, PDF import (converted in the browser with pdf.js), inbox.
-import { buildRecipe, ingredientToLine, itemsToLines, parseRecipeText } from "/recipe_import.mjs";
+import { applyEdit, buildRecipe, ingredientToLine, itemsToLines, parseRecipeText } from "/recipe_import.mjs";
 
 const { $, el, api, msg, loaders } = window.summit;
 const PAGE_LONG_SIDE = 1280;   // book-mode pages are sized for the device screen
@@ -57,6 +57,43 @@ function fillDraft(i) {
   $("rec-steps").value = d.steps.map((s) => s.text).join("\n");
 }
 
+// Edit a recipe that is already on the device (text only; its pages and photo stay as they are).
+async function startEdit(id) {
+  msg("rec-msg", "");
+  let recipe;
+  try { recipe = await api("/api/recipes/get?id=" + encodeURIComponent(id)); }
+  catch (err) { msg("rec-msg", "Could not open this recipe: " + err.message, "err"); return; }
+  job = { edit: { id, original: recipe }, pages: [] };
+  $("rec-edit-title").textContent = "Edit recipe";
+  $("rec-note").textContent = "Change the text and save. Pages and the photo are not changed. A step keeps its timer unless you change that step.";
+  $("rec-pick-row").hidden = true;
+  $("rec-pages").replaceChildren();
+  $("rec-title").value = recipe.title || "";
+  $("rec-servings").value = recipe.servings || "";
+  $("rec-tags").value = (recipe.tags || []).join(", ");
+  $("rec-ingredients").value = (recipe.ingredients || []).map(ingredientToLine).join("\n");
+  $("rec-steps").value = (recipe.steps || []).map((s) => s.text).join("\n");
+  $("rec-save").textContent = "Save changes";
+  msg("rec-save-msg", "");
+  $("rec-edit").hidden = false;
+  $("rec-edit").scrollIntoView({ block: "nearest" });
+}
+
+async function saveEdit() {
+  const recipe = applyEdit(job.edit.original, {
+    title: $("rec-title").value, servings: $("rec-servings").value, tags: $("rec-tags").value,
+    ingredientsText: $("rec-ingredients").value, stepsText: $("rec-steps").value });
+  if (!recipe.title) { msg("rec-save-msg", "Give the recipe a title.", "err"); return; }
+  $("rec-save").disabled = true;
+  try {
+    await api("/api/recipes/save", { method: "POST", json: { id: job.edit.id, recipe } });
+    msg("rec-msg", "Saved changes to \u201C" + recipe.title + "\u201D.", "ok");
+    $("rec-edit").hidden = true; job = null;
+    await loaders.recipes();
+  } catch (err) { msg("rec-save-msg", "Could not save: " + err.message, "err"); }
+  $("rec-save").disabled = false;
+}
+
 async function startImport(bytes, name, fromInbox) {
   $("rec-edit").hidden = true;
   try {
@@ -74,6 +111,8 @@ async function startImport(bytes, name, fromInbox) {
   const strip = $("rec-pages"); strip.replaceChildren();
   job.pages.slice(0, 8).forEach((b) => { const img = el("img"); img.src = URL.createObjectURL(b); img.alt = "page"; strip.append(img); });
   $("rec-tags").value = "";
+  $("rec-edit-title").textContent = "Check the recipe";
+  $("rec-save").textContent = "Save to device";
   fillDraft(0);
   msg("rec-save-msg", "");
   $("rec-edit").hidden = false;
@@ -87,6 +126,7 @@ async function putFile(id, name, blob) {
 }
 
 async function save() {
+  if (job.edit) return saveEdit();
   const recipe = buildRecipe({
     title: $("rec-title").value, servings: $("rec-servings").value, tags: $("rec-tags").value,
     ingredientsText: $("rec-ingredients").value, stepsText: $("rec-steps").value, source: { type: "pdf", name: job.name } });
@@ -138,6 +178,9 @@ loaders.recipes = async () => {
     if (r.pages > 0) { const img = el("img"); img.alt = ""; img.src = "/api/recipes/file?id=" + encodeURIComponent(r.id) + "&name=thumb.jpg"; img.onerror = () => img.remove(); pic.append(img); }
     const kinds = [r.has_card ? "steps" : "", r.pages ? r.pages + (r.pages === 1 ? " page" : " pages") : ""].filter(Boolean).join(" + ");
     tr.append(pic, el("td", r.title), el("td", kinds, "muted"), el("td", r.tags.map((t) => "#" + t).join(" "), "muted"));
+    const edit = el("button", "Edit", "btn"); edit.dataset.edit = r.id;
+    edit.addEventListener("click", () => startEdit(r.id));
+    const act = el("td"); act.append(edit); tr.append(act);
     list.append(tr);
   }
   $("rec-none").hidden = data.recipes.length > 0;

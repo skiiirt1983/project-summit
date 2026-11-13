@@ -4,9 +4,16 @@ Each entry: the question, the choice made, why. Newest first. Say if any should 
 
 **D-010 (2026-11-13): Paul accepted all R1-R3 defaults below and the SD wiring guesses (still to be checked on the board, see HARDWARE_TODO.md).**
 
+## Follow-ups after R7
+
+- **Editing a saved recipe (web UI).** Choice: an "Edit" button per recipe in the Recipes tab opens the same form as import, filled from the device. It changes text only (title, servings, tags, ingredients, steps); pages, photo, source and created date are kept, and the recipe keeps its id (so its folder name does not change with the title). Why: no rename means nothing on the card moves.
+- **Timers when editing.** Choice: a step whose text is unchanged keeps its timer; a changed or new step has none saved (the device still detects times in the text when cooking).
+- **Quantities when editing.** Ingredients are shown as lines ("1 1/2 cup flour, sifted") and parsed again on save, so an unusual quantity can be rounded to the nearest shown fraction.
+- **URL imports** are still saved directly; fix them afterwards with Edit. No separate pre-save edit screen.
+
 ## R7 — Import from a website
 
-- **No edit screen for URL imports.** Choice: the recipe is saved directly, since structured data is usually clean. Editing saved recipes in the web UI would cover fixes (not built yet).
+- **No edit screen for URL imports.** Choice: the recipe is saved directly, since structured data is usually clean. Fix anything afterwards with Edit in the Recipes tab.
 - **Which addresses the device may fetch.** Choice: public `https://` names only; IP addresses, `localhost`, single-label, `.local` / `.lan` / `.internal` / `.home` names, ports and credentials are refused, and every redirect is re-checked. Why: with no login on the web UI, the device must not become a way to probe the home network.
 - **Photo.** Choice: only the first image, only over https, only if it is a JPEG up to 2 MB; otherwise the recipe is saved without a photo. Not resized on the device.
 - **Sites without JSON-LD** (microdata only, or behind scripts/paywalls) are not supported: "This page has no structured recipe data to import".

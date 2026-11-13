@@ -506,7 +506,7 @@ Provided by the Recipe reader as an extension of the web API (`firmware/panels/r
 | --- | --- |
 | `GET /api/recipes` | library index, inbox PDF names, folders that could not be read |
 | `GET /api/recipes/get?id=` | a recipe's `recipe.json` |
-| `POST /api/recipes/save` | `{"id"?, "recipe": {...}}`: validated with the device's parser; a new id is made from the title when `id` is absent |
+| `POST /api/recipes/save` | `{"id"?, "recipe": {...}}`: validated with the device's parser; a new id is made from the title when `id` is absent. With `id` it replaces that recipe's text (the Recipes tab's Edit button); pages and photo are untouched |
 | `POST /api/recipes/file?id=&name=` | streamed upload (header `X-Summit-Upload: 1`) of `pages/NNN.jpg` (1–200), `photo.jpg`, `thumb.jpg`, `original.pdf`; images up to 2 MB, PDFs up to 32 MB; nothing is kept from an incomplete upload |
 | `GET /api/recipes/file?id=&name=` | those files back, streamed from the card |
 | `GET /api/recipes/inbox?name=` | a PDF waiting in `/recipes/inbox/` |

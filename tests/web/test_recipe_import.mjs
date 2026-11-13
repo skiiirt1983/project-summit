@@ -1,6 +1,6 @@
 // Node unit tests for firmware/web/page/recipe_import.mjs (no browser needed).
 import assert from "node:assert/strict";
-import { buildRecipe, ingredientToLine, itemsToLines, parseIngredient, parseRecipeText, parseSteps } from "../../firmware/web/page/recipe_import.mjs";
+import { applyEdit, buildRecipe, ingredientToLine, itemsToLines, parseIngredient, parseRecipeText, parseSteps } from "../../firmware/web/page/recipe_import.mjs";
 
 let n = 0;
 const eq = (a, b, what) => { n++; assert.deepEqual(a, b, what); };
@@ -65,5 +65,18 @@ eq([built.format, built.title, built.servings, built.tags], [1, "Lemon Cake", 8,
 eq(built.ingredients[0], { qty: 225, unit: "g", item: "butter", note: "" });
 eq(built.steps.length, 2);
 eq("servings" in buildRecipe({ title: "x", servings: "", tags: "", ingredientsText: "", stepsText: "", source: { type: "manual" } }), false);
+
+// Editing a saved recipe keeps what the form does not show.
+const saved = { format: 1, title: "Pancakes", servings: 4, created: "2026-11-12T09:00:00", source: { type: "url", url: "https://example.com/p" },
+  photo: "photo.jpg", tags: ["breakfast"], ingredients: [{ qty: 2, unit: "", item: "eggs", note: "" }],
+  steps: [{ text: "Whisk." }, { text: "Rest the batter for 30 minutes.", timer_s: 1800 }, { text: "Fry.", timer_s: 120 }] };
+const edited = applyEdit(saved, { title: "Thin pancakes", servings: "", tags: "Breakfast, quick",
+  ingredientsText: "3 eggs\n250 ml milk", stepsText: "Whisk well.\nRest the batter for 30 minutes.\nFry until golden." });
+eq([edited.title, edited.created, edited.source, edited.photo, edited.format], ["Thin pancakes", saved.created, saved.source, "photo.jpg", 1]);
+eq("servings" in edited, false);
+eq(edited.tags, ["breakfast", "quick"]);
+eq(edited.ingredients.map((g) => g.item), ["eggs", "milk"]);
+eq(edited.steps, [{ text: "Whisk well." }, { text: "Rest the batter for 30 minutes.", timer_s: 1800 }, { text: "Fry until golden." }]);
+eq(saved.steps.length === 3 && saved.title === "Pancakes" && saved.servings === 4, true);  // the original is not changed
 
 console.log(`recipe import parser: ${n} checks, 0 failures`);
