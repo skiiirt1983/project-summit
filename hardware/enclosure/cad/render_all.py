@@ -46,3 +46,13 @@ peak.write_scene(peak.OUT, cut, "scene-cut.json", offsets=zero, views=[
 ])
 render("scene-exploded.json", "peak-exploded.png")
 render("scene-cut.json", "peak-cut.png")
+
+# Close-up slice through the lip that hides the frame (upper long side of the pocket).
+loc = peak.face_plane().location
+window = loc * (Pos(1, -p.FRAME_W / 2 + 1, -4.5) * Box(2, 14, 11))
+lip = {k: built[k] & window for k in ("body", "frame", "bezel", "glass")}
+lip = {k: v for k, v in lip.items() if v.volume > 0}
+peak.write_scene(peak.OUT, lip, "scene-lip.json", offsets={k: (0, 0, 0) for k in lip}, views=[
+    {"label": "Slice through the lip: body (grey) slopes at 45 degrees over the frame (dark); cream bezel on the left",
+     "dir": [0, -1, 0], "ortho": True, "noground": True}])
+render("scene-lip.json", "peak-lip.png")

@@ -98,6 +98,16 @@ FRAME_CLEAR = 0.25         # module -> frame, per side  # COUPON: tune after tes
 FRAME_FIT = 0.00           # frame -> body pocket, per side (0 = snug in TPU; use 0.15 for a rigid PLA body)
                            # COUPON: tune after test print (SEAT)
 FRAME_TOP = 1.5            # frame stops this far below the front face; the body's lip hides it
+# No flat ceilings in TPU (Paul, 2026-11-14, after the flat lip on SEAT-body sagged into strings).
+LIP_LAND = 0.6             # straight, crisp edge of the screen opening before the underside slopes away
+                           # COUPON: tune after test print (SEAT)
+FRAME_TOP_CHAMFER = 1.2    # 45 degree chamfer on the frame's top outer edge, so it tucks under the sloped lip
+ROOF_H = 6.5               # body printed on end: the pocket's top end gets 45 degree sides this high.
+                           # A flat strip stays in the middle (see ROOF_FLAT in derive()); a full peak
+                           # would need 15 mm, and there are only 9 mm of body beyond the pocket.
+                           # COUPON: tune after test print (END-top)
+PLATE_CHAMFER = 1.0        # 45 degree chamfer on TPU edges that touch the print plate (coupons)
+                           # COUPON: tune after test print
 SEAM = 0.30                # visible gap between cream bezel and body, per side
                            # COUPON: tune after test print (SEAT)
 PUSH_HOLE_D = 22.0         # finger hole behind the module, to push it out for service
@@ -187,6 +197,9 @@ def derive():
     g["FRONT_T"] = POCKET_D + BACK_SKIN                            # front wall thickness
     g["BODY_WIDTH"] = MODULE_L + 2 * (SEAM + SIDE_MARGIN)
     g["BOARD_X0"] = -GLASS_L / 2 + BOARD_INSET_USB_END             # module x of the board's USB end
+    g["LIP_RUN"] = (FRAME_L - MODULE_L) / 2 - SEAM + FRAME_FIT      # how far the lip overhangs the frame
+    g["LIP_D"] = LIP_LAND + LIP_RUN                                # depth where the pocket reaches full width
+    g["ROOF_FLAT"] = (POCKET_D - LIP_D) - 2 * ROOF_H               # flat strip left at the pocket's top end
 
 
 derive()

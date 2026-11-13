@@ -3,7 +3,7 @@
 Run:  python test_coupons.py
   -> ../coupons/coupons-material.3mf   three triangle slices: T1 T2 T3 (TPU for AMS). Printed 2026-11-13
      ../coupons/coupons-fit-petg.3mf   PETG fit tests: glass ring, seat, clip, mic plate, port block
-     ../coupons/coupons-fit-body.3mf   the body-side halves of the seat and clip tests (body material)
+     ../coupons/coupons-fit-body.3mf   TPU: seat corner (SEAT-body) and two slices of the real body (END-bed, END-top)
      plus one STL per coupon there, and render inputs in ../out/coupons/
 Every coupon is laid flat in its print orientation. Per-object slicer settings are
 listed in ../COUPON-RESULTS.md; the 3MF carries shapes and names only.
@@ -11,7 +11,8 @@ listed in ../COUPON-RESULTS.md; the 3MF carries shapes and names only.
 import math
 from pathlib import Path
 
-from build123d import Box, Cylinder, Mesher, Pos, Rot, Text, export_stl, extrude
+from build123d import (Box, Cylinder, Face, Mesher, Pos, Rot, Text, chamfer, export_stl,
+                       extrude, offset)
 
 import params as p
 import parts
@@ -38,6 +39,63 @@ def lay_flat(part, flip=False):
     return Pos(-bb.min.X, -bb.min.Y, -bb.min.Z) * part
 
 
+def plate_chamfer(part):
+    """45 degree chamfer on the edges that touch the print plate (TPU parts).
+
+    Works loop by loop: the outline first, then each opening. A loop that can't take the
+    chamfer (too thin a wall next to it) is left as it is and reported.
+    """
+    def bottom():
+        faces = [f for f in part.faces() if f.bounding_box().max.Z < 1e-4]
+        return max(faces, key=lambda f: f.area)
+
+    count = 1 + len(bottom().inner_wires())
+    skipped = 0
+    for i in reversed(range(count)):                      # openings first, outline last
+        face = bottom()
+        wires = [face.outer_wire()] + sorted(face.inner_wires(), key=lambda w: -w.length)
+        if i >= len(wires):
+            continue
+        done = None
+        # Whole loop first; if that fails, only its long edges (short ones sit in pockets and slots).
+        for edges in (wires[i].edges(), [e for e in wires[i].edges() if e.length > 6]):
+            try:
+                trial = chamfer(edges, p.PLATE_CHAMFER)
+                if trial.is_valid and len(trial.solids()) == 1:
+                    done = trial
+                    break
+            except Exception:
+                continue
+        if done is None and i == 0:
+            # Last resort for the outline: trim with a block whose foot tapers in at 45 degrees.
+            c = p.PLATE_CHAMFER
+            foot = extrude(offset(Face(face.outer_wire()), -c), c, taper=-45)
+            trial = part & (foot + Pos(0, 0, c) * extrude(Face(face.outer_wire()), 400))
+            if trial.is_valid and len(trial.solids()) == 1 and trial.volume < part.volume:
+                done = trial
+        if done is not None:
+            part = done
+            continue
+        skipped += 1
+    if skipped:
+        print(f"   plate chamfer: {skipped} of {count} loops left square")
+    return part
+
+
+def end_slices():
+    """Two slices of the real body in its real print orientation (standing on the portrait end).
+
+    END-bed: the first 12 mm off the plate: the 45 degree chamfer blended into the round, pad recesses.
+    END-top: the last 26 mm at the port end: the pocket's sloped top end, the lip, USB openings, full rounds.
+    """
+    upright = Rot(-90, 0, 0) * peak.body()                  # +Y (portrait end) down on the plate
+    top_z = p.BODY_WIDTH                                     # after lay_flat the body spans z = 0 .. BODY_WIDTH
+    upright = lay_flat(upright)
+    bed = upright & (Pos(0, 0, 6) * Box(400, 400, 12))
+    top = upright & (Pos(0, 0, top_z - 13) * Box(400, 400, 26))
+    return {"END-bed": lay_flat(bed), "END-top": plate_chamfer(lay_flat(top))}
+
+
 def material_slice(label):
     """A short slice of the real triangle outline, lying on its side."""
     solid = Rot(-90, 0, 0) * peak.shell(width=p.MATERIAL_SLICE_T, soft_edges=False)   # profile flat on the bed
@@ -53,8 +111,8 @@ def material_slice(label):
 
 def body_local():
     """The body, moved into the module frame so coupons can be cut square."""
-    # Plain end rounds: the fit features are the same, and the files stay as first issued.
-    world = peak.shell(rounded=False) - peak.face_plane().location * parts.body_cutter()
+    # Square ends: no round may touch the plate (it sagged in TPU); plate_chamfer() adds the 45 degree edge.
+    world = peak.shell(soft_edges=False) - peak.face_plane().location * parts.body_cutter()
     return peak.face_plane().location.inverse() * world
 
 
@@ -65,7 +123,7 @@ def seat_coupons():
     box = Pos(x0 + 30, y0 + 30, -depth / 2 + 1) * Box(60, 60, depth)
     body_box = Pos(x0 + 22, y0 + 18.5, -depth / 2 + 1) * Box(44, 37, depth)   # trims the rounded outside
     return {
-        "SEAT-body": lay_flat(body_local() & body_box),
+        "SEAT-body": plate_chamfer(lay_flat(body_local() & body_box)),
         "SEAT-frame": lay_flat(parts.frame() & box),
         "SEAT-bezel": lay_flat(parts.cup() & box, flip=True),
         "SEAT-cover": lay_flat(parts.cover() & box),
@@ -163,7 +221,9 @@ if __name__ == "__main__":
           lambda n: "#8d8f8c", gap=4.0)
     petg = {"GLASS-ring": glass_ring()}
     petg.update({k: v for k, v in {**seat, **clip}.items() if not k.endswith("body")})
+    clip.pop("CLIP-body")
     petg.update({"MIC-plate": mic_plate(), "PORT-block": port_block()})
     write(petg, "coupons-fit-petg", lambda n: "#efe6d2" if "bezel" in n or "ring" in n else "#6a7078")
-    write({k: v for k, v in {**seat, **clip}.items() if k.endswith("body")}, "coupons-fit-body",
-          lambda n: "#8d8f8c")
+    # CLIP-body printed clean on 2026-11-14 and is kept exactly as first issued (CLIP-body.stl),
+    # so it is not rebuilt here.
+    write({"SEAT-body": seat["SEAT-body"], **end_slices()}, "coupons-fit-body", lambda n: "#8d8f8c")

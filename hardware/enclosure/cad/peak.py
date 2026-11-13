@@ -7,7 +7,7 @@ import json
 import math
 from pathlib import Path
 
-from build123d import (Axis, Cylinder, chamfer, Mesher, Plane, Polygon, Pos, Rot, Vector,
+from build123d import (Axis, Cone, Cylinder, chamfer, Mesher, Plane, Polygon, Pos, Rot, Vector,
                        export_step, export_stl, extrude, fillet)
 
 import params as p
@@ -162,6 +162,8 @@ def pads_and_recesses():
         pads += Pos(x, end - p.PAD_RECESS + p.PAD_T / 2, z) * Rot(90, 0, 0) * Cylinder(p.PAD_D_END / 2, p.PAD_T)
         recess += Pos(x, end - p.PAD_RECESS / 2 + 0.5, z) * Rot(90, 0, 0) * Cylinder(
             (p.PAD_D_END + p.PAD_FIT) / 2, p.PAD_RECESS + 1)
+        r = (p.PAD_D_END + p.PAD_FIT) / 2                # these recesses open onto the print plate:
+        recess += Pos(x, end - p.PAD_RECESS - r / 2 + 0.01, z) * Rot(90, 0, 0) * Cone(r, 0.1, r)   # cone, not a flat ceiling
     return pads, recess
 
 

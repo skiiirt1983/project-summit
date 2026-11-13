@@ -233,6 +233,8 @@ still works without them.
       - ironing on flat top faces where it helps
       - seams hidden on a back or inside edge
       - document these settings in the 3MF
+- [ ] TPU parts (2026-11-14): no flat ceilings. Undersides of lips and ledges are 45°; edges that touch
+      the plate are 45° chamfers, not rounds.
 - [ ] Body (2026-11-13): edges on the bed get a 45° chamfer blended into the round (no overhang);
       elephant-foot compensation on; seam on an inside edge; finer layers over the rounded edges.
 - [ ] Every part prints without supports on visible faces. Supports allowed only inside.

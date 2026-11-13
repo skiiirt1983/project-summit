@@ -24,6 +24,18 @@
 
 | Both USB-C openings stay, tidied: rounded corners (R2.5) and a 1 mm round on the outside mouth. PORT coupon updated to the same shape | Paul 2026-11-13; ports stay usable in both orientations | Removing both; keeping one |
 
+## Decided from the TPU fit coupons (SEAT-body, CLIP-body), 2026-11-14
+
+| Decision | Why | Rejected |
+|---|---|---|
+| No flat ceilings in TPU parts. The lip that hides the frame has a 45° underside (0.6 mm straight edge at the screen opening, then 45°); the frame's top edge is chamfered to tuck under it | The flat lip on SEAT-body sagged into strings | Flat lip |
+| Edges that touch the print plate are 45° chamfers, never rounds. Coupons: 1 mm chamfer | Rounds sagged and the first layer flared | Rounds at the plate |
+| Real body's bed end keeps the approved 45° chamfer blended into the round (**default, Paul to confirm**) | It already meets the plate at 45°, and a bare 1 mm chamfer would leave a hard edge on the end it stands on in portrait. END-bed coupon tests it | Plain 1 mm chamfer, no round |
+| Pocket's top end (a ceiling when the body prints on end) gets 45° sides 6.5 mm high. **A 17.8 mm flat strip remains** (**default, Paul to confirm**) | There are only 9 mm of body beyond the pocket; a full 45° peak needs about 15 mm. The brief allows TPU bridges up to about 20 mm; END-top coupon tests it | Full peak (body ~10 mm wider at the port end); supports inside the pocket; splitting the body |
+| Portrait pad recesses end in a cone | They open onto the plate; a flat top would be a ceiling | Flat-topped recess |
+| CLIP-body unchanged | Printed clean | — |
+| New coupons END-bed and END-top: slices of the real body in its real print orientation | Tests the actual plate edge, top rounds, lip and pocket top before a full-body print | Printing the whole body to find out |
+
 ## Fixed 2026-11-13
 - **Mic exit holes were blocked.** The mics sit 29.9 mm off the centre line, which is behind the solid corners of
   the triangle, so the holes in frame and body did not reach the hollow. The exit holes (cover, frame, body) are now

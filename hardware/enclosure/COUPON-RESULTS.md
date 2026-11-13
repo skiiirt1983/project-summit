@@ -1,6 +1,6 @@
 # Coupon results (Paul fills this in)
 
-**Status: Print 1 (material slices) is done and applied. Prints 2–3 (fit coupons) and the measurements are still to come.**
+**Status: Print 1 (material slices) is done and applied. From Print 2, SEAT-body and CLIP-body are back (2026-11-14) and applied: new `coupons-fit-body.3mf` to print. PETG fit coupons and the measurements are still to come.**
 
 Print the coupons, try them, tick or write an answer in each box. Each answer names the
 `cad/params.py` value it changes, so the full model can be updated in one pass.
@@ -25,7 +25,13 @@ The 3MF files carry shapes and names only. Set the walls and infill per object i
 | | **SEAT-frame**, **CLIP-frame** | PETG | 4 | 15 % | |
 | | **SEAT-plate**, **SEAT-cover** | PETG | 4 | 15 % | |
 | | **MIC-plate**, **PORT-block** | PETG | 4 | 15 % | |
-| `coupons-fit-body.3mf` | **SEAT-body**, **CLIP-body** | TPU for AMS | 2 | 10 % gyroid (T1) | supports off |
+| `coupons-fit-body.3mf` (**new 2026-11-14**) | **SEAT-body** | TPU for AMS | 2 | 10 % gyroid (T1) | supports off. Lip now has a 45° underside; plate edges are 1 mm 45° chamfers |
+| | **END-bed** | TPU for AMS | 2 | 10 % gyroid (T1) | the real body's first 12 mm off the plate. Supports off, elephant-foot compensation 0.15, 0.08 mm layers over the rounds |
+| | **END-top** | TPU for AMS | 2 | 10 % gyroid (T1) | the real body's last 26 mm at the port end. Supports off, 0.08 mm layers over the top rounds |
+| (kept) | **CLIP-body** | — | — | — | printed clean on 2026-11-14; no reprint. `CLIP-body.stl` is unchanged |
+
+SEAT-frame and CLIP-frame changed on 2026-11-14 (their top outer edge is now chamfered to tuck under the sloped
+lip). If you printed them before that date, the old ones still fit the old CLIP-body but not the new SEAT-body.
 
 The material slices are the real triangle outline, 15 mm thick, name sunk into the top.
 All layer heights 0.2 mm for the coupons, except GLASS-ring and the bezel pieces at 0.12 mm.
@@ -41,6 +47,28 @@ All layer heights 0.2 mm for the coupons, except GLASS-ring and the bezel pieces
 | Layer lines on the outside | **OK** | print orientation stays: standing on the portrait end |
 | Back leg 13 mm | **right** | `LEG_T = 13.0` confirmed |
 | Extra | **No sharp edges anywhere**; bed edges 45° chamfer blended into a round; elephant-foot compensation on; seams on an inside edge; finer layers on the curved edges | `ROUND_ALL = True` (approved and applied 2026-11-13), `BED_CHAMFER`, `BODY_PRINT` |
+
+## 1b. SEAT-body and CLIP-body in TPU: DONE (2026-11-14)
+
+| Paul's finding | Applied |
+|---|---|
+| The flat lip over the pocket in SEAT-body sagged into strings | Lip underside is now 45°: a 0.6 mm straight edge at the screen opening (`LIP_LAND`), then a 45° slope out to the frame. Frame top edge chamfered to match (`FRAME_TOP_CHAMFER`). Same on the real body |
+| No flat ceilings in TPU parts | Real body, printed on end: the pocket's top end now has 45° sides (`ROOF_H = 6.5`). **One flat strip remains there, 17.8 mm wide** (see decisions.md). Portrait pad recesses, which open onto the plate, now end in a cone |
+| Rounded bottom edges sag at the plate, first layer flares | Coupons: every plate edge is a 1 mm 45° chamfer (`PLATE_CHAMFER`), no rounds on the plate. Real body: the bed end already meets the plate at 45° (chamfer blended into the round), unchanged |
+| CLIP-body printed clean | No change; file kept as issued |
+
+## 1c. END-bed and END-top (new: slices of the real body, printed standing up like the real thing)
+
+| Question | Answer | Changes |
+|---|---|---|
+| END-bed: first layer and the 45° edge at the plate | ☐ clean ☐ flares ☐ sags | flares → elephant-foot compensation up (`BODY_PRINT`); sags → tell Claude: bed end goes to a plain 1 mm chamfer, no round |
+| END-bed: do the rounds above the chamfer feel smooth? | ☐ yes ☐ stepped | stepped → finer layers on the rounds (`BODY_PRINT`) |
+| END-bed: pad recesses (cone tops) clean? Pads fit? | ☐ yes ☐ loose ☐ tight | `PAD_FIT` |
+| END-top: the flat strip at the pocket's top end (17.8 mm bridge) | ☐ clean ☐ sags a little, frame would still fit ☐ strings / unusable | unusable → `ROOF_H` up to a full peak, which makes the body about 10 mm wider at the port end (decision) |
+| END-top: the 45° sides of that top end | ☐ clean ☐ rough | rough → tell Claude |
+| END-top: the sloped lip around the screen opening: clean? opening edge straight? | ☐ yes ☐ no | `LIP_LAND` |
+| END-top: full rounds at the very top | ☐ smooth ☐ stepped ☐ droopy | finer layers / slower top (`BODY_PRINT`) |
+| END-top: USB openings clean, cable plugs pass? | ☐ yes ☐ no | `USB_WINDOW`, `USB_WINDOW_R` |
 
 ## 2. GLASS-ring (the front 6 mm of the bezel, all the way round)
 

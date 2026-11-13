@@ -6,7 +6,7 @@ the screen. Depths below the face are negative z.
 """
 import math
 
-from build123d import (Box, CounterSinkHole, Cylinder, Pos, RectangleRounded,
+from build123d import (Box, CounterSinkHole, Cylinder, Pos, Rectangle, RectangleRounded,
                        Rot, extrude)
 
 import params as p
@@ -149,14 +149,29 @@ def frame():
             bump = Pos(x, side * (inner_w / 2 + p.CLIP_R - p.CLIP_BUMP - p.FRAME_CLEAR), clip_z()) * _along_x(
                 p.CLIP_R, p.CLIP_W - 2)
             part += bump
-    return part
+    c = p.FRAME_TOP_CHAMFER                                                        # tuck under the sloped lip
+    ring = slab(p.FRAME_L + 6, p.FRAME_W + 6, p.FRAME_R + 3, -p.FRAME_TOP + 0.01, -p.FRAME_TOP - c)
+    ring -= Pos(0, 0, -p.FRAME_TOP - c) * extrude(RectangleRounded(p.FRAME_L, p.FRAME_W, p.FRAME_R), c + 0.02, taper=45)
+    return part - ring
 
 
 def body_cutter():
-    """Everything removed from the body's front wall, in the module frame."""
-    cut = slab(p.MODULE_L + 2 * p.SEAM, p.MODULE_W + 2 * p.SEAM, p.BEZEL_R + p.SEAM, 1, -p.FRAME_TOP)
-    cut += slab(p.FRAME_L + 2 * p.FRAME_FIT, p.FRAME_W + 2 * p.FRAME_FIT, p.FRAME_R + p.FRAME_FIT,
-                -p.FRAME_TOP, -p.POCKET_D)
+    """Everything removed from the body's front wall, in the module frame.
+
+    The lip that hides the frame has a 45 degree underside: a short straight land at the
+    screen opening, then the pocket widens at 45 degrees until it reaches the frame's size.
+    """
+    frame_l, frame_w = p.FRAME_L + 2 * p.FRAME_FIT, p.FRAME_W + 2 * p.FRAME_FIT
+    frame_r = p.FRAME_R + p.FRAME_FIT
+    cut = slab(p.MODULE_L + 2 * p.SEAM, p.MODULE_W + 2 * p.SEAM, p.BEZEL_R + p.SEAM, 1, -p.LIP_LAND - 0.01)
+    cut += Pos(0, 0, -p.LIP_D) * extrude(RectangleRounded(frame_l, frame_w, frame_r), p.LIP_RUN, taper=45)
+    cut += slab(frame_l, frame_w, frame_r, -p.LIP_D, -p.POCKET_D)
+    # The body prints standing on its end with the ports up, so the pocket's port end is a
+    # ceiling. Give it 45 degree sides; only a ROOF_FLAT-wide strip in the middle stays flat.
+    span_z = p.POCKET_D - p.LIP_D
+    span_y = frame_w - 2 * frame_r * (1 - math.sin(math.radians(45)))
+    roof = Rot(0, -90, 0) * extrude(Rectangle(span_z, span_y), p.ROOF_H, taper=45)
+    cut += Pos(-frame_l / 2 + 0.01, 0, -(p.LIP_D + p.POCKET_D) / 2) * roof
     skin_z = -p.POCKET_D - p.BACK_SKIN / 2
     cut += Pos(0, 0, skin_z) * Cylinder(p.PUSH_HOLE_D / 2, p.BACK_SKIN + 2)
     for x, y in mic_exits():
