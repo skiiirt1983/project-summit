@@ -29,6 +29,7 @@
 #include "summit/state_store.h"
 #include "summit/recipes/panel.h"
 #include "summit/recipes/store.h"
+#include "summit/recipes/web_api.h"
 #include "summit/storage.h"
 #include "summit/system_settings.h"
 #include "summit/timers.h"
@@ -994,7 +995,9 @@ int run_web(int port)
     SimFacts facts;
     web::WebApi api(app.bus, app.state, *app.settings, control, wifi, facts);
     api.set_modules(&app.modules);
-    sim::HttpSim http(api, SUMMIT_WEB_PAGE);
+    recipes::RecipeWebApi recipe_api(*app.recipe_store, *app.sd);
+    api.add_extension(&recipe_api);
+    sim::HttpSim http(api, SUMMIT_WEB_ROOT, app.sd.get());
     if (!http.listen(port)) {
         std::printf("cannot listen on 127.0.0.1:%d\n", port);
         return 1;

@@ -2,6 +2,13 @@
 
 Each entry: the question, the choice made, why. Newest first. Say if any should change.
 
+## R6 — Web import
+
+- **Upload limits.** Choice: page / photo images up to 2 MB each, PDFs up to 32 MB, 200 pages per recipe; an upload is refused if the card would have under 8 MB left.
+- **Inbox PDFs after conversion.** Choice: the PDF is moved into the recipe folder as `original.pdf` (not deleted), so the inbox empties and the recipe can be re-converted later.
+- **No delete in the API or storage layer.** Deleting recipes (and "Delete recipes" on module removal) waits for your go-ahead, per D-009.
+- **pdf.js** 4.10.38 (Apache-2.0), about 500 KB gzipped, will be embedded in the firmware image next to the page (the assets partition has no file system yet).
+
 ## R5 — Timers and chips
 
 - **Ringing.** Choice: a finished timer rings until stopped, and stops by itself after 1 minute. D-008 says "ring through the alarm sound path": the service sets `timers/ringing`; the audio service that plays the sound is hardware work.

@@ -14,6 +14,7 @@
 #include "summit/recipes/module.h"
 #include "summit/recipes/panel.h"
 #include "summit/recipes/store.h"
+#include "summit/recipes/web_api.h"
 #include "summit/registry.h"
 #include "summit/settings.h"
 #include "summit/sd_card.h"
@@ -54,7 +55,9 @@ extern "C" void app_main(void)
 
     summit::SettingsSchema schema = summit::system_settings_schema();
     // microSD card (untested on hardware): publishes storage/sd_present, storage/sd_free_mb.
-    static summit::recipes::RecipeStore recipe_store(summit::sd_card_start(state));
+    static summit::Storage &sd = summit::sd_card_start(state);
+    static summit::recipes::RecipeStore recipe_store(sd);
+    static summit::recipes::RecipeWebApi recipe_api(recipe_store, sd);
     registry.add(std::make_unique<summit::recipes::RecipesPanel>(recipe_store));
 
     // Modules ship in the firmware but start uninstalled (ARCHITECTURE.md "Modules").
@@ -84,7 +87,7 @@ extern "C" void app_main(void)
     summit::update::ota_guard_start(probes, bus, state);
     summit::update::update_service_start({SUMMIT_HARDWARE_ID, SUMMIT_CHIP_REV_FAMILY}, bus, state, settings);
     // Config portal; reachable once Wi-Fi is up (network service, Phase 1).
-    summit::web::web_server_start(bus, state, settings, &modules);
+    summit::web::web_server_start(bus, state, settings, &modules, &recipe_api, &sd);
 
     // Kitchen timers. They are ticked from the UI loop, which starts with the display BSP (Phase 1).
     static summit::TimerService timers(bus, state);

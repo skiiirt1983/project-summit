@@ -45,6 +45,22 @@ TEST(posix_storage_basics)
     CHECK(!sd.read("/../etc/passwd", data) && !sd.write("/../x", "x") && !sd.list("/nope", e));
     CHECK(!sd.read("/recipes/a", data));  // a folder
 
+    // Streaming writes: nothing visible until commit; an abandoned writer leaves nothing.
+    {
+        auto w = sd.begin_write("/recipes/a/pages/001.jpg");
+        CHECK(w && w->write(reinterpret_cast<const uint8_t *>("abc"), 3) && !sd.exists("/recipes/a/pages/001.jpg"));
+        CHECK(w->write(reinterpret_cast<const uint8_t *>("def"), 3) && w->commit());
+        CHECK(sd.size("/recipes/a/pages/001.jpg") == 6 && sd.read_chunk("/recipes/a/pages/001.jpg", 2, 3, data) && data == "cde");
+        CHECK(sd.read_chunk("/recipes/a/pages/001.jpg", 6, 3, data) && data.empty());
+        { auto dropped = sd.begin_write("/recipes/a/pages/002.jpg"); dropped->write(reinterpret_cast<const uint8_t *>("x"), 1); }
+        CHECK(!sd.exists("/recipes/a/pages/002.jpg") && sd.size("/recipes/a/pages/002.jpg") == -1);
+        CHECK(sd.list("/recipes/a/pages", e) && e.size() == 1);  // no .tmp left behind
+        CHECK(!sd.begin_write("/../x"));
+        CHECK(sd.move("/recipes/b.txt", "/recipes/c/moved.txt") && sd.exists("/recipes/c/moved.txt") && !sd.exists("/recipes/b.txt"));
+        CHECK(!sd.move("/recipes/a/recipe.json", "/recipes/c/moved.txt"));  // never overwrites
+        CHECK(!sd.move("/recipes/nope", "/recipes/x") && sd.move("/recipes/c/moved.txt", "/recipes/b.txt"));
+    }
+
     // Card removed: everything fails cleanly.
     sd.set_present(false);
     CHECK(!sd.present() && sd.free_mb() == 0 && !sd.exists("/recipes") && !sd.read("/recipes/a/recipe.json", data) &&

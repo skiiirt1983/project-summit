@@ -252,6 +252,10 @@ Response WebApi::handle(const Request &req)
                                   "/api/settings/export", "/api/settings/import", "/api/settings/reset",
                                   "/api/settings/backup", "/api/settings/import/validate", "/api/settings/undo",
                                   "/api/diagnostics", "/api/modules", "/api/modules/install", "/api/modules/remove"};
+    for (ApiExtension *ext : extensions_) {
+        Response out;
+        if (ext->handle(req, out)) return out;
+    }
     for (const char *k : known)
         if (p == k) return error(405, "method not allowed");
     return error(404, "not found");
@@ -524,6 +528,53 @@ Response WebApi::diagnostics()
     for (const auto &kv : facts_.facts()) w.key(kv.first).value(kv.second);
     w.end_object().end_object();
     return json(200, w.str());
+}
+
+Response json_error(int status, const std::string &message) { return error(status, message); }
+
+std::string query_param(const std::string &query, const std::string &key)
+{
+    size_t start = 0;
+    while (start <= query.size()) {
+        size_t end = query.find('&', start);
+        if (end == std::string::npos) end = query.size();
+        const std::string pair = query.substr(start, end - start);
+        const size_t eq = pair.find('=');
+        if (pair.substr(0, eq) == key) {
+            std::string raw = eq == std::string::npos ? "" : pair.substr(eq + 1), out;
+            for (size_t i = 0; i < raw.size(); ++i) {
+                auto hex = [](char c) { return c >= '0' && c <= '9' ? c - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10 : c >= 'A' && c <= 'F' ? c - 'A' + 10 : -1; };
+                if (raw[i] == '%' && i + 2 < raw.size() + 0 && hex(raw[i + 1]) >= 0 && hex(raw[i + 2]) >= 0) {
+                    out += static_cast<char>(hex(raw[i + 1]) * 16 + hex(raw[i + 2]));
+                    i += 2;
+                } else {
+                    out += raw[i] == '+' ? ' ' : raw[i];
+                }
+            }
+            return out;
+        }
+        start = end + 1;
+    }
+    return "";
+}
+
+std::unique_ptr<UploadSink> WebApi::open_upload(const Request &req, int64_t length, Response &err)
+{
+    if (length <= 0) {
+        err = error(411, "Content-Length required");
+        return nullptr;
+    }
+    for (ApiExtension *ext : extensions_) {
+        Response e = error(404, "not found");
+        std::unique_ptr<UploadSink> sink = ext->upload(req, length, e);
+        if (sink) return sink;
+        if (e.status != 404) {
+            err = e;
+            return nullptr;
+        }
+    }
+    err = error(404, "not found");
+    return nullptr;
 }
 
 Response WebApi::upload_refused() { return error(403, "firmware uploads need the X-Summit-Upload: 1 header"); }

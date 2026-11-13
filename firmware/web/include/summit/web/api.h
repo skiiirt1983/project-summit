@@ -7,6 +7,7 @@
 // installs as "update/command" events, uploads via UpdateControl.
 #pragma once
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -35,7 +36,31 @@ struct Response {
     std::string content_type = "application/json";
     std::string body;
     std::string filename;  // set -> Content-Disposition: attachment
+    // Set -> the transport streams this file from the SD card as the body (large files).
+    std::string storage_path;
 };
+
+// A streamed upload body (anything but firmware, which has its own path).
+class UploadSink {
+public:
+    virtual ~UploadSink() = default;
+    virtual bool chunk(const uint8_t *data, size_t len) = 0;
+    virtual Response finish() = 0;
+};
+
+// Extra endpoints provided by a module (e.g. the Recipe reader's /api/recipes/...).
+class ApiExtension {
+public:
+    virtual ~ApiExtension() = default;
+    // True if this request is the extension's (out is then the response).
+    virtual bool handle(const Request &req, Response &out) = 0;
+    // A sink for an upload to req.path, or null with `error` set (404 if not its path).
+    virtual std::unique_ptr<UploadSink> upload(const Request &req, int64_t length, Response &error) = 0;
+};
+
+// "a=1&name=x%20y" -> value of `key` (URL-decoded), "" if absent.
+std::string query_param(const std::string &query, const std::string &key);
+Response json_error(int status, const std::string &message);
 
 // Streaming firmware upload into the update engine (device: summit::update::upload_*).
 class UpdateControl {
@@ -70,6 +95,10 @@ public:
     WebApi(EventBus &bus, StateStore &state, Settings &settings, UpdateControl &update, WifiStore &wifi,
            DeviceFacts &facts)
         : bus_(bus), state_(state), settings_(settings), update_(update), wifi_(wifi), facts_(facts) {}
+
+    void add_extension(ApiExtension *ext) { extensions_.push_back(ext); }
+    // Uploads other than firmware: POST with the X-Summit-Upload header, body streamed.
+    std::unique_ptr<UploadSink> open_upload(const Request &req, int64_t length, Response &error);
 
     // Optional: enables /api/modules.
     void set_modules(const ModuleManager *modules) { modules_ = modules; }
@@ -115,6 +144,7 @@ private:
     WifiStore &wifi_;
     DeviceFacts &facts_;
     const ModuleManager *modules_ = nullptr;
+    std::vector<ApiExtension *> extensions_;
 };
 
 // Settings file format for export/import (pure; tested on the host).
