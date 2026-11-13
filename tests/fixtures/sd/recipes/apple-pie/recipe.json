@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "title": "Apple pie",
+  "servings": 8,
+  "ingredients": [
+    {
+      "qty": 6,
+      "unit": "",
+      "item": "apples",
+      "note": "peeled and sliced"
+    },
+    {
+      "qty": 0.75,
+      "unit": "cup",
+      "item": "sugar"
+    },
+    {
+      "qty": 2,
+      "unit": "tsp",
+      "item": "cinnamon"
+    },
+    {
+      "qty": 500,
+      "unit": "g",
+      "item": "shortcrust pastry"
+    }
+  ],
+  "steps": [
+    {
+      "text": "Heat the oven to 200 degrees. Toss the apples with sugar and cinnamon."
+    },
+    {
+      "text": "Line the tin with pastry, fill, and cover with a pastry lid."
+    },
+    {
+      "text": "Bake 45-50 minutes until deep golden. Cool for 1 hour before slicing."
+    }
+  ],
+  "source": {
+    "type": "pdf",
+    "name": "apple-pie.pdf"
+  },
+  "tags": [
+    "dessert",
+    "baking"
+  ],
+  "created": "2026-11-12T09:10:00"
+}

@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "title": "Pancakes",
+  "servings": 4,
+  "ingredients": [
+    {
+      "qty": 1.5,
+      "unit": "cup",
+      "item": "flour",
+      "note": "sifted"
+    },
+    {
+      "qty": 2,
+      "unit": "",
+      "item": "eggs"
+    },
+    {
+      "qty": 250,
+      "unit": "ml",
+      "item": "milk"
+    },
+    {
+      "qty": null,
+      "unit": "",
+      "item": "salt",
+      "note": "to taste"
+    }
+  ],
+  "steps": [
+    {
+      "text": "Whisk the flour, eggs and milk until smooth."
+    },
+    {
+      "text": "Rest the batter for 30 minutes.",
+      "timer_s": 1800
+    },
+    {
+      "text": "Fry 2-3 minutes per side until golden."
+    }
+  ],
+  "source": {
+    "type": "manual"
+  },
+  "tags": [
+    "breakfast",
+    "quick"
+  ],
+  "created": "2026-11-12T09:00:00"
+}

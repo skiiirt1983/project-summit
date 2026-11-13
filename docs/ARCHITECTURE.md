@@ -462,12 +462,13 @@ Decided in DECISIONS.md D-008; built in steps R1–R7 (see `docs/KICKOFF.md`). T
 - Storage: `/recipes/<id>/recipe.json` (format 1), `pages/NNN.jpg`, `photo.jpg`, `original.pdf`; `/recipes/index.json` is a rebuildable index.
 - Kitchen features: library with search/tags, step timers (glance chip, several at once), servings scaling with fractions, tick off ingredients, double-tap the case for next step/page, screen stays on while cooking (30 min safety timeout), "Cooking now" chip.
 
-### Recipes panel (library and card mode)
+### Recipes panel
 
 - **Library:** recipe cards (recently cooked first), search by title, tag filter buttons, and a notice with a QR code to the web UI when `/recipes/inbox/` holds PDFs. Without a card: "Insert the SD card with your recipes".
 - **Card mode:** ingredients (left in landscape, above in portrait) with servings − / + and tap-to-tick; one big step at a time with Back / Next, and a timer button for each time found in the step.
 - While a recipe is open the panel takes horizontal swipes (left = next step, right = previous; `ui/swipe_lock`), keeps the screen on (`ui/keep_awake`) and reports `recipes/cooking`. A double-tap on the case (`input/double_tap`) is Next. Leaving the page restores normal swiping and dimming; the recipe stays open on its step.
-- The panel reads recipes through `RecipeStore` (the storage interface), given to it when it is created. Book mode (page images) is the next step.
+- **Book mode:** the original pages as images, one at a time: Back / Next, swipe, or a double-tap on the case. Fit = full width in landscape (scroll down to read on) and the whole page in portrait; the Zoom button or a double-tap on the page doubles it and dragging pans. A recipe with steps and pages has "Pages" / "Steps" buttons to switch; a scan (pages only) opens straight in book mode.
+- The panel reads recipes through `RecipeStore` (the storage interface) and gets page images through an image-source function, both given to it when it is created. JPEG decoding is the platform's job: libjpeg-turbo in the simulator; the device decoder is not written yet (HARDWARE_TODO).
 
 ### Storage layer
 

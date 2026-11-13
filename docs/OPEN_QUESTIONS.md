@@ -4,6 +4,10 @@ Each entry: the question, the choice made, why. Newest first. Say if any should 
 
 ## R4 — Recipes panel
 
+- **Zoom in book mode.** D-008: "pinch or double-tap-and-hold to zoom". Choice: a Zoom / Fit button and a double-tap on the page toggle 2x; drag to pan. Pinch needs multi-touch, which the simulator can't test: listed in HARDWARE_TODO.md. Double-tap-and-hold not built.
+- **Page fit.** Choice: full width in landscape (the top of the page is readable at once; scroll for the rest), whole page in portrait.
+- **Sample recipes.** `tests/fixtures/sd` holds generated sample pages (drawn by `tools/make_recipe_fixtures.py`), not real cookbook scans, to avoid copyright questions.
+
 - **Swipes inside a recipe.** D-008 wants swipe = next page/step, but a horizontal swipe also changes pages in the shell. Choice: while a recipe is open the panel takes horizontal swipes (`ui/swipe_lock`); you leave with the Back button or the time chip (Home). In the library, swipes change pages as usual.
 - **Panels and storage (hard rule 2).** Choice: the panel gets a `RecipeStore` (over the `Storage` interface in the framework) when it is created; it never touches the SD driver. `PanelContext` gained `publish` and `set_state` so panels can raise events and own state.
 - **Thumbnails in the library.** Choice: none yet (text cards). Decoding full 1280 px pages for a grid would be slow on the device; plan: the web converter also writes a small `thumb.jpg` (R6) and the grid shows it.
