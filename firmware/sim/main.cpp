@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <thread>
 #include "png.h"
 #include "summit/event_bus.h"
@@ -966,6 +967,27 @@ struct SimWifi : web::WifiStore {
     }
 };
 
+// Stands in for the internet: https://recipes.example.com/<name> serves
+// tests/fixtures/web/<name>.html; .../photo.jpg serves a sample JPEG.
+struct SimFetcher : recipes::PageFetcher {
+    bool get(const std::string &url, size_t max_bytes, std::string &body, std::string *error) override
+    {
+        const std::string prefix = "https://recipes.example.com/";
+        std::string file;
+        if (url.compare(0, prefix.size(), prefix) == 0 && url.find("..") == std::string::npos)
+            file = std::string(SUMMIT_FIXTURE_SD) + "/../web/" + url.substr(prefix.size()) + ".html";
+        if (url == "https://cdn.example-recipes.com/banana-bread-1x1.jpg")
+            file = std::string(SUMMIT_FIXTURE_SD) + "/recipes/apple-pie/photo.jpg";
+        std::ifstream f(file, std::ios::binary);
+        if (file.empty() || !f) {
+            if (error) *error = "HTTP 404";
+            return false;
+        }
+        body.assign(std::istreambuf_iterator<char>(f), {});
+        return body.size() <= max_bytes;
+    }
+};
+
 struct SimFacts : web::DeviceFacts {
     std::vector<std::pair<std::string, std::string>> facts() override
     {
@@ -1003,6 +1025,8 @@ int run_web(int port)
                                    app.sd_dir + "/recipes/inbox/from-sd-card.pdf", ec);
     }
     recipes::RecipeWebApi recipe_api(*app.recipe_store, *app.sd);
+    SimFetcher fetcher;
+    recipe_api.set_fetcher(&fetcher);
     api.add_extension(&recipe_api);
     sim::HttpSim http(api, SUMMIT_WEB_ROOT, app.sd.get());
     if (!http.listen(port)) {

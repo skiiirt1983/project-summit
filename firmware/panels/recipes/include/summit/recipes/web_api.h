@@ -6,8 +6,10 @@
 //   GET  /api/recipes/file?id=&name=       those files back (thumbnails, pages)
 //   GET  /api/recipes/inbox?name=          a PDF waiting in /recipes/inbox
 //   POST /api/recipes/inbox/done           {"name", "id"}: move the PDF into the recipe as original.pdf
+//   POST /api/recipes/import-url           {"url"}: the device fetches the page and saves its schema.org Recipe
 // Nothing here deletes a recipe. Pure logic over RecipeStore / Storage; host-tested.
 #pragma once
+#include "summit/recipes/jsonld.h"
 #include "summit/recipes/store.h"
 #include "summit/storage.h"
 #include "summit/web/api.h"
@@ -21,6 +23,9 @@ public:
     static constexpr int kMaxPages = 200;
 
     RecipeWebApi(RecipeStore &store, Storage &storage) : store_(store), storage_(storage) {}
+    // Enables import-url. The fetcher does the network I/O (device: HTTPS client).
+    void set_fetcher(PageFetcher *fetcher) { fetcher_ = fetcher; }
+    static constexpr size_t kMaxPageBytes = 2 * 1024 * 1024;
 
     bool handle(const web::Request &req, web::Response &out) override;
     std::unique_ptr<web::UploadSink> upload(const web::Request &req, int64_t length, web::Response &error) override;
@@ -35,9 +40,11 @@ private:
     web::Response file(const std::string &query);
     web::Response inbox_file(const std::string &query);
     web::Response inbox_done(const std::string &body);
+    web::Response import_url(const std::string &body);
 
     RecipeStore &store_;
     Storage &storage_;
+    PageFetcher *fetcher_ = nullptr;
 };
 
 }  // namespace summit::recipes

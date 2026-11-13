@@ -2,6 +2,14 @@
 
 Each entry: the question, the choice made, why. Newest first. Say if any should change.
 
+## R7 — Import from a website
+
+- **No edit screen for URL imports.** Choice: the recipe is saved directly, since structured data is usually clean. Editing saved recipes in the web UI would cover fixes (not built yet).
+- **Which addresses the device may fetch.** Choice: public `https://` names only; IP addresses, `localhost`, single-label, `.local` / `.lan` / `.internal` / `.home` names, ports and credentials are refused, and every redirect is re-checked. Why: with no login on the web UI, the device must not become a way to probe the home network.
+- **Photo.** Choice: only the first image, only over https, only if it is a JPEG up to 2 MB; otherwise the recipe is saved without a photo. Not resized on the device.
+- **Sites without JSON-LD** (microdata only, or behind scripts/paywalls) are not supported: "This page has no structured recipe data to import".
+- **Sample pages** in `tests/fixtures/web` are written for this project, not copied from real sites.
+
 ## R6 — Web import
 
 - **Several recipes in one PDF.** Choice: the edit screen offers a choice and imports one at a time; every imported recipe keeps all pages of that PDF. Splitting pages per recipe is not attempted.

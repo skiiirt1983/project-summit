@@ -14,6 +14,7 @@
 #include "summit/recipes/module.h"
 #include "summit/recipes/panel.h"
 #include "summit/recipes/store.h"
+#include "summit/recipes/url_fetch.h"
 #include "summit/recipes/web_api.h"
 #include "summit/registry.h"
 #include "summit/settings.h"
@@ -58,6 +59,8 @@ extern "C" void app_main(void)
     static summit::Storage &sd = summit::sd_card_start(state);
     static summit::recipes::RecipeStore recipe_store(sd);
     static summit::recipes::RecipeWebApi recipe_api(recipe_store, sd);
+    static summit::recipes::HttpsPageFetcher page_fetcher;  // untested on hardware
+    recipe_api.set_fetcher(&page_fetcher);
     registry.add(std::make_unique<summit::recipes::RecipesPanel>(recipe_store));
 
     // Modules ship in the firmware but start uninstalled (ARCHITECTURE.md "Modules").
