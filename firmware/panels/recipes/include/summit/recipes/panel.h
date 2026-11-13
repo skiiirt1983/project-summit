@@ -38,6 +38,7 @@ public:
     void set_search(const std::string &text);
     void set_tag(const std::string &tag);
     std::vector<std::string> visible_ids() const;
+    const std::vector<std::string> &thumbnail_ids() const { return thumbs_; }
     const CookSession &session() const { return session_; }
     lv_obj_t *find(int action, int index = 0) const;  // a clickable by action code
 
@@ -71,6 +72,7 @@ private:
     std::vector<lv_obj_t *> timer_labels_;
     PanelContext *ctx_ = nullptr;
     PanelView pv_;
+    std::vector<std::string> thumbs_;  // recipes whose tile shows a thumbnail
     bool shown_ = false, dirty_ = false;
     int64_t library_rev_ = 0;  // last recipes/library_rev seen (recipes deleted since?)
     void library_changed(const Value &rev);

@@ -635,6 +635,8 @@ void selftest(App &app)
                    (rp.visible_ids() == std::vector<std::string>{"apple-pie", "grandmas-stew", "pancakes", "tomato-soup"}),
                "library lists the recipes on the card");
         check_panel_inside_content(app, "recipes library");
+        EXPECT(rp.thumbnail_ids() == std::vector<std::string>{"apple-pie"},
+               "only recipes with a thumb.jpg show a thumbnail (%zu)", rp.thumbnail_ids().size());
         shot("20-landscape-recipes-library");
         rp.set_search("SOUP");
         EXPECT((rp.visible_ids() == std::vector<std::string>{"tomato-soup"}), "search by title");
@@ -832,6 +834,7 @@ void selftest(App &app)
         app.shell->go_to_panel("recipes", false);
         run_ms(app, 100);
         check_panel_inside_content(app, "recipes library portrait");
+        EXPECT(rp.thumbnail_ids().size() == 1, "thumbnail in portrait too");
         shot("24-portrait-recipes-library");
         rp.open_recipe("tomato-soup");
         run_ms(app, 100);

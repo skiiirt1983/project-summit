@@ -46,6 +46,7 @@ public:
     // "/recipes/<id>/pages/007.jpg" for page 1..N.
     static std::string page_path(const std::string &id, int page);
     static std::string photo_path(const std::string &id) { return folder(id) + "/photo.jpg"; }
+    static std::string thumb_path(const std::string &id) { return folder(id) + "/thumb.jpg"; }
 
 private:
     Storage &storage_;
