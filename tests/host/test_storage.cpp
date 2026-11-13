@@ -137,12 +137,27 @@ TEST(recipe_store_library)
     std::string json;
     CHECK(sd.read("/recipes/index.json", json) && json.find("\"apple-pie\"") != std::string::npos);
 
+    std::string outside_keep;
     // "Delete recipes": every recipe folder goes (also unreadable ones), the inbox stays.
     CHECK(store.count() == 3);  // apple-pie, scan, broken
     CHECK(!sd.remove_tree("/") && !sd.remove_tree("/recipes") && !sd.remove_tree("/recipes/../x") && sd.exists("/recipes/apple-pie"));
+    // A link inside a recipe folder is removed itself; what it points to (outside the card) is untouched.
+    {
+        char outside[] = "/tmp/summit-outside-XXXXXX";
+        CHECK(mkdtemp(outside) != nullptr);
+        const std::string keep = std::string(outside) + "/keep.txt";
+        FILE *f = fopen(keep.c_str(), "w");
+        CHECK(f != nullptr);
+        if (f) fclose(f);
+        CHECK(symlink(outside, (sd.host_path("/recipes/apple-pie") + "/link").c_str()) == 0);
+        CHECK(sd.remove_tree("/recipes/apple-pie/link") && access(keep.c_str(), F_OK) == 0);
+        CHECK(symlink(outside, (sd.host_path("/recipes/apple-pie") + "/link").c_str()) == 0);
+        outside_keep = keep;
+    }
     int deleted = 0;
     CHECK(store.delete_all(&deleted) && deleted == 3 && store.count() == 0);
     CHECK(!sd.exists("/recipes/apple-pie") && !sd.exists("/recipes/scan/pages/001.jpg") && !sd.exists("/recipes/broken"));
+    CHECK(access(outside_keep.c_str(), F_OK) == 0);  // delete_all did not follow the link
     CHECK(sd.exists("/recipes/inbox/new one.PDF") && store.load_index(idx) && idx.empty());
     CHECK(store.delete_all(&deleted) && deleted == 0);  // nothing left: fine
     CHECK(store.save("apple-pie", recipe("Apple Pie", true)));

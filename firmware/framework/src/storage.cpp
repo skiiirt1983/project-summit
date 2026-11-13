@@ -236,7 +236,13 @@ namespace {
 bool remove_recursive(const std::string &host)
 {
     struct stat st;
+#ifdef ESP_PLATFORM
+    // FAT has no symbolic links, and ESP-IDF has no lstat.
+    if (stat(host.c_str(), &st) != 0) return true;  // already gone
+#else
+    // A link is removed itself, never followed out of the card folder.
     if (lstat(host.c_str(), &st) != 0) return true;  // already gone
+#endif
     if (!S_ISDIR(st.st_mode)) return ::remove(host.c_str()) == 0;
     DIR *d = opendir(host.c_str());
     if (!d) return false;
