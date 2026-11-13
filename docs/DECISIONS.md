@@ -2,6 +2,13 @@
 
 Newest first. Each entry answers a question Claude Code asked. Apply it, update ARCHITECTURE.md where noted, then continue.
 
+## D-010 — Answers to OPEN_QUESTIONS.md R1–R3 (2026-11-12)
+
+1. **No web UI lock.** It's a home device with no emails or passwords on it. D-007 item 4 (pairing) is withdrawn: remove it from D-007 and from ARCHITECTURE.md. No login, no on-device "Allow" prompt.
+2. **"Delete recipes" on Remove: approved as proposed.** Separate button (not part of Remove), confirm dialog that names the recipe count ("Delete 12 recipes from the SD card? This can't be undone."), available on device and in the web UI.
+3. **SD wiring guesses: approved.** Keep them as defaults and keep the item in HARDWARE_TODO.md until checked on the board.
+4. All other R1–R3 defaults in OPEN_QUESTIONS.md are accepted as chosen.
+
 ## D-009 — Work mode until the board arrives (2026-11-12)
 
 Paul has no hardware yet and limited time with this model. Maximise progress with minimal stops. This replaces "propose a plan and wait" in D-008.
