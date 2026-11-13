@@ -8,12 +8,25 @@ idf_component_register(
     PRIV_REQUIRES json esp_http_server esp_netif nvs_flash esp_timer esp_system app_update esp_app_format update)
 target_compile_options(${COMPONENT_LIB} PRIVATE -std=gnu++17)
 
-set(PAGE ${CMAKE_CURRENT_LIST_DIR}/page/index.html)
-set(PAGE_GZ ${CMAKE_CURRENT_BINARY_DIR}/index.html.gz)
-add_custom_command(OUTPUT ${PAGE_GZ}
-    COMMAND gzip -9 -n -c ${PAGE} > ${PAGE_GZ}
-    DEPENDS ${PAGE}
-    VERBATIM)
-add_custom_target(web_page_gz DEPENDS ${PAGE_GZ})
-add_dependencies(${COMPONENT_LIB} web_page_gz)
-target_add_binary_data(${COMPONENT_LIB} ${PAGE_GZ} BINARY)
+# Static web files, gzipped into flash. Served by esp/http_server.cpp (table kStatic).
+set(WEB_FILES
+    page/index.html
+    page/recipes.mjs
+    page/recipe_import.mjs
+    page/vendor/pdfjs/pdf.min.mjs
+    page/vendor/pdfjs/pdf.worker.min.mjs)
+set(WEB_GZ "")
+foreach(f ${WEB_FILES})
+    get_filename_component(name ${f} NAME)
+    set(gz ${CMAKE_CURRENT_BINARY_DIR}/${name}.gz)
+    add_custom_command(OUTPUT ${gz}
+        COMMAND gzip -9 -n -c ${CMAKE_CURRENT_LIST_DIR}/${f} > ${gz}
+        DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${f}
+        VERBATIM)
+    list(APPEND WEB_GZ ${gz})
+endforeach()
+add_custom_target(web_files_gz DEPENDS ${WEB_GZ})
+add_dependencies(${COMPONENT_LIB} web_files_gz)
+foreach(gz ${WEB_GZ})
+    target_add_binary_data(${COMPONENT_LIB} ${gz} BINARY)
+endforeach()

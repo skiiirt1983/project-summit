@@ -14,10 +14,10 @@ Updated after every merge so a new session can continue (D-009).
 | R4b | Book mode: page images (JPEG decode in the simulator), zoom, page swipe | done (#11) |
 | R5 | Recipe timers, timer chip, "Cooking now" chip | done (#12) |
 | R6a | Recipe web API: list, save, streamed file upload/download, inbox | done (#13) |
-| R6b | Web UI import page: pdf.js conversion, text parser, edit screen, inbox conversion, sample PDFs, browser test | next |
-| R7 | Recipe URL import: JSON-LD extraction (device fetch coded, untested) | todo |
+| R6b | Web UI import page: pdf.js conversion, text parser, edit screen, inbox conversion, sample PDFs, browser test | done (#14) |
+| R7 | Recipe URL import: JSON-LD extraction (device fetch coded, untested) | next |
 
-How to work here: branch `recipes/stepN-...` from `main`, `bash tests/run_tests.sh`, build the simulator (`firmware/sim/README.md`), run `summit_sim --selftest` and `node tests/web/e2e.mjs`, open a PR, merge when CI is green.
+How to work here: branch `recipes/stepN-...` from `main`, `bash tests/run_tests.sh`, build the simulator (`firmware/sim/README.md`), run `summit_sim --selftest`, `node tests/web/e2e.mjs` and `node tests/web/e2e_recipes.mjs`, open a PR, merge when CI is green.
 
 # Kickoff — Phase 0 (before hardware arrives)
 
