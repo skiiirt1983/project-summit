@@ -333,6 +333,7 @@ void RecipesPanel::render_grid()
     const SizeTokens &t = pv_.tokens;
     lv_obj_clean(grid_);
     filtered_ = filter_library(index_, search_, tag_);
+    thumbs_.clear();
     if (filtered_.empty()) {
         label(grid_, index_.empty() ? "No recipes yet. Add some from the web UI." : "No recipes match.", t.text_m, kMuted);
         return;
@@ -346,6 +347,18 @@ void RecipesPanel::render_grid()
         lv_obj_add_flag(c, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_set_user_data(c, reinterpret_cast<void *>(pack(kOpen, static_cast<int>(i))));
         lv_obj_add_event_cb(c, event_cb, LV_EVENT_CLICKED, this);
+        // Thumbnail of page 1 (thumb.jpg, made at import) when the build can show images.
+        const std::string thumb = image_source_ ? image_source_(RecipeStore::thumb_path(e.id)) : "";
+        if (!thumb.empty()) {
+            lv_obj_t *img = lv_image_create(c);
+            lv_image_set_src(img, thumb.c_str());
+            lv_obj_set_width(img, lv_pct(100));
+            lv_obj_set_height(img, t.text_xl * 2);  // a band across the tile, cropped to fill
+            lv_image_set_inner_align(img, LV_IMAGE_ALIGN_COVER);
+            lv_obj_set_style_radius(img, t.radius, 0);
+            lv_obj_set_style_clip_corner(img, true, 0);
+            thumbs_.push_back(e.id);
+        }
         label(c, e.title, t.text_m);
         std::string info = e.has_card ? "Steps" : "";
         if (e.has_pages) info += (info.empty() ? "" : " + ") + std::to_string(e.pages) + (e.pages == 1 ? " page" : " pages");

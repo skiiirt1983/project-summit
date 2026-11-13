@@ -9,6 +9,7 @@ Each entry: the question, the choice made, why. Newest first. Say if any should 
 - **Editing a saved recipe (web UI).** Choice: an "Edit" button per recipe in the Recipes tab opens the same form as import, filled from the device. It changes text only (title, servings, tags, ingredients, steps); pages, photo, source and created date are kept, and the recipe keeps its id (so its folder name does not change with the title). Why: no rename means nothing on the card moves.
 - **Timers when editing.** Choice: a step whose text is unchanged keeps its timer; a changed or new step has none saved (the device still detects times in the text when cooking).
 - **Quantities when editing.** Ingredients are shown as lines ("1 1/2 cup flour, sifted") and parsed again on save, so an unusual quantity can be rounded to the nearest shown fraction.
+- **Library thumbnails on the device.** Choice: a tile shows `thumb.jpg` (the 320 px picture of page 1 made at PDF import) as a band across the top, cropped to fill. Recipes without one (typed, or imported from a website) show text only. Why not `photo.jpg` for website recipes: it is the full-size photo (up to 2 MB) and the device does not resize images, so a library of them would be slow to draw. If you want pictures for website recipes, the browser could make a thumbnail at import time.
 - **URL imports** are still saved directly; fix them afterwards with Edit. No separate pre-save edit screen.
 
 ## R7 — Import from a website
