@@ -36,24 +36,22 @@
 | CLIP-body unchanged | Printed clean | — |
 | New coupons END-bed and END-top: slices of the real body in its real print orientation | Tests the actual plate edge, top rounds, lip and pocket top before a full-body print | Printing the whole body to find out |
 
-## OPEN, blocking the body print: the screen opening's top edge (found 2026-11-14)
+## Port-end cap (Paul chose option A, 2026-11-14)
 
-Bambu Studio flagged floating cantilevers on END-top, and it is right. With the body standing on its end, the
-port end of the screen opening is a ceiling: the lip there hangs down 1.6 mm with nothing under it (60 mm long),
-the opening's own top edge is a 60 to 77 mm bridge, and the pocket top still has a 17.8 mm flat strip. This cannot
-be fixed with chamfers: a 45 degree roof over a 77 mm opening needs about 38 mm of height and there are 9 mm.
-SEAT-body and END-bed have no such surfaces (checked on the meshes). **Do not print END-top.**
+Why: printed on end, the port end of the screen opening is a ceiling (lip hanging in the air, a 60 to 77 mm bridge
+on the opening's top edge). Bambu Studio flagged it on END-top. Rejected: printing the body on its bottom; supports
+inside the pocket.
 
-Options for Paul (print split, brief 8.4):
-- **A. Port-end cap.** Body prints on end with the pocket open at the top; the last ~11 mm at the port end is a
-  separate TPU cap printed flat and glued on pegs. Everything prints the way the clean coupons did. Cost: one thin
-  seam around the body near the port end (could be mirrored by a groove at the other end so it looks intended).
-- **B. Print it on its bottom, as it sits.** One piece, no seam. Needs: no TPU lip (the cream bezel grows from
-  4.5 to about 6.4 mm to hide the frame instead), a 60 degree overhang inside the pocket (hidden by the frame) and
-  along the screen opening's top edge (visible), 45 degree chamfers on the two base corners, layer lines running
-  the other way. Needs a new coupon first.
-- **C. Keep it as is, with supports only inside the top of the pocket.** One piece, no redesign. TPU supports fuse
-  and leave scars on the opening's top edge.
+| Decision | Why |
+|---|---|
+| The last 19.55 mm at the port end is a separate TPU cap. The seam sits where the screen opening's corners start to curve, so the main body's opening and pocket are straight all the way to the top | Main body prints on end with no ceilings (checked on the mesh: 6 mm² left, the crowns of the two 4 mm mic holes) |
+| No glue. Six TPU pegs on the cap (Ø5 × 8) push into holes in the body: two in each leg, one in each front corner | Paul: per the brief, and the cap must come off |
+| The cap is the service hatch: both USB-C openings are in it. With it off, the pocket is open at the end, so the inner frame slides in and out there (no more forcing it under the lip) | Paul |
+| **BOOT/RESET/POWER holes and the card slot are not in the cap: they don't line up.** The buttons sit 73 to 96 mm from the USB end of the board and the card slot 51 to 67 mm; the cap covers the first 18 mm. They stay on the module's top wall, reached by pushing the module out | Geometry (Waveshare drawing) |
+| A 0.6 mm V-groove runs round the outside at the seam, with a matching groove mirrored at the other end | Paul: the two lines should look intended |
+| The cap prints with the port end face on the plate, pegs up. So both ends of the body now have the same 45° chamfer blended into the round, and the USB mouths are chamfered, not rounded | No rounds on the plate; the two ends now match |
+| With the cap: clip pockets run up to the open top, the finger hole and landscape pad recesses get a teardrop top, landscape pads move 7 mm in to clear the seam, the pocket-top roof is removed | No flat ceilings in TPU |
+| **Preview only (`CAP = False`) until Paul OKs `renders/q-cap.png`.** Coupons CAP-corner and BODY-corner already use it | Paul: show before changing the full model |
 
 ## Fixed 2026-11-13
 - **Mic exit holes were blocked.** The mics sit 29.9 mm off the centre line, which is behind the solid corners of

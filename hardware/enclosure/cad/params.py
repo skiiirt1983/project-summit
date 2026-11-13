@@ -141,6 +141,19 @@ BACK_SKIN = 1.68           # body skin behind the frame, facing the hollow
 FRONT_MARGIN = 5.0         # body showing above/below the bezel (target image)
 SIDE_MARGIN = 11.0         # body left/right of the bezel (target image)
 
+# --- Port-end cap (Paul, 2026-11-14: option A) --------------------------------------------------
+# The body prints on end. Its last CAP_T at the port end is a separate TPU cap, so the main body's
+# pocket is an open-topped channel with no ceilings. The cap pushes on with pegs: no glue.
+CAP = False                # preview only until Paul OKs the renders; then True for the full model
+PEG_D = 5.0                # peg diameter
+PEG_L = 8.0                # peg length
+PEG_FIT = 0.0              # hole is this much larger than the peg on diameter (0 = snug in TPU)
+                           # COUPON: tune after test print (CAP-corner + BODY-corner)
+GROOVE = 0.6               # depth of the V-groove at the seam, and of the matching groove at the other end
+                           # COUPON: tune after test print (CAP-corner + BODY-corner)
+PAD_INSET = 25.0           # landscape pads: distance from each end (32 with the cap, to clear the seam)
+PAD_INSET_CAP = 32.0
+
 # --- TPU pads -------------------------------------------------------------------
 PAD_D = 12.0               # landscape pads, under the bottom
 PAD_D_END = 8.0            # portrait pads, on the end it stands on
@@ -200,6 +213,10 @@ def derive():
     g["LIP_RUN"] = (FRAME_L - MODULE_L) / 2 - SEAM + FRAME_FIT      # how far the lip overhangs the frame
     g["LIP_D"] = LIP_LAND + LIP_RUN                                # depth where the pocket reaches full width
     g["ROOF_FLAT"] = (POCKET_D - LIP_D) - 2 * ROOF_H               # flat strip left at the pocket's top end
+    # Seam plane: where the screen opening's corners start to curve, so the main body's opening
+    # and pocket are straight all the way to the top when it prints on end.
+    g["CAP_T"] = SIDE_MARGIN + SEAM + BEZEL_R                      # cap thickness along the width
+    g["SEAM_Y"] = USB_END * (BODY_WIDTH / 2 - CAP_T)               # world Y of the seam (ports side)
 
 
 derive()

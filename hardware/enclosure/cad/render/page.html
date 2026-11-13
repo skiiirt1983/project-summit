@@ -65,8 +65,11 @@ for (const v of views) {
     const q = new THREE.Vector3(x, y, z).sub(c);
     hw = Math.max(hw, Math.abs(q.dot(right))); hh = Math.max(hh, Math.abs(q.dot(up)));
   }
-  const fit = 1.22, k = Math.max(hh, hw * H / W) * fit;
+  // Close-ups: v.target = point to look at (model coordinates), v.zoom = how much closer.
+  if (v.target) c.set(v.target[0], v.target[1], v.target[2] + g.position.z);
+  const fit = 1.22, k = Math.max(hh, hw * H / W) * fit / (v.zoom ?? 1);
   let cam, dist = 6 * r;
+  if (v.zoom) { /* keep the whole model in the light and shadow set-up; only the camera moves */ }
   if (v.ortho) cam = new THREE.OrthographicCamera(-k * W / H, k * W / H, k, -k, 1, 20 * r);
   else { cam = new THREE.PerspectiveCamera(24, W / H, 1, 50 * r); dist = k / Math.tan(Math.PI * 12 / 180) + r * 0.6; }
   cam.up.set(0, 0, 1); cam.position.copy(c).addScaledVector(d, dist); cam.lookAt(c);

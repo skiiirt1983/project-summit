@@ -1,6 +1,6 @@
 # Coupon results (Paul fills this in)
 
-**Status: Print 1 (material slices) is done and applied. From Print 2, SEAT-body and CLIP-body are back (2026-11-14) and applied: new `coupons-fit-body.3mf` to print. PETG fit coupons and the measurements are still to come.**
+**Status: Print 1 (material slices) is done and applied. From Print 2, SEAT-body and CLIP-body are back (2026-11-14) and applied. The body now gets a push-on port-end cap, so `coupons-fit-body.3mf` is new again (2026-11-14, second issue): SEAT-body, END-bed, CAP-corner, BODY-corner. PETG fit coupons and the measurements are still to come.**
 
 Print the coupons, try them, tick or write an answer in each box. Each answer names the
 `cad/params.py` value it changes, so the full model can be updated in one pass.
@@ -27,7 +27,8 @@ The 3MF files carry shapes and names only. Set the walls and infill per object i
 | | **MIC-plate**, **PORT-block** | PETG | 4 | 15 % | |
 | `coupons-fit-body.3mf` (**new 2026-11-14**) | **SEAT-body** | TPU for AMS | 2 | 10 % gyroid (T1) | supports off. Lip now has a 45° underside; plate edges are 1 mm 45° chamfers |
 | | **END-bed** | TPU for AMS | 2 | 10 % gyroid (T1) | the real body's first 12 mm off the plate. Supports off, elephant-foot compensation 0.15, 0.08 mm layers over the rounds |
-| | **END-top** | TPU for AMS | 2 | 10 % gyroid (T1) | the real body's last 26 mm at the port end. Supports off, 0.08 mm layers over the top rounds |
+| | **CAP-corner** | TPU for AMS | 2 | 10 % gyroid (T1) | one corner of the port-end cap, printed end-face down with its two pegs up. Supports off |
+| | **BODY-corner** | TPU for AMS | 2 | 10 % gyroid (T1) | the 20 mm of body under it, seam face up with two peg holes. Supports off |
 | (kept) | **CLIP-body** | — | — | — | printed clean on 2026-11-14; no reprint. `CLIP-body.stl` is unchanged |
 
 SEAT-frame and CLIP-frame changed on 2026-11-14 (their top outer edge is now chamfered to tuck under the sloped
@@ -57,22 +58,29 @@ All layer heights 0.2 mm for the coupons, except GLASS-ring and the bezel pieces
 | Rounded bottom edges sag at the plate, first layer flares | Coupons: every plate edge is a 1 mm 45° chamfer (`PLATE_CHAMFER`), no rounds on the plate. Real body: the bed end already meets the plate at 45° (chamfer blended into the round), unchanged |
 | CLIP-body printed clean | No change; file kept as issued |
 
-## 1c. END-bed and END-top (new: slices of the real body, printed standing up like the real thing)
+## 1c. END-bed (a slice of the real body, printed standing up like the real thing)
 
-> **2026-11-14: do not print END-top.** Bambu Studio's "floating cantilevers" warning is real: the screen
-> opening's top edge hangs in the air in this print orientation. See `decisions.md`, "OPEN, blocking the body
-> print". END-bed and SEAT-body are fine to print.
+END-top was withdrawn on 2026-11-14 (Bambu Studio's floating-cantilever warning was real). That end of the body
+is now a separate cap; see 1d.
 
 | Question | Answer | Changes |
 |---|---|---|
-| END-bed: first layer and the 45° edge at the plate | ☐ clean ☐ flares ☐ sags | flares → elephant-foot compensation up (`BODY_PRINT`); sags → tell Claude: bed end goes to a plain 1 mm chamfer, no round |
-| END-bed: do the rounds above the chamfer feel smooth? | ☐ yes ☐ stepped | stepped → finer layers on the rounds (`BODY_PRINT`) |
-| END-bed: pad recesses (cone tops) clean? Pads fit? | ☐ yes ☐ loose ☐ tight | `PAD_FIT` |
-| END-top: the flat strip at the pocket's top end (17.8 mm bridge) | ☐ clean ☐ sags a little, frame would still fit ☐ strings / unusable | unusable → `ROOF_H` up to a full peak, which makes the body about 10 mm wider at the port end (decision) |
-| END-top: the 45° sides of that top end | ☐ clean ☐ rough | rough → tell Claude |
-| END-top: the sloped lip around the screen opening: clean? opening edge straight? | ☐ yes ☐ no | `LIP_LAND` |
-| END-top: full rounds at the very top | ☐ smooth ☐ stepped ☐ droopy | finer layers / slower top (`BODY_PRINT`) |
-| END-top: USB openings clean, cable plugs pass? | ☐ yes ☐ no | `USB_WINDOW`, `USB_WINDOW_R` |
+| First layer and the 45° edge at the plate | ☐ clean ☐ flares ☐ sags | flares → elephant-foot compensation up (`BODY_PRINT`); sags → tell Claude: bed end goes to a plain 1 mm chamfer, no round |
+| Do the rounds above the chamfer feel smooth? | ☐ yes ☐ stepped | stepped → finer layers on the rounds (`BODY_PRINT`) |
+| Pad recesses (cone tops) clean? Pads fit? | ☐ yes ☐ loose ☐ tight | `PAD_FIT` |
+
+## 1d. CAP-corner + BODY-corner (the push-on cap: fit and seam)
+
+Push the two pegs of CAP-corner into BODY-corner until the faces meet. Pull it off and push it on ten times.
+
+| Question | Answer | Changes |
+|---|---|---|
+| Push-fit | ☐ falls off ☐ loose ☐ right: snug, comes off by hand ☐ too tight ☐ won't go in | loose → `PEG_FIT` −0.10; too tight → +0.10; won't go → +0.20 |
+| Do the faces close up all the way round? | ☐ yes ☐ gap of ___ mm | gap → `PEG_L` −0.5 (pegs bottoming out), or tell Claude |
+| Seam: does the little V-groove look intended? | ☐ yes ☐ too faint ☐ too heavy | `GROOVE` (now 0.6) |
+| Do the outside faces line up across the seam? | ☐ flush ☐ step of ___ mm | step → more or thicker pegs (tell Claude) |
+| CAP-corner: the edge on the plate (45° into the round) | ☐ clean ☐ flares ☐ sags | same fix as END-bed |
+| Pegs printed round and upright? | ☐ yes ☐ leaning / stringy | `PEG_D` up to 6 |
 
 ## 2. GLASS-ring (the front 6 mm of the bezel, all the way round)
 
@@ -92,7 +100,7 @@ the bezel, SEAT-cover snaps in behind it.
 
 | Question | Answer | Changes |
 |---|---|---|
-| Frame into body | ☐ loose ☐ right ☐ too hard ☐ won't go under the lip | loose → `FRAME_FIT` −0.10; too hard → +0.10; won't go → `FRAME_TOP` or split the body |
+| Frame into body (with the cap, the real frame slides in from the open port end, so only the side-to-side fit matters here) | ☐ loose ☐ right ☐ too hard ☐ won't go under the lip | loose → `FRAME_FIT` −0.10; too hard → +0.10; won't go → `FRAME_TOP` or split the body |
 | Does the T1 body wall bulge or flex where the frame sits? | ☐ no ☐ a little ☐ yes | yes → `FIRM_ZONE = "T2"` (firm modifier around the pocket only) |
 | Bezel into frame | ☐ loose ☐ right ☐ tight | loose → `FRAME_CLEAR` −0.05; tight → +0.10 |
 | Seam between cream and body: even? width? | ☐ good ☐ too wide ☐ too tight / rubbing | `SEAM` (now 0.30) |

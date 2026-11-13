@@ -3,7 +3,7 @@
 Run:  python test_coupons.py
   -> ../coupons/coupons-material.3mf   three triangle slices: T1 T2 T3 (TPU for AMS). Printed 2026-11-13
      ../coupons/coupons-fit-petg.3mf   PETG fit tests: glass ring, seat, clip, mic plate, port block
-     ../coupons/coupons-fit-body.3mf   TPU: seat corner (SEAT-body) and two slices of the real body (END-bed, END-top)
+     ../coupons/coupons-fit-body.3mf   TPU: SEAT-body, END-bed (bed-end slice), CAP-corner + BODY-corner (push-fit and seam)
      plus one STL per coupon there, and render inputs in ../out/coupons/
 Every coupon is laid flat in its print orientation. Per-object slicer settings are
 listed in ../COUPON-RESULTS.md; the 3MF carries shapes and names only.
@@ -83,17 +83,34 @@ def plate_chamfer(part):
 
 
 def end_slices():
-    """Two slices of the real body in its real print orientation (standing on the portrait end).
-
-    END-bed: the first 12 mm off the plate: the 45 degree chamfer blended into the round, pad recesses.
-    END-top: the last 26 mm at the port end: the pocket's sloped top end, the lip, USB openings, full rounds.
+    """END-bed: the real body's first 12 mm off the plate, in its real print orientation
+    (standing on the portrait end): the 45 degree chamfer blended into the round, pad recesses.
+    (END-top was withdrawn on 2026-11-14: that end is now a separate cap.)
     """
-    upright = Rot(-90, 0, 0) * peak.body()                  # +Y (portrait end) down on the plate
-    top_z = p.BODY_WIDTH                                     # after lay_flat the body spans z = 0 .. BODY_WIDTH
-    upright = lay_flat(upright)
-    bed = upright & (Pos(0, 0, 6) * Box(400, 400, 12))
-    top = upright & (Pos(0, 0, top_z - 13) * Box(400, 400, 26))
-    return {"END-bed": lay_flat(bed), "END-top": plate_chamfer(lay_flat(top))}
+    upright = lay_flat(Rot(-90, 0, 0) * peak.body())        # +Y (portrait end) down on the plate
+    return {"END-bed": lay_flat(upright & (Pos(0, 0, 6) * Box(400, 400, 12)))}
+
+
+def cap_corner():
+    """The back-bottom corner of the port-end cap and of the body under it: two pegs, the seam
+    groove, and both parts in the way they will really print.
+
+    CAP-corner prints with the port end face on the plate, pegs up.
+    BODY-corner is the 20 mm of body below the seam, seam face up with its two peg holes.
+    """
+    was = p.CAP
+    p.CAP = True
+    p.derive()
+    try:
+        main, cap = peak.split(peak.body())
+    finally:
+        p.CAP = was
+        p.derive()
+    corner = Pos(114, 0, 23) * Box(72, 400, 50)             # profile X 78..150, Z -2..48
+    below = Pos(0, p.SEAM_Y - p.USB_END * 10, 0) * Box(600, 20, 600)
+    turn = Rot(-p.USB_END * 90, 0, 0)                       # cap: port end face down
+    return {"CAP-corner": lay_flat(turn * (cap & corner)),
+            "BODY-corner": plate_chamfer(lay_flat(Rot(p.USB_END * 90, 0, 0) * (main & corner & below)))}
 
 
 def material_slice(label):
@@ -226,4 +243,5 @@ if __name__ == "__main__":
     write(petg, "coupons-fit-petg", lambda n: "#efe6d2" if "bezel" in n or "ring" in n else "#6a7078")
     # CLIP-body printed clean on 2026-11-14 and is kept exactly as first issued (CLIP-body.stl),
     # so it is not rebuilt here.
-    write({"SEAT-body": seat["SEAT-body"], **end_slices()}, "coupons-fit-body", lambda n: "#8d8f8c")
+    write({"SEAT-body": seat["SEAT-body"], **end_slices(), **cap_corner()}, "coupons-fit-body",
+          lambda n: "#8d8f8c")

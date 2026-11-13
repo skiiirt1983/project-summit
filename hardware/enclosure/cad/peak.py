@@ -7,7 +7,7 @@ import json
 import math
 from pathlib import Path
 
-from build123d import (Axis, Cone, Cylinder, chamfer, Mesher, Plane, Polygon, Pos, Rot, Vector,
+from build123d import (Axis, Box, Cone, Cylinder, chamfer, mirror, offset, Mesher, Plane, Polygon, Pos, Rot, Vector,
                        export_step, export_stl, extrude, fillet)
 
 import params as p
@@ -15,7 +15,7 @@ import parts
 
 OUT = Path(__file__).resolve().parent.parent / "out"
 
-COLOURS = {"body": "#8d8f8c", "frame": "#3a3d40", "bezel": "#efe6d2", "plate": "#5b6470",
+COLOURS = {"body": "#8d8f8c", "cap": "#8d8f8c", "frame": "#3a3d40", "bezel": "#efe6d2", "plate": "#5b6470",
            "cover": "#4a4f55", "pads": "#1f6f6b", "glass": "#0b0b0d", "view": "#1d2b3a",
            "display": "#1b3a2a", "battery": "#3b6ea8", "accelerometer": "#8a3fa0"}
 PRINTED = ("body", "frame", "bezel", "plate", "cover", "pads")
@@ -99,12 +99,12 @@ def shell(width=None, soft_edges=True, rounded=None):
     else:
         r_out, r_in = p.EDGE_R, p.EDGE_R_IN
     for sign in (1, -1):
-        on_bed = rounded and p.BED_CHAMFER and sign == p.BED_END
+        on_bed = rounded and p.BED_CHAMFER and (sign == p.BED_END or p.CAP)   # the cap prints end-down too
         solid = _round_loop(solid, _end_face(solid, sign, width).outer_wire().edges(),
                             r_out, sign, width, on_bed)
     solid -= hole
     for sign in (1, -1):
-        on_bed = rounded and p.BED_CHAMFER and sign == p.BED_END
+        on_bed = rounded and p.BED_CHAMFER and (sign == p.BED_END or p.CAP)
         solid = _round_loop(solid, _end_face(solid, sign, width).inner_wires()[0].edges(),
                             r_in, sign, width, on_bed)
     return solid
@@ -129,12 +129,62 @@ def body(rounded=None):
             usb.append(e)
         elif abs(depth - p.FRONT_T) < 0.05:
             holes.append(e)
-    cut = fillet(usb, p.USB_MOUTH_R)
+    # With the cap, the port end face sits on the print plate: 45 degree chamfer there, not a round.
+    cut = chamfer(usb, p.USB_MOUTH_R) if p.CAP else fillet(usb, p.USB_MOUTH_R)
     if rounded:
-        cut = fillet([e for e in cut.edges() if any((e.center() - h.center()).length < 1e-4 for h in holes)],
-                     p.SMALL_R)
+        mouths = [e for e in cut.edges() if any((e.center() - h.center()).length < 1e-4 for h in holes)]
+        for radius in (p.SMALL_R, p.SMALL_R / 2, p.SMALL_R / 4):     # the teardrop's point limits the size
+            try:
+                cut = fillet(mouths, radius)
+                break
+            except ValueError:
+                continue
     _, recess = pads_and_recesses()
-    return cut - recess
+    cut -= recess
+    return cut - seam_grooves() if p.CAP else cut
+
+
+def seam_grooves():
+    """V-grooves around the outside at the seam and, mirrored, at the other end."""
+    outer, _, _ = profile()
+    g = p.GROOVE
+    face = fillet(Polygon(*outer, align=None).vertices(), p.OUTER_R)
+    half = extrude(offset(face, -g), g, taper=-45)          # inset by g at the plane, full size g away
+    core = (half + mirror(half, Plane.XY)).rotate(Axis.X, 90)
+    ring = Box(600, 2 * g, 600) - core
+    return Pos(0, p.SEAM_Y, 0) * ring + Pos(0, -p.SEAM_Y, 0) * ring
+
+
+def peg_spots():
+    """Peg centres in the side profile (X, Z): two per leg, one in each front corner."""
+    outer, _, _ = profile()
+    apex, base = outer[1], outer[2][0]
+    fa, ba = math.radians(p.FRONT_ANGLE), math.radians(p.BACK_ANGLE)
+    eat = p.OUTER_R / math.tan(fa / 2)
+    up = (math.cos(fa), math.sin(fa))                        # up the front slope
+    back = []
+    for t in (35.0, 75.0):                                   # along the back leg, on its centre line
+        back.append((base - t * math.cos(ba) - p.LEG_T / 2 * math.sin(ba),
+                     t * math.sin(ba) - p.LEG_T / 2 * math.cos(ba)))
+    return [(60.0, p.LEG_T / 2), (100.0, p.LEG_T / 2), *back,
+            (eat - 3 * up[0], p.OUTER_R - 3 * up[1]),                             # front-bottom corner
+            (apex[0] + 3 * up[0], apex[1] - 2 * p.OUTER_R + 3 * up[1])]            # top corner
+
+
+def split(whole):
+    """Cut the body at the seam: (main body, cap). Pegs on the cap, holes in the main body."""
+    sign = p.USB_END
+    side = Pos(0, p.SEAM_Y + sign * 300, 0) * Box(600, 600, 600)       # everything on the ports side of the seam
+    cap, main = whole & side, whole - side
+    for x, z in peg_spots():
+        tip = 0.8
+        peg = Pos(0, 0, (p.PEG_L - tip) / 2) * Cylinder(p.PEG_D / 2, p.PEG_L - tip)
+        peg += Pos(0, 0, p.PEG_L - tip / 2) * Cone(p.PEG_D / 2, p.PEG_D / 2 - tip, tip)
+        hole = Pos(0, 0, (p.PEG_L + 0.5) / 2) * Cylinder((p.PEG_D + p.PEG_FIT) / 2, p.PEG_L + 0.5)
+        turn = Rot(sign * 90, 0, 0)                                    # +Z becomes "away from the ports"
+        cap += Pos(x, p.SEAM_Y + sign * 0.01, z) * turn * peg
+        main -= Pos(x, p.SEAM_Y + sign * 0.01, z) * turn * hole
+    return main, cap
 
 
 def pad_spots():
@@ -142,7 +192,7 @@ def pad_spots():
     outer, _, _ = profile()
     base = outer[2][0]
     eat = p.OUTER_R / math.tan(math.radians(p.FRONT_ANGLE) / 2)
-    y = p.BODY_WIDTH / 2 - 25
+    y = p.BODY_WIDTH / 2 - (p.PAD_INSET_CAP if p.CAP else p.PAD_INSET)
     landscape = [(eat + 7, s * y) for s in (-1, 1)] + [(base - eat - 7, s * y) for s in (-1, 1)]
     apex = outer[1]
     portrait = [(26.0, 15.0), (apex[0], apex[1] - 2 * p.OUTER_R), (base - 24.7, 14.25)]
@@ -155,6 +205,10 @@ def pads_and_recesses():
     for x, y in landscape:
         pad = Pos(x, y, p.PAD_RECESS - p.PAD_T / 2) * Cylinder(p.PAD_D / 2, p.PAD_T)
         cut = Pos(x, y, p.PAD_RECESS / 2 - 0.5) * Cylinder((p.PAD_D + p.PAD_FIT) / 2, p.PAD_RECESS + 1)
+        if p.CAP:                                        # teardrop top (towards the ports = up when printing)
+            r = (p.PAD_D + p.PAD_FIT) / 2
+            drop = Rot(0, 0, 45) * Box(2 * r, 2 * r, p.PAD_RECESS + 1) & Pos(0, p.USB_END * 2 * r, 0) * Box(4 * r, 4 * r, 10)
+            cut += Pos(x, y, p.PAD_RECESS / 2 - 0.5) * drop
         pads = pad if pads is None else pads + pad
         recess = cut if recess is None else recess + cut
     end = p.BODY_WIDTH / 2
@@ -184,6 +238,8 @@ def build():
         "battery": loc * parts.battery(),
         "accelerometer": loc * parts.accelerometer(),
     }
+    if p.CAP:
+        out["body"], out["cap"] = split(out["body"])
     return out
 
 

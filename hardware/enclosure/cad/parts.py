@@ -168,20 +168,29 @@ def body_cutter():
     cut += slab(frame_l, frame_w, frame_r, -p.LIP_D, -p.POCKET_D)
     # The body prints standing on its end with the ports up, so the pocket's port end is a
     # ceiling. Give it 45 degree sides; only a ROOF_FLAT-wide strip in the middle stays flat.
-    span_z = p.POCKET_D - p.LIP_D
-    span_y = frame_w - 2 * frame_r * (1 - math.sin(math.radians(45)))
-    roof = Rot(0, -90, 0) * extrude(Rectangle(span_z, span_y), p.ROOF_H, taper=45)
-    cut += Pos(-frame_l / 2 + 0.01, 0, -(p.LIP_D + p.POCKET_D) / 2) * roof
+    # (Not needed with the port-end cap: the cap prints with this end facing up.)
+    if not p.CAP:
+        span_z = p.POCKET_D - p.LIP_D
+        span_y = frame_w - 2 * frame_r * (1 - math.sin(math.radians(45)))
+        roof = Rot(0, -90, 0) * extrude(Rectangle(span_z, span_y), p.ROOF_H, taper=45)
+        cut += Pos(-frame_l / 2 + 0.01, 0, -(p.LIP_D + p.POCKET_D) / 2) * roof
     skin_z = -p.POCKET_D - p.BACK_SKIN / 2
     cut += Pos(0, 0, skin_z) * Cylinder(p.PUSH_HOLE_D / 2, p.BACK_SKIN + 2)
     for x, y in mic_exits():
         cut += Pos(x, y, skin_z) * Cylinder(p.MIC_CLEAR_D / 2, p.BACK_SKIN + 2)
     cut += usb_windows(-p.BODY_WIDTH / 2 - 1, -p.FRAME_L / 2 + 1)
     tip = clip_z() + 3.0
+    seam_x = -(p.BODY_WIDTH / 2 - p.CAP_T)                                         # module x of the cap seam
     for side in (-1, 1):                                                           # room for the clips to flex
         for x in p.CLIP_X:
-            cut += Pos(x, side * (p.FRAME_W / 2 + p.FRAME_FIT), tip - p.CLIP_LEN / 2) * Box(
-                p.CLIP_W + 2 * p.CLIP_SLOT, 2 * (p.CLIP_BUMP + 0.3), p.CLIP_LEN + 1)
+            width = p.CLIP_W + 2 * p.CLIP_SLOT
+            x_lo = seam_x - 1 if p.CAP else x - width / 2      # with the cap: run up to the open top, no ceiling
+            cut += Pos((x_lo + x + width / 2) / 2, side * (p.FRAME_W / 2 + p.FRAME_FIT), tip - p.CLIP_LEN / 2) * Box(
+                x + width / 2 - x_lo, 2 * (p.CLIP_BUMP + 0.3), p.CLIP_LEN + 1)
+    if p.CAP:                                                                      # teardrop top on the finger hole
+        r = p.PUSH_HOLE_D / 2
+        peak_ = Rot(0, 0, 45) * Box(2 * r, 2 * r, p.BACK_SKIN + 2) & Pos(-2 * r, 0, 0) * Box(4 * r, 4 * r, 10)
+        cut += Pos(0, 0, skin_z) * peak_
     return cut
 
 
