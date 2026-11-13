@@ -41,7 +41,7 @@ public:
     const CookSession &session() const { return session_; }
     lv_obj_t *find(int action, int index = 0) const;  // a clickable by action code
 
-    enum Action { kOpen = 1, kBack, kTag, kNext, kPrev, kMinus, kPlus, kTick, kTimer, kPages, kSteps, kZoom };
+    enum Action { kOpen = 1, kBack, kTag, kNext, kPrev, kMinus, kPlus, kTick, kTimer, kPages, kSteps, kZoom, kCancelTimer, kDismissTimers };
     bool zoomed() const { return zoomed_; }
     lv_obj_t *page_image() const { return page_img_; }
 
@@ -52,6 +52,7 @@ private:
     void render_card();
     void render_book();
     void size_page_image();
+    void render_timers();
     void render_message(const std::string &text, bool with_back);
     void sync_flags();
     void act(int action, int index);
@@ -65,6 +66,9 @@ private:
     ImageSource image_source_;
     bool zoomed_ = false;
     lv_obj_t *page_area_ = nullptr, *page_img_ = nullptr;
+    lv_obj_t *timers_bar_ = nullptr;
+    std::string timers_sig_;                 // ids + ringing of the rows currently built
+    std::vector<lv_obj_t *> timer_labels_;
     PanelContext *ctx_ = nullptr;
     PanelView pv_;
     bool shown_ = false, dirty_ = false;

@@ -55,9 +55,10 @@ add_executable(summit_sim
     ${FW}/services/update/src/preflight.cpp ${FW}/services/update/src/image_check.cpp
     ${FW}/services/update/src/engine.cpp ${FW}/services/update/src/health_gate.cpp
     ${FW}/services/update/src/status_topics.cpp
+    ${FW}/services/timers/src/timers.cpp
     ${FW}/web/src/api.cpp ${FW}/../third_party/cjson/cJSON.c)
 target_include_directories(summit_sim PRIVATE ${FW}/framework/include ${FW}/shell/include
-    ${FW}/services/update/include ${FW}/web/include ${FW}/panels/recipes/include ${FW}/../third_party/cjson ${FW}/../tests/host)
+    ${FW}/services/update/include ${FW}/web/include ${FW}/panels/recipes/include ${FW}/services/timers/include ${FW}/../third_party/cjson ${FW}/../tests/host)
 target_link_libraries(summit_sim PRIVATE lvgl ZLIB::ZLIB)
 target_compile_options(summit_sim PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Werror>)
 target_compile_definitions(summit_sim PRIVATE SUMMIT_WEB_PAGE="${FW}/web/page/index.html"

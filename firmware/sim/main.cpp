@@ -31,6 +31,7 @@
 #include "summit/recipes/store.h"
 #include "summit/storage.h"
 #include "summit/system_settings.h"
+#include "summit/timers.h"
 
 #if SUMMIT_SIM_SDL
 #include <SDL2/SDL.h>
@@ -102,6 +103,7 @@ struct App {
     std::unique_ptr<PanelHost> host;
     std::unique_ptr<shell::Shell> shell;
     std::unique_ptr<sim::FakeUpdateService> updates;
+    std::unique_ptr<TimerService> timers;
 };
 
 void run_ms(App &app, uint32_t ms)
@@ -112,6 +114,7 @@ void run_ms(App &app, uint32_t ms)
         if (app.sd) publish_storage_state(*app.sd, app.state);
         app.bus.dispatch();
         if (app.updates) app.updates->tick(g_ms);
+        if (app.timers) app.timers->tick(g_ms);
         app.shell->tick(g_ms);
         lv_timer_handler();
     }
@@ -655,7 +658,24 @@ void selftest(App &app)
         click(rp.find(RecipesPanel::kTimer, 0));
         EXPECT(timer == "1800|Pancakes: Step 2 of 3", "tap a time requests a timer (%s)", timer.c_str());
         app.bus.unsubscribe(tsub);
+        // The timer runs: bar in the panel, chip in the strip, counting down.
+        auto chip_text = [&] { return std::get<std::string>(app.state.get("timers/chip_text")); };
+        EXPECT(app.timers->timers().all().size() == 1 && chip_text() == "30:00" && has_chip(app, "timers"),
+               "timer started, chip shows the countdown (%s)", chip_text().c_str());
+        run_ms(app, 2000);
+        EXPECT(chip_text() == "29:58", "chip counts down (%s)", chip_text().c_str());
+        EXPECT(rp.find(RecipesPanel::kCancelTimer, app.timers->timers().all()[0].id) != nullptr, "timer listed in the panel");
         shot("22-landscape-recipe-step-timer");
+        // A second, short timer: both run; when it ends a critical toast shows and it rings until stopped.
+        app.bus.publish("timers/start", std::string("3|Eggs"));
+        run_ms(app, 500);
+        EXPECT(app.timers->timers().all().size() == 2 && chip_text() == "0:03 +1", "two timers at once (%s)", chip_text().c_str());
+        run_ms(app, 2800);  // it ends while the "Timer started" toast may still be up: critical interrupts
+        EXPECT(flag("timers/ringing") && chip_text() == "Timer done" && app.shell->toast_showing(),
+               "finished timer rings and shows a toast (%s)", chip_text().c_str());
+        shot("22b-landscape-timer-done");
+        click(rp.find(RecipesPanel::kDismissTimers));
+        EXPECT(!flag("timers/ringing") && app.timers->timers().all().size() == 1, "Stop silences the finished timer");
         press(app, 1100, 420);  // swipe left on the step: next step, not next page
         move_to(app, 700, 425, 8);
         release(app);
@@ -676,8 +696,18 @@ void selftest(App &app)
         EXPECT(!flag("ui/swipe_lock") && !flag("ui/keep_awake") &&
                    std::get<std::string>(app.state.get("recipes/cooking")) == "Pancakes",
                "leaving the page restores swipes and idle dim; still cooking");
-        app.shell->go_to_panel("recipes", false);
-        run_ms(app, 100);
+        // On another page: "Cooking now" and timer chips; tapping the cooking chip returns to the recipe.
+        EXPECT(has_chip(app, "cooking") && has_chip(app, "timers") && has_chip(app, "time") && has_chip(app, "battery"),
+               "Cooking now + timer chips on other pages");
+        for (int i = 0; i < 100 && app.shell->toast_showing(); ++i) run_ms(app, 200);
+        shot("22c-landscape-home-cooking-chips");
+        lv_point_t cc = chip_center(app, "cooking");
+        tap(app, cc.x, cc.y);
+        run_ms(app, 400);
+        EXPECT(current_panel(app) == "recipes" && !has_chip(app, "cooking"), "cooking chip returns to the recipe and hides");
+        click(rp.find(RecipesPanel::kCancelTimer, app.timers->timers().all()[0].id));
+        EXPECT(app.timers->timers().all().empty() && !has_chip(app, "timers"), "Cancel removes the timer and its chip");
+        for (int i = 0; i < 100 && app.shell->toast_showing(); ++i) run_ms(app, 200);
         EXPECT(rp.view() == RecipesPanel::View::Card && rp.session().step() == 2 && rp.session().ticked(1),
                "coming back resumes the same step");
         click(rp.find(RecipesPanel::kBack));
@@ -856,6 +886,7 @@ int start_app(App &app, shell::Shell::ApplyOrientation apply)
     app.settings = std::make_unique<Settings>(schema, app.storage, &app.bus);
     app.settings->load();
     app.host = std::make_unique<PanelHost>(app.registry, app.bus, app.state, *app.settings);
+    app.timers = std::make_unique<TimerService>(app.bus, app.state);
     app.updates = std::make_unique<sim::FakeUpdateService>(app.bus, app.state, *app.settings, "0.0.1");
     sim::publish_placeholders(app.state);
     publish_storage_state(*app.sd, app.state);
@@ -977,6 +1008,7 @@ int run_web(int port)
             std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count());
         app.bus.dispatch();
         app.updates->tick(g_ms);
+        app.timers->tick(g_ms);
         app.shell->tick(g_ms);
         lv_timer_handler();
         std::this_thread::sleep_for(std::chrono::milliseconds(5));

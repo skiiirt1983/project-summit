@@ -15,14 +15,15 @@ sh=firmware/shell
 up=firmware/services/update
 wb=firmware/web
 rc=firmware/panels/recipes
-cxx="${CXX:-g++} -std=c++17 -Wall -Wextra -Werror -pedantic -g -fsanitize=address,undefined -pthread -I$fw/include -I$sh/include -I$up/include -I$wb/include -I$rc/include -Ithird_party/cjson -Itests/host"
+tm=firmware/services/timers
+cxx="${CXX:-g++} -std=c++17 -Wall -Wextra -Werror -pedantic -g -fsanitize=address,undefined -pthread -I$fw/include -I$sh/include -I$up/include -I$wb/include -I$rc/include -I$tm/include -Ithird_party/cjson -Itests/host"
 srcs="$fw/src/value.cpp $fw/src/event_bus.cpp $fw/src/state_store.cpp $fw/src/settings.cpp $fw/src/registry.cpp $fw/src/system_settings.cpp $fw/src/json_writer.cpp $fw/src/modules.cpp $fw/src/storage.cpp"
 shell_srcs="$sh/src/layout.cpp $sh/src/glance.cpp $sh/src/strip_state.cpp $sh/src/rotation.cpp $sh/src/pager.cpp"
 update_srcs="$up/src/version.cpp $up/src/catalog.cpp $up/src/preflight.cpp $up/src/image_check.cpp $up/src/engine.cpp $up/src/health_gate.cpp $up/src/status_topics.cpp"
 ${CC:-gcc} -std=c99 -g -fsanitize=address,undefined -c third_party/cjson/cJSON.c -o "$out/cJSON.o"
 web_srcs="$wb/src/api.cpp $out/cJSON.o"
 recipe_srcs="$rc/src/module.cpp $rc/src/recipe.cpp $rc/src/quantity.cpp $rc/src/step_time.cpp $rc/src/store.cpp $rc/src/cook.cpp"
-for t in test_event_bus test_settings test_panels test_settings_schema test_shell_logic test_update test_web_api test_modules test_recipes test_storage; do
-  $cxx $srcs $shell_srcs $update_srcs $web_srcs $recipe_srcs tests/host/$t.cpp -o "$out/$t"
+for t in test_event_bus test_settings test_panels test_settings_schema test_shell_logic test_update test_web_api test_modules test_recipes test_storage test_timers; do
+  $cxx $srcs $shell_srcs $update_srcs $web_srcs $recipe_srcs $tm/src/timers.cpp tests/host/$t.cpp -o "$out/$t"
   "$out/$t"
 done

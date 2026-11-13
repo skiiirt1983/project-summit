@@ -2,6 +2,14 @@
 
 Each entry: the question, the choice made, why. Newest first. Say if any should change.
 
+## R5 — Timers and chips
+
+- **Ringing.** Choice: a finished timer rings until stopped, and stops by itself after 1 minute. D-008 says "ring through the alarm sound path": the service sets `timers/ringing`; the audio service that plays the sound is hardware work.
+- **Limits.** Choice: 8 timers at once, 1 second to 48 hours.
+- **Chip priority at narrow widths.** Choice: the timer chip never drops (like time and battery); "Cooking now" drops together with weather (before next event).
+- **Where timers are managed.** Choice: a bar at the top of the Recipes page (Cancel / Stop). Timers started from a recipe are named "<recipe>: Step N of M".
+- **Timers do not survive a restart.** Choice: kept in memory only for now. Say if they should be saved.
+
 ## R4 — Recipes panel
 
 - **Zoom in book mode.** D-008: "pinch or double-tap-and-hold to zoom". Choice: a Zoom / Fit button and a double-tap on the page toggle 2x; drag to pan. Pinch needs multi-touch, which the simulator can't test: listed in HARDWARE_TODO.md. Double-tap-and-hold not built.

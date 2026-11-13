@@ -1,5 +1,8 @@
 #include "summit/recipes/panel.h"
 
+#include <cstdio>
+#include <cstdlib>
+
 #include "summit/recipes/module.h"
 #include "summit/shell/shell.h"
 
@@ -58,7 +61,22 @@ RecipesPanel::RecipesPanel(RecipeStore &store, ImageSource image_source)
     manifest_.name = "Recipes";
     manifest_.version = "0.1.0";
     manifest_.sizes = kSizeFull;
-    manifest_.subscriptions = {"storage/sd_present", "input/double_tap"};
+    manifest_.subscriptions = {"storage/sd_present", "input/double_tap", "timers/list"};
+    // Glance chips: running timers (never dropped) and "Cooking now" while a recipe is
+    // open on another page. Tapping either comes back here.
+    GlanceChipDef timers;
+    timers.id = "timers";
+    timers.topic = "timers/chip_text";
+    timers.icon = LV_SYMBOL_BELL;
+    timers.order = 10;
+    timers.drop_rank = 0;
+    GlanceChipDef cooking;
+    cooking.id = "cooking";
+    cooking.topic = "recipes/cooking_chip";
+    cooking.icon = LV_SYMBOL_LIST;
+    cooking.order = 12;
+    cooking.drop_rank = 2;
+    manifest_.glances = {timers, cooking};
 }
 
 bool RecipesPanel::create(PanelContext &) { return true; }
@@ -74,6 +92,7 @@ void RecipesPanel::show(PanelContext &ctx, const PanelView &view)
     lv_obj_remove_flag(root_, LV_OBJ_FLAG_GESTURE_BUBBLE);  // swipes inside a recipe stop here
     lv_obj_add_flag(root_, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(root_, gesture_cb, LV_EVENT_GESTURE, this);
+    ctx.set_state("recipes/cooking_chip", std::string());  // this page is showing
     render();
 }
 
@@ -81,7 +100,13 @@ void RecipesPanel::hide(PanelContext &ctx)
 {
     shown_ = false;
     if (root_) lv_obj_delete(root_);  // hidden panels hold no LVGL objects
-    root_ = grid_ = search_box_ = keyboard_ = page_area_ = page_img_ = nullptr;
+    root_ = grid_ = search_box_ = keyboard_ = page_area_ = page_img_ = timers_bar_ = nullptr;
+    timer_labels_.clear();
+    timers_sig_.clear();
+    // "Cooking now" chip while the recipe is open but another page is showing.
+    std::string chip = open_id_.empty() ? "" : session_.recipe().title;
+    if (chip.size() > 18) chip = chip.substr(0, 16) + "..";
+    ctx.set_state("recipes/cooking_chip", chip);
     // Back to normal while another page is showing; the open recipe is kept.
     ctx.set_state("ui/swipe_lock", false);
     ctx.set_state("ui/keep_awake", false);
@@ -97,7 +122,9 @@ void RecipesPanel::tick(PanelContext &, uint32_t)
 
 void RecipesPanel::on_event(PanelContext &, const std::string &topic, const Value &)
 {
-    if (topic == "storage/sd_present") {
+    if (topic == "timers/list") {
+        if (shown_) render_timers();
+    } else if (topic == "storage/sd_present") {
         dirty_ = true;  // card inserted or removed
     } else if (topic == "input/double_tap" && (view_ == View::Card || view_ == View::Book)) {
         act(kNext, 0);  // double-tap the case: next step / next page
@@ -196,9 +223,14 @@ void RecipesPanel::render()
     if (!root_) return;
     lv_obj_clean(root_);
     grid_ = search_box_ = keyboard_ = page_area_ = page_img_ = nullptr;
+    timer_labels_.clear();
+    timers_sig_.clear();
     const SizeTokens &t = pv_.tokens;
     lv_obj_set_style_pad_all(root_, t.space_l, 0);
     lv_obj_set_style_pad_row(root_, t.space_m, 0);
+    timers_bar_ = box(root_, LV_FLEX_FLOW_COLUMN);  // running timers, on every view
+    lv_obj_set_style_pad_row(timers_bar_, t.space_s, 0);
+    render_timers();
     if (!store_.available()) {
         view_ = open_id_.empty() ? View::NoCard : view_;
         render_message("Insert the SD card with your recipes", false);
@@ -449,6 +481,69 @@ void RecipesPanel::size_page_image()
     lv_obj_scroll_to(page_area_, 0, 0, LV_ANIM_OFF);
 }
 
+// Rows are rebuilt only when the set of timers changes; the countdown text is updated
+// in place every second so a tap on Cancel is never lost to a rebuild.
+void RecipesPanel::render_timers()
+{
+    if (!timers_bar_ || !ctx_) return;
+    const SizeTokens &t = pv_.tokens;
+    Value v = ctx_->state("timers/list");
+    const std::string *list = std::get_if<std::string>(&v);
+    struct Row {
+        int id, remaining;
+        bool ringing;
+        std::string name;
+    };
+    std::vector<Row> rows;
+    std::string sig;
+    size_t start = 0;
+    while (list && start < list->size()) {
+        size_t end = list->find('\n', start);
+        if (end == std::string::npos) end = list->size();
+        const std::string line = list->substr(start, end - start);
+        const size_t a = line.find('|'), b = line.find('|', a + 1), c = line.find('|', b + 1);
+        if (a != std::string::npos && b != std::string::npos && c != std::string::npos) {
+            Row r{std::atoi(line.substr(0, a).c_str()), std::atoi(line.substr(a + 1, b - a - 1).c_str()),
+                  line[b + 1] == '1', line.substr(c + 1)};
+            sig += std::to_string(r.id) + (r.ringing ? "!" : ".");
+            rows.push_back(r);
+        }
+        start = end + 1;
+    }
+    auto text = [](const Row &r) {
+        const int h = r.remaining / 3600, m = (r.remaining % 3600) / 60, s = r.remaining % 60;
+        char buf[24];
+        if (h) std::snprintf(buf, sizeof buf, "%d:%02d:%02d", h, m, s);
+        else std::snprintf(buf, sizeof buf, "%d:%02d", m, s);
+        return std::string(LV_SYMBOL_BELL) + "  " + (r.ringing ? "Done" : buf) + "   " + r.name;
+    };
+    if (sig == timers_sig_) {
+        for (size_t i = 0; i < rows.size() && i < timer_labels_.size(); ++i)
+            lv_label_set_text(timer_labels_[i], text(rows[i]).c_str());
+        return;
+    }
+    timers_sig_ = sig;
+    timer_labels_.clear();
+    lv_obj_clean(timers_bar_);
+    if (rows.empty()) {
+        lv_obj_add_flag(timers_bar_, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+    lv_obj_remove_flag(timers_bar_, LV_OBJ_FLAG_HIDDEN);
+    for (const Row &r : rows) {
+        lv_obj_t *row = box(timers_bar_, LV_FLEX_FLOW_ROW);
+        card_style(row, t);
+        lv_obj_set_style_pad_ver(row, t.space_s, 0);
+        lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        lv_obj_t *l = label(row, text(r), t.text_m, r.ringing ? kAccent : kText);
+        lv_label_set_long_mode(l, LV_LABEL_LONG_MODE_DOTS);
+        lv_obj_set_flex_grow(l, 1);
+        timer_labels_.push_back(l);
+        if (r.ringing) button(row, "Stop", kDismissTimers, 0, true);
+        else button(row, "Cancel", kCancelTimer, r.id);
+    }
+}
+
 void RecipesPanel::act(int action, int index)
 {
     switch (action) {
@@ -476,6 +571,12 @@ void RecipesPanel::act(int action, int index)
     case kZoom:
         zoomed_ = !zoomed_;
         dirty_ = true;
+        break;
+    case kCancelTimer:
+        if (ctx_) ctx_->publish("timers/cancel", int64_t{index});
+        break;
+    case kDismissTimers:
+        if (ctx_) ctx_->publish("timers/dismiss", true);
         break;
     case kMinus: dirty_ = session_.change_servings(-1) || dirty_; break;
     case kPlus: dirty_ = session_.change_servings(+1) || dirty_; break;

@@ -15,3 +15,5 @@ Code here compiles in CI but has never run on the device. Do not treat it as wor
 | Recipes panel on the real display (text sizes, touch targets, keyboard) | `firmware/panels/recipes/src/panel.cpp` (simulator only so far) | Use it at arm's length in both orientations |
 | Page images on the device (book mode) | not written: needs an LVGL file-system driver for `/sdcard` and a JPEG decoder (ESP32-P4 hardware JPEG) passed to `RecipesPanel` as its image source | Open a 3-page recipe; time page turns (target well under 1 s); check memory with a 905x1280 page decoded in PSRAM |
 | Pinch to zoom | not written (multi-touch gestures) | Pinch on a page with two fingers; compare with the Zoom button |
+| Timer ringing sound (`timers/ringing`) | service sets the flag; no audio service yet | Let a timer end on battery with the screen dimmed: it must ring through the speaker and wake the screen |
+| UI loop on the device (bus dispatch, `TimerService::tick`, shell tick) | not written: starts with the display BSP | Timers count down and fire on the device |
