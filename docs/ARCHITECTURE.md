@@ -291,7 +291,7 @@ The state store and event bus are the public API between services, panels and th
 | `timers/cancel` | event: int timer id | Recipes panel | timer service |
 | `timers/dismiss` | event: bool, stop every ringing timer | Recipes panel | timer service |
 | `timers/chip_text` | string: "12:34", "12:34 +2", "Timer done"; empty = no timers | timer service | glance strip (timer chip) |
-| `timers/list` | string: one line per timer, soonest first: "<id>\|<remaining_s>\|<0/1 ringing>\|<name>" | timer service | Recipes panel (timers bar) |
+| `timers/list` | string: one line per timer, soonest first: "<id>\|<remaining_s>\|<0/1 ringing>\|<name>" | timer service | Recipes panel (timers bar), update pre-flight (not empty = blocked) |
 | `timers/ringing` | bool: a finished timer is waiting to be stopped | timer service | audio service (alarm sound) |
 | `recipes/cooking_chip` | string: short recipe title while a recipe is open on another page; empty otherwise | Recipes panel | glance strip ("Cooking now" chip) |
 | `recipes/library_rev` | int: goes up when recipes were deleted | Recipe module (Delete recipes) | Recipes panel (closes the open recipe, reloads the library) |
@@ -345,7 +345,7 @@ USB web flasher ─▶ Flash over cable (full, or keep settings)
 
 1. On-device Updates screen: version, channel, Check now, changelog, Install, full-screen progress, What's new card.
 2. One-tap previous version from the spare slot.
-3. Pre-flight: USB power or ≥40% battery, no alarm within 15 min, Wi-Fi + synced time, image fits slot.
+3. Pre-flight: USB power or ≥40% battery, no alarm within 15 min, no recipe timer running ("Finish or cancel your timers first"; also blocks going back to the previous version), Wi-Fi + synced time, image fits slot.
 4. Catalog carries SHA-256, hardware ID (`waveshare-p4-wifi6-lcd5`) and partition-layout version. Signed catalogs (ed25519) in 1.x.
 5. Settings export/import (JSON) and schema-versioned settings with migrations. Adding a key with a default needs no version bump: older firmware ignores unknown keys and preserves them on write. Renames, removals, type or meaning changes bump the version and need a migration + host test. Settings from a newer version are read-only with a notice on device and web UI; reset only by explicit user action after the old settings are saved for export. A corrupt blob runs on defaults in memory, keeps the raw blob for export, and offers reset.
 6. `factory` recovery app (Wi-Fi + web upload) boots if both main slots fail.

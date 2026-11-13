@@ -67,6 +67,21 @@ std::string sha(const std::vector<uint8_t> &b)
 
 }  // namespace
 
+static PreflightInput preflight_from(StateStore &st)
+{
+    auto b = [&](const char *k) { Value x = st.get(k); return std::get_if<bool>(&x) && std::get<bool>(x); };
+    Value bat = st.get("power/battery_pct");
+    PreflightInput in;
+    in.on_usb_power = b("power/usb_power");
+    in.battery_pct = std::get_if<int64_t>(&bat) ? static_cast<int>(std::get<int64_t>(bat)) : 0;
+    in.wifi_connected = b("net/wifi_connected");
+    in.time_synced = b("time/synced");
+    Value timers = st.get("timers/list");
+    const std::string *list = std::get_if<std::string>(&timers);
+    in.timer_running = list && !list->empty();
+    return in;
+}
+
 FakeUpdateService::FakeUpdateService(EventBus &bus, StateStore &state, Settings &settings, const std::string &version)
     : bus_(bus), state_(state), settings_(settings), writer_(std::make_unique<Writer>()), hash_(std::make_unique<Hash>())
 {
@@ -124,13 +139,7 @@ FakeUpdateService::FakeUpdateService(EventBus &bus, StateStore &state, Settings 
             }
         } else if (s->rfind("install:", 0) == 0) {
             const std::string version = s->substr(8);
-            PreflightInput in;
-            auto b = [&](const char *k) { Value x = state_.get(k); return std::get_if<bool>(&x) && std::get<bool>(x); };
-            Value bat = state_.get("power/battery_pct");
-            in.on_usb_power = b("power/usb_power");
-            in.battery_pct = std::get_if<int64_t>(&bat) ? static_cast<int>(std::get<int64_t>(bat)) : 0;
-            in.wifi_connected = b("net/wifi_connected");
-            in.time_synced = b("time/synced");
+            PreflightInput in = preflight_from(state_);
             if (engine_->start_install(version, in)) {
                 for (size_t i = 0; i < catalog_.builds.size(); ++i)
                     if (catalog_.builds[i].version == version && catalog_.builds[i].hardware_id == kHw)
@@ -148,7 +157,8 @@ FakeUpdateService::FakeUpdateService(EventBus &bus, StateStore &state, Settings 
             state_.set("system/firmware_version", v);
             bus_.publish("notify/toast", "Updated to " + v);
         } else if (*s == "previous") {
-            bus_.publish("notify/toast", std::string("Switching to the previous version"));
+            const std::string blocker = previous_version_blocker(preflight_from(state_));
+            bus_.publish("notify/toast", blocker.empty() ? std::string("Switching to the previous version") : blocker);
         }
         publish_status(*engine_, state_);
     });
@@ -161,17 +171,6 @@ FakeUpdateService::~FakeUpdateService()
     bus_.unsubscribe(channel_sub_);
 }
 
-static PreflightInput preflight_from(StateStore &st)
-{
-    auto b = [&](const char *k) { Value x = st.get(k); return std::get_if<bool>(&x) && std::get<bool>(x); };
-    Value bat = st.get("power/battery_pct");
-    PreflightInput in;
-    in.on_usb_power = b("power/usb_power");
-    in.battery_pct = std::get_if<int64_t>(&bat) ? static_cast<int>(std::get<int64_t>(bat)) : 0;
-    in.wifi_connected = b("net/wifi_connected");
-    in.time_synced = b("time/synced");
-    return in;
-}
 
 bool FakeUpdateService::upload_begin(int64_t size, std::string *error)
 {
