@@ -294,6 +294,7 @@ The state store and event bus are the public API between services, panels and th
 | `timers/list` | string: one line per timer, soonest first: "<id>\|<remaining_s>\|<0/1 ringing>\|<name>" | timer service | Recipes panel (timers bar) |
 | `timers/ringing` | bool: a finished timer is waiting to be stopped | timer service | audio service (alarm sound) |
 | `recipes/cooking_chip` | string: short recipe title while a recipe is open on another page; empty otherwise | Recipes panel | glance strip ("Cooking now" chip) |
+| `recipes/library_rev` | int: goes up when recipes were deleted | Recipe module (Delete recipes) | Recipes panel (closes the open recipe, reloads the library) |
 | `time/unix` | int: unix time, once synced | time service | Recipes ("recently cooked") |
 | `storage/sd_present` | bool | storage service | Modules screen (requirements), module panels |
 | `storage/sd_free_mb` | int: free space on the SD card | storage service | Modules screen (requirements) |
@@ -457,9 +458,10 @@ Decided in DECISIONS.md D-008; built in steps R1–R7 (see `docs/KICKOFF.md`). T
 - v1 modules ship inside the firmware but start uninstalled. Downloadable code modules stay a v2 item (WASM).
 - A **Modules** screen on the device and in the web UI lists each module: name, icon, short description, requirements, Install / Remove.
 - Each module has a manifest (`firmware/framework/include/summit/modules.h`): id, name, icon, description, the panel it provides, and requirements (`sd_card`, `min_free_mb`). Install checks them and explains what is missing ("Insert a microSD card").
-- Install = setting `modules/<id>/installed` = true (additive key, no schema bump) and the module's panel joins the pages (after the existing ones unless `ui/page_order` lists it). Remove = hidden from pages; its data on the SD card is kept. ("Delete recipes" on removal is specified but not built until approved: it deletes user data.)
+- Install = setting `modules/<id>/installed` = true (additive key, no schema bump) and the module's panel joins the pages (after the existing ones unless `ui/page_order` lists it). Remove = hidden from pages; its data on the SD card is kept.
+- **Delete recipes (D-010)** is a separate button, never part of Remove. It is offered whenever the card holds recipes (module installed or not) and shows the count ("Delete 12 recipes"). It asks first, naming the count: "Delete 12 recipes from the SD card? This can't be undone." (Cancel / Delete). It removes every `/recipes/<id>/` folder (including ones that could not be read) and rebuilds the index; PDFs waiting in `/recipes/inbox/` are kept. An open recipe is closed (`recipes/library_rev`). Same button and same question on the device's Modules screen and in the web UI.
 - If the SD card is removed later the module stays installed; its panel shows "Insert the SD card with your recipes".
-- Web API: `GET /api/modules`, `POST /api/modules/install`, `POST /api/modules/remove` (`{"id": ...}`).
+- Web API: `GET /api/modules`, `POST /api/modules/install`, `POST /api/modules/remove` (`{"id": ...}`). `GET` also gives `data_count`, `data_noun` and `delete_question`. `POST /api/modules/delete-data` needs `{"id", "confirm": true, "count": N}` where N is the count the user was shown; if the count has changed it is refused (409) and nothing is deleted.
 
 ### Recipe reader (summary of D-008)
 
@@ -498,7 +500,7 @@ The web files are gzipped into the firmware image (about 510 KB for pdf.js) and 
 
 ### Recipe web API (for import in the browser)
 
-Provided by the Recipe reader as an extension of the web API (`firmware/panels/recipes/src/web_api.cpp`, host-tested). Nothing here deletes a recipe.
+Provided by the Recipe reader as an extension of the web API (`firmware/panels/recipes/src/web_api.cpp`, host-tested). Nothing here deletes a recipe (deleting all recipes is `POST /api/modules/delete-data`, see Modules).
 
 | Endpoint | Purpose |
 | --- | --- |
@@ -522,7 +524,7 @@ Large bodies are streamed in both directions (`StorageWriter`, `read_chunk`), ne
 
 ### Storage layer
 
-- `summit::Storage` (`firmware/framework/include/summit/storage.h`) is the only way code reaches the SD card: `present`, `free_mb`, `exists`, `read`, `write` (temp file + rename, parents created), `list`, `make_dir`, streaming `begin_write` / `read_chunk`, `size`, and `move` (never overwrites). There is no delete. Paths are absolute within the card and validated (no `..`).
+- `summit::Storage` (`firmware/framework/include/summit/storage.h`) is the only way code reaches the SD card: `present`, `free_mb`, `exists`, `read`, `write` (temp file + rename, parents created), `list`, `make_dir`, streaming `begin_write` / `read_chunk`, `size`, and `move` (never overwrites). The only delete is `remove_tree`, used by "Delete recipes": it refuses the card root and top-level folders, so it can only remove something inside a folder such as `/recipes/`. Paths are absolute within the card and validated (no `..`).
 - `PosixStorage` implements it over a mounted folder: `/sdcard` on the device, a local folder in the simulator and host tests (the "fake SD card").
 - `RecipeStore` (`firmware/panels/recipes`) implements the `/recipes/` layout on top: load / rebuild the index, load / save a recipe, new ids, mark cooked, list the inbox PDFs.
 - The device SD service (`firmware/services/storage`, untested on hardware) mounts the card without ever formatting it, re-checks every 3 s, and publishes `storage/sd_present` and `storage/sd_free_mb`.

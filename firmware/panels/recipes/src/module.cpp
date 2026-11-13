@@ -15,4 +15,13 @@ ModuleManifest module_manifest()
     return m;
 }
 
+bool RecipeModuleData::delete_all(int *deleted)
+{
+    const bool ok = store_.delete_all(deleted);
+    state_.set("recipes/cooking", std::string());
+    state_.set("recipes/cooking_chip", std::string());
+    state_.set("recipes/library_rev", ++rev_);
+    return ok;
+}
+
 }  // namespace summit::recipes

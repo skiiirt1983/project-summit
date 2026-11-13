@@ -2,6 +2,8 @@
 
 Each entry: the question, the choice made, why. Newest first. Say if any should change.
 
+**D-010 (2026-11-13): Paul accepted all R1-R3 defaults below and the SD wiring guesses (still to be checked on the board, see HARDWARE_TODO.md).**
+
 ## R7 — Import from a website
 
 - **No edit screen for URL imports.** Choice: the recipe is saved directly, since structured data is usually clean. Editing saved recipes in the web UI would cover fixes (not built yet).
@@ -20,7 +22,7 @@ Each entry: the question, the choice made, why. Newest first. Say if any should 
 
 - **Upload limits.** Choice: page / photo images up to 2 MB each, PDFs up to 32 MB, 200 pages per recipe; an upload is refused if the card would have under 8 MB left.
 - **Inbox PDFs after conversion.** Choice: the PDF is moved into the recipe folder as `original.pdf` (not deleted), so the inbox empties and the recipe can be re-converted later.
-- **No delete in the API or storage layer.** Deleting recipes (and "Delete recipes" on module removal) waits for your go-ahead, per D-009.
+- **Delete in the storage layer.** Only `remove_tree`, added for "Delete recipes" (D-010); it refuses the card root and top-level folders. There is still no way to delete a single recipe.
 - **pdf.js** 4.10.38 (Apache-2.0), about 500 KB gzipped, will be embedded in the firmware image next to the page (the assets partition has no file system yet).
 
 ## R5 — Timers and chips
@@ -62,8 +64,12 @@ Each entry: the question, the choice made, why. Newest first. Say if any should 
 
 ## R1 — Modules
 
-- **D-007 item 4 (web UI pairing lock) is still in DECISIONS.md, but Paul said in chat (2026-11-08) it was pasted by mistake and to remove it.** Choice: not built; ARCHITECTURE.md says "no login". Please delete D-007.4 or confirm you want it after all.
-- **"Delete recipes" on Remove.** D-008 specifies it, D-009 says stop and ask for anything that deletes user data. Choice: Remove only hides the module and keeps all data; the delete option is not built yet. It needs your go-ahead (proposed: separate button, confirm dialog naming the recipe count, device + web UI).
+- ~~D-007 item 4 (web UI pairing lock).~~ **Resolved by D-010:** no web UI lock, no login, no "Allow" prompt. Removed from D-007.
+- ~~"Delete recipes" on Remove.~~ **Resolved by D-010 and built:** separate button, confirm names the count, on the device and in the web UI. Defaults chosen while building it:
+  - The button shows whenever the card holds recipes, installed or not (so you can still delete after Remove). It is hidden when there are none or no card.
+  - It deletes every folder in `/recipes/` except `inbox` (including folders with an unreadable `recipe.json`, which are counted too). PDFs still waiting in the inbox are kept: they were never recipes.
+  - The web request must repeat the count from the question; if recipes were added or removed in between, it is refused and you are asked again.
+  - Cancel is the first button in the device dialog; Delete is red.
 - **How to reach the Modules screen on the device.** Choice: a "Modules" button (next to "Updates") in the quick-settings sheet, and `ui/open_screen` = `settings/modules`. Why: there is no settings menu yet; quick settings is the only system surface.
 - **Where an installed module's page goes.** Choice: appended after the existing pages unless `ui/page_order` lists it. Why: matches the existing page-order rule.
 - **SD card state topics.** Choice: `storage/sd_present` (bool) and `storage/sd_free_mb` (int), published by the storage service. Install re-checks requirements at the moment of install only; a module stays installed if the card is removed later (panel shows "Insert the SD card", per D-008).

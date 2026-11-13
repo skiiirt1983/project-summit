@@ -31,12 +31,18 @@ public:
     lv_obj_t *action_button(const std::string &id) const;
     std::string action_text(const std::string &id) const;
     std::string status_text(const std::string &id) const;
+    lv_obj_t *delete_button(const std::string &id) const;
+    std::string delete_text(const std::string &id) const;
+    bool confirm_shown() const;
+    std::string confirm_text() const;
+    lv_obj_t *confirm_yes() const { return yes_btn_; }
+    lv_obj_t *confirm_cancel() const { return cancel_btn_; }
 
 private:
     struct Row {
         std::string id;
         lv_obj_t *card = nullptr, *name = nullptr, *desc = nullptr, *status = nullptr, *button = nullptr,
-                 *button_label = nullptr;
+                 *button_label = nullptr, *del = nullptr, *del_label = nullptr;
         std::string message;  // result of the last Install attempt
     };
     const Row *row(const std::string &id) const;
@@ -49,6 +55,9 @@ private:
     bool open_ = false;
     lv_obj_t *root_ = nullptr, *title_ = nullptr, *close_btn_ = nullptr, *list_ = nullptr;
     std::vector<Row> rows_;
+    lv_obj_t *confirm_ = nullptr, *confirm_card_ = nullptr, *confirm_label_ = nullptr, *confirm_buttons_ = nullptr,
+             *yes_btn_ = nullptr, *cancel_btn_ = nullptr;
+    std::string confirm_id_;  // module whose data is about to be deleted
 };
 
 }  // namespace summit::shell

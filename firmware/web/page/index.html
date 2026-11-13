@@ -310,7 +310,20 @@ loaders.modules = async () => {
       catch (err) { msg("mod-msg", err.message, "err"); }
       loaders.modules();
     });
-    card.append(btn); list.append(card);
+    card.append(btn);
+    if (mod.data_count > 0) {
+      // Separate from Remove: deleting the data is its own confirmed step.
+      const del = el("button", "Delete " + mod.data_count + " " + mod.data_noun, "btn danger"); del.dataset.role = "delete"; del.style.marginLeft = "8px";
+      del.addEventListener("click", async () => {
+        if (!confirm(mod.delete_question)) return;
+        try { const r = await api("/api/modules/delete-data", { method: "POST", json: { id: mod.id, confirm: true, count: mod.data_count } });
+          msg("mod-msg", "Deleted " + r.deleted + " " + mod.data_noun + ".", "ok"); }
+        catch (err) { msg("mod-msg", err.message, "err"); }
+        loaders.modules();
+      });
+      card.append(del);
+    }
+    list.append(card);
   }
   $("mod-none").hidden = m.modules.length > 0;
 };

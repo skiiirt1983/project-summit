@@ -321,6 +321,65 @@ TEST(secrets_left_out_of_exports_unless_asked)
           other.wifi.pw == "wifi-secret-pw");
 }
 
+struct FakeData : ModuleData {
+    int n = 12, calls = 0;
+    bool ok = true;
+    std::string noun(int count) override { return count == 1 ? "recipe" : "recipes"; }
+    int count() override { return n; }
+    bool delete_all(int *deleted) override
+    {
+        ++calls;
+        if (deleted) *deleted = n;
+        n = 0;
+        return ok;
+    }
+};
+
+TEST(delete_module_data_needs_the_confirmed_count)
+{
+    Rig r;
+    // No data registered: nothing to offer, nothing to delete.
+    Json none(r.get("/api/modules").body);
+    CHECK(cJSON_GetObjectItemCaseSensitive(cJSON_GetArrayItem(none.at("modules"), 0), "data_count")->valueint == 0);
+    CHECK(r.post("/api/modules/delete-data", R"({"id":"recipes","confirm":true,"count":12})").status == 404);
+
+    FakeData data;
+    r.modules.set_data("recipes", &data);
+    Json l(r.get("/api/modules").body);
+    const cJSON *m = cJSON_GetArrayItem(l.at("modules"), 0);
+    CHECK(cJSON_GetObjectItemCaseSensitive(m, "data_count")->valueint == 12);
+    CHECK(std::string(cJSON_GetObjectItemCaseSensitive(m, "delete_question")->valuestring) ==
+          "Delete 12 recipes from the SD card? This can't be undone.");
+    // Works whether or not the module is installed; never without the confirmation.
+    CHECK(r.post("/api/modules/delete-data", R"({"id":"recipes"})").status == 400);
+    CHECK(r.post("/api/modules/delete-data", R"({"id":"recipes","confirm":false,"count":12})").status == 400);
+    CHECK(r.post("/api/modules/delete-data", R"({"id":"recipes","confirm":true})").status == 400);
+    CHECK(r.post("/api/modules/delete-data", R"({"id":"recipes","confirm":"yes","count":12})").status == 400);
+    Response stale = r.post("/api/modules/delete-data", R"({"id":"recipes","confirm":true,"count":11})");
+    CHECK(stale.status == 409 && Json(stale.body).s("error").find("changed") != std::string::npos);
+    CHECK(r.post("/api/modules/delete-data", R"({"id":"nope","confirm":true,"count":12})").status == 404);
+    CHECK(r.get("/api/modules/delete-data").status != 200);
+    CHECK(data.calls == 0 && data.n == 12);
+    // Remove never deletes data.
+    r.state.set("storage/sd_present", true);
+    r.state.set("storage/sd_free_mb", int64_t{5000});
+    CHECK(r.post("/api/modules/install", R"({"id":"recipes"})").status == 200);
+    CHECK(r.post("/api/modules/remove", R"({"id":"recipes"})").status == 200);
+    CHECK(data.calls == 0 && data.n == 12);
+
+    Response ok = r.post("/api/modules/delete-data", R"({"id":"recipes","confirm":true,"count":12})");
+    CHECK(ok.status == 200 && data.calls == 1 && data.n == 0);
+    CHECK(cJSON_GetObjectItemCaseSensitive(Json(ok.body).j, "deleted")->valueint == 12);
+    CHECK(r.post("/api/modules/delete-data", R"({"id":"recipes","confirm":true,"count":0})").status == 409);
+    CHECK(data.calls == 1);
+    data.n = 1;
+    Json one(r.get("/api/modules").body);
+    CHECK(std::string(cJSON_GetObjectItemCaseSensitive(cJSON_GetArrayItem(one.at("modules"), 0), "delete_question")
+                          ->valuestring) == "Delete 1 recipe from the SD card? This can't be undone.");
+    data.ok = false;
+    CHECK(r.post("/api/modules/delete-data", R"({"id":"recipes","confirm":true,"count":1})").status == 500);
+}
+
 TEST(modules_list_install_remove)
 {
     Rig r;
@@ -356,5 +415,6 @@ int main()
     RUN(import_is_validated_first_and_refused_cleanly);
     RUN(secrets_left_out_of_exports_unless_asked);
     RUN(modules_list_install_remove);
+    RUN(delete_module_data_needs_the_confirmed_count);
     return report("web api");
 }

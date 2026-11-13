@@ -137,6 +137,16 @@ TEST(recipe_store_library)
     std::string json;
     CHECK(sd.read("/recipes/index.json", json) && json.find("\"apple-pie\"") != std::string::npos);
 
+    // "Delete recipes": every recipe folder goes (also unreadable ones), the inbox stays.
+    CHECK(store.count() == 3);  // apple-pie, scan, broken
+    CHECK(!sd.remove_tree("/") && !sd.remove_tree("/recipes") && !sd.remove_tree("/recipes/../x") && sd.exists("/recipes/apple-pie"));
+    int deleted = 0;
+    CHECK(store.delete_all(&deleted) && deleted == 3 && store.count() == 0);
+    CHECK(!sd.exists("/recipes/apple-pie") && !sd.exists("/recipes/scan/pages/001.jpg") && !sd.exists("/recipes/broken"));
+    CHECK(sd.exists("/recipes/inbox/new one.PDF") && store.load_index(idx) && idx.empty());
+    CHECK(store.delete_all(&deleted) && deleted == 0);  // nothing left: fine
+    CHECK(store.save("apple-pie", recipe("Apple Pie", true)));
+
     // Card removed.
     sd.set_present(false);
     CHECK(!store.available() && !store.load_index(idx) && !store.load("apple-pie", r) && store.inbox().empty());

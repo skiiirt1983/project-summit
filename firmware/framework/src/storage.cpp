@@ -231,6 +231,35 @@ bool PosixStorage::move(const std::string &from, const std::string &to)
     return rename(a.c_str(), b.c_str()) == 0;
 }
 
+namespace {
+
+bool remove_recursive(const std::string &host)
+{
+    struct stat st;
+    if (lstat(host.c_str(), &st) != 0) return true;  // already gone
+    if (!S_ISDIR(st.st_mode)) return ::remove(host.c_str()) == 0;
+    DIR *d = opendir(host.c_str());
+    if (!d) return false;
+    bool ok = true;
+    std::vector<std::string> names;
+    while (dirent *e = readdir(d)) {
+        const std::string name = e->d_name;
+        if (name != "." && name != "..") names.push_back(name);
+    }
+    closedir(d);
+    for (const std::string &name : names) ok = remove_recursive(host + "/" + name) && ok;
+    return rmdir(host.c_str()) == 0 && ok;
+}
+
+}  // namespace
+
+bool PosixStorage::remove_tree(const std::string &dir)
+{
+    // At least two levels deep ("/recipes/apple-pie"): never the card root or a top-level folder.
+    if (!present() || !valid_storage_path(dir) || dir.find('/', 1) == std::string::npos) return false;
+    return remove_recursive(host_path(dir));
+}
+
 void publish_storage_state(Storage &storage, StateStore &state)
 {
     const bool present = storage.present();

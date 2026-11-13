@@ -246,12 +246,13 @@ Response WebApi::handle(const Request &req)
     if (p == "/api/settings/backup" && get) return settings_backup();
     if (p == "/api/diagnostics" && get) return diagnostics();
     if (modules_ && p == "/api/modules" && get) return modules_get();
-    if (modules_ && post && (p == "/api/modules/install" || p == "/api/modules/remove"))
+    if (modules_ && post && (p == "/api/modules/install" || p == "/api/modules/remove" || p == "/api/modules/delete-data"))
         return modules_command(p.substr(13), req.body);
     static const char *known[] = {"/api/status", "/api/wifi", "/api/firmware", "/api/settings",
                                   "/api/settings/export", "/api/settings/import", "/api/settings/reset",
                                   "/api/settings/backup", "/api/settings/import/validate", "/api/settings/undo",
-                                  "/api/diagnostics", "/api/modules", "/api/modules/install", "/api/modules/remove"};
+                                  "/api/diagnostics", "/api/modules", "/api/modules/install", "/api/modules/remove",
+                                  "/api/modules/delete-data"};
     for (ApiExtension *ext : extensions_) {
         Response out;
         if (ext->handle(req, out)) return out;
@@ -596,6 +597,10 @@ Response WebApi::modules_get()
     for (const ModuleManifest &m : modules_->modules()) {
         w.begin_object().key("id").value(m.id).key("name").value(m.name).key("description").value(m.description);
         w.key("installed").value(modules_->installed(settings_, m.id));
+        ModuleData *data = modules_->data(m.id);
+        const int n = data ? data->count() : 0;
+        w.key("data_count").value(n).key("data_noun").value(data ? data->noun(n) : std::string());
+        w.key("delete_question").value(n > 0 ? delete_data_question(*data) : std::string());
         w.key("requirements").value(requirements_text(m.requires_)).key("missing").begin_array();
         for (const auto &x : missing_requirements(m.requires_, env)) w.value(x);
         w.end_array().end_object();
@@ -609,6 +614,23 @@ Response WebApi::modules_command(const std::string &cmd, const std::string &body
     JsonPtr j = parse(body);
     const cJSON *id = j ? cJSON_GetObjectItemCaseSensitive(j.get(), "id") : nullptr;
     if (!cJSON_IsString(id)) return error(400, "id required");
+    if (cmd == "delete-data") {
+        // Separate from remove, and only with the count the user was shown in the confirm.
+        ModuleData *data = modules_->find(id->valuestring) ? modules_->data(id->valuestring) : nullptr;
+        if (!data) return error(404, "unknown module");
+        const cJSON *confirm = cJSON_GetObjectItemCaseSensitive(j.get(), "confirm");
+        const cJSON *count = cJSON_GetObjectItemCaseSensitive(j.get(), "count");
+        if (!cJSON_IsTrue(confirm) || !cJSON_IsNumber(count)) return error(400, "confirmation required");
+        const int now = data->count();
+        if (now == 0) return error(409, "nothing to delete");
+        if (static_cast<int>(count->valuedouble) != now)
+            return error(409, "the number of items changed; check and confirm again");
+        int deleted = 0;
+        if (!data->delete_all(&deleted)) return error(500, "some files could not be deleted");
+        JsonWriter w;
+        w.begin_object().key("ok").value(true).key("deleted").value(deleted).end_object();
+        return json(200, w.str());
+    }
     std::vector<std::string> missing;
     ModuleResult r = cmd == "install" ? modules_->install(settings_, id->valuestring, module_env(state_), &missing)
                                       : modules_->remove(settings_, id->valuestring);  // remove keeps the data

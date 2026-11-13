@@ -38,7 +38,8 @@ const browser = await chromium.launch();
 try {
   const page = await browser.newPage({ viewport: { width: 1100, height: 900 } });
   const dialogs = [];
-  page.on("dialog", async (d) => { dialogs.push(d.message()); d.message().startsWith("Go back") ? await d.dismiss() : await d.accept(); });
+  let cancelDelete = true;
+  page.on("dialog", async (d) => { dialogs.push(d.message()); d.message().startsWith("Go back") || (cancelDelete && d.message().startsWith("Delete ")) ? await d.dismiss() : await d.accept(); });
   const tab = (name) => page.click(`nav button[data-tab=${name}]`);
   const shot = (name) => page.screenshot({ path: `${out}/${name}.png`, fullPage: true });
 
@@ -158,6 +159,26 @@ try {
   await page.click('[data-module=recipes] button');
   await page.waitForFunction(() => document.querySelector('[data-module=recipes] button').textContent === "Install");
   check((await page.textContent("#mod-msg")).includes("data on the SD card was kept"), "remove keeps data");
+
+  // Delete recipes: its own button, with a confirm naming the count. Cancel changes nothing.
+  const before = (await (await page.request.get(base + "/api/modules")).json()).modules[0];
+  check(before.data_count > 0 && !before.installed, "recipes are still on the card after Remove (" + before.data_count + ")");
+  const delSel = '[data-module=recipes] button[data-role=delete]';
+  check((await page.textContent(delSel)) === `Delete ${before.data_count} recipes`, "separate Delete button shows the count");
+  dialogs.length = 0;
+  await page.click(delSel);
+  await page.waitForFunction(() => true);
+  const question = `Delete ${before.data_count} recipes from the SD card? This can't be undone.`;
+  check(dialogs.length === 1 && dialogs[0] === question, "delete confirm text: " + dialogs[0]);
+  check((await (await page.request.get(base + "/api/modules")).json()).modules[0].data_count === before.data_count, "cancel deletes nothing");
+  const bare = await page.request.post(base + "/api/modules/delete-data", { data: { id: "recipes" } });
+  check(bare.status() === 400, "delete without confirmation refused");
+  await shot("06c-modules-delete");
+  cancelDelete = false;
+  await page.click(delSel);
+  await page.waitForFunction(() => !document.querySelector('[data-module=recipes] button[data-role=delete]'));
+  check((await page.textContent("#mod-msg")) === `Deleted ${before.data_count} recipes.`, "deleted message: " + (await page.textContent("#mod-msg")));
+  check((await (await page.request.get(base + "/api/recipes")).json()).recipes.length === 0, "library is empty after delete");
 
   // Diagnostics
   await tab("diagnostics");

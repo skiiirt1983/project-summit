@@ -28,6 +28,7 @@
 #include "summit/settings.h"
 #include "summit/shell/shell.h"
 #include "summit/state_store.h"
+#include "summit/recipes/module.h"
 #include "summit/recipes/panel.h"
 #include "summit/recipes/store.h"
 #include "summit/recipes/web_api.h"
@@ -100,6 +101,7 @@ struct App {
     std::unique_ptr<PosixStorage> sd;
     int64_t sd_free = 14200;            // simulated free space (MB)
     std::unique_ptr<recipes::RecipeStore> recipe_store;
+    std::unique_ptr<recipes::RecipeModuleData> recipe_data;
     recipes::RecipesPanel *recipes_panel = nullptr;  // owned by the registry
     std::unique_ptr<Settings> settings;
     std::unique_ptr<PanelHost> host;
@@ -553,6 +555,8 @@ void selftest(App &app)
     {
         auto &ms = *app.shell->modules_screen();
         auto click = [&](lv_obj_t *o) {
+            run_ms(app, 40);  // let a just-changed row (Delete button shown/hidden) settle
+            lv_obj_update_layout(o);
             lv_area_t a;
             lv_obj_get_coords(o, &a);
             tap(app, (a.x1 + a.x2) / 2, (a.y1 + a.y2) / 2);
@@ -852,6 +856,67 @@ void selftest(App &app)
     shot("14-portrait-updates");
     app.shell->updates().close();
 
+    // --- Delete recipes (D-010): separate button, confirm names the count ---
+    {
+        auto &ms = *app.shell->modules_screen();
+        auto click = [&](lv_obj_t *o) {
+            run_ms(app, 40);
+            lv_obj_update_layout(o);
+            lv_obj_scroll_to_view_recursive(o, LV_ANIM_OFF);
+            lv_area_t a;
+            lv_obj_get_coords(o, &a);
+            tap(app, (a.x1 + a.x2) / 2, (a.y1 + a.y2) / 2);
+            run_ms(app, 60);
+        };
+        for (int i = 0; i < 100 && app.shell->toast_showing(); ++i) run_ms(app, 200);
+        const int n = app.recipe_store->count();
+        const std::string ns = std::to_string(n);
+        app.recipes_panel->open_recipe("pancakes");
+        app.bus.publish(shell::topics::kOpenScreen, std::string("settings/modules"));
+        run_ms(app, 100);
+        EXPECT(n > 1 && ms.delete_text("recipes") == "Delete " + ns + " recipes" && ms.action_text("recipes") == "Remove",
+               "Delete is its own button next to Remove (%s)", ms.delete_text("recipes").c_str());
+        // Remove keeps the recipes and the Delete button.
+        click(ms.action_button("recipes"));
+        EXPECT(ms.action_text("recipes") == "Install" && app.recipe_store->count() == n &&
+                   ms.delete_text("recipes") == "Delete " + ns + " recipes",
+               "Remove deletes nothing; Delete is still offered");
+        click(ms.delete_button("recipes"));
+        EXPECT(ms.confirm_shown() &&
+                   ms.confirm_text() == "Delete " + ns + " recipes from the SD card? This can't be undone.",
+               "confirm names the count (%s)", ms.confirm_text().c_str());
+        EXPECT(app.recipe_store->count() == n, "nothing deleted before confirming");
+        shot("30-portrait-delete-recipes-confirm");
+        click(ms.confirm_cancel());
+        EXPECT(!ms.confirm_shown() && app.recipe_store->count() == n, "Cancel deletes nothing");
+        click(ms.delete_button("recipes"));
+        click(ms.confirm_yes());
+        EXPECT(!ms.confirm_shown() && app.recipe_store->count() == 0 && ms.delete_text("recipes").empty(),
+               "Delete removes every recipe and the button goes away");
+        EXPECT(!app.sd->exists("/recipes/pancakes"), "recipe folders are gone");
+        shot("31-portrait-modules-after-delete");
+        // Back in the Recipe reader: the recipe that was open is closed, the library is empty.
+        click(ms.action_button("recipes"));
+        ms.close();
+        app.shell->go_to_panel("recipes", false);
+        run_ms(app, 100);
+        EXPECT(app.recipes_panel->view() == recipes::RecipesPanel::View::Library && app.recipes_panel->visible_ids().empty(),
+               "an open recipe is closed; the library is empty");
+        // Deleted while the recipe is on screen: same result.
+        sim::seed_recipes(*app.recipe_store);
+        app.recipes_panel->open_recipe("pancakes");
+        run_ms(app, 100);
+        EXPECT(app.recipes_panel->view() == recipes::RecipesPanel::View::Card, "recipe open again");
+        int gone = 0;
+        EXPECT(app.recipe_data->delete_all(&gone) && gone == 2, "deleted 2 (%d)", gone);
+        run_ms(app, 100);
+        EXPECT(app.recipes_panel->view() == recipes::RecipesPanel::View::Library && app.recipes_panel->visible_ids().empty(),
+               "recipe on screen is closed when deleted");
+        app.shell->go_to_panel("home_clock", false);
+        run_ms(app, 100);
+        for (int i = 0; i < 100 && app.shell->toast_showing(); ++i) run_ms(app, 200);
+    }
+
     // System chip icons are LVGL's symbols.
     auto sys = shell::system_chips();
     EXPECT(sys[1].icon == LV_SYMBOL_WIFI && sys[2].icon == LV_SYMBOL_DOWNLOAD && sys[3].icon == LV_SYMBOL_LOOP &&
@@ -883,6 +948,8 @@ int start_app(App &app, shell::Shell::ApplyOrientation apply)
     }
     SettingsSchema schema = system_settings_schema();
     sim::register_demo_modules(app.modules);
+    app.recipe_data = std::make_unique<recipes::RecipeModuleData>(*app.recipe_store, app.state);
+    app.modules.set_data("recipes", app.recipe_data.get());
     for (const auto &d : app.registry.setting_defs()) schema.defs.push_back(d);
     for (const auto &d : app.modules.setting_defs()) schema.defs.push_back(d);
     app.settings = std::make_unique<Settings>(schema, app.storage, &app.bus);

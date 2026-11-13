@@ -83,13 +83,51 @@ void ModulesScreen::build(lv_obj_t *parent)
         r.name = label(text, m.icon.empty() ? m.name : m.icon + "  " + m.name, kText);
         r.desc = label(text, m.description, kMuted);
         r.status = label(text, "", kMuted);
-        r.button = lv_button_create(r.card);
+        lv_obj_t *actions = plain(r.card, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_width(actions, LV_SIZE_CONTENT);
+        lv_obj_set_flex_align(actions, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_END);
+        r.button = lv_button_create(actions);
         lv_obj_set_style_shadow_width(r.button, 0, 0);
         r.button_label = lv_label_create(r.button);
         lv_label_set_text(r.button_label, "Install");
         lv_obj_add_event_cb(r.button, event_cb, LV_EVENT_CLICKED, this);
+        // Separate from Remove: deleting the module's data needs its own confirmed step.
+        r.del = lv_button_create(actions);
+        lv_obj_set_style_shadow_width(r.del, 0, 0);
+        lv_obj_set_style_bg_color(r.del, lv_color_hex(kChipBg), 0);
+        r.del_label = lv_label_create(r.del);
+        lv_label_set_text(r.del_label, "");
+        lv_obj_set_style_text_color(r.del_label, lv_color_hex(kError), 0);
+        lv_obj_add_event_cb(r.del, event_cb, LV_EVENT_CLICKED, this);
+        lv_obj_add_flag(r.del, LV_OBJ_FLAG_HIDDEN);
         rows_.push_back(r);
     }
+    // Delete confirmation: modal over everything.
+    confirm_ = lv_obj_create(lv_layer_top());
+    lv_obj_remove_style_all(confirm_);
+    lv_obj_remove_flag(confirm_, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(confirm_, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_bg_color(confirm_, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(confirm_, LV_OPA_60, 0);
+    confirm_card_ = plain(confirm_, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_style_bg_color(confirm_card_, lv_color_hex(kStripBg), 0);
+    lv_obj_set_style_bg_opa(confirm_card_, LV_OPA_COVER, 0);
+    confirm_label_ = label(confirm_card_, "", kText);
+    confirm_buttons_ = plain(confirm_card_, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(confirm_buttons_, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    auto make = [&](const char *text, uint32_t bg, uint32_t fg) {
+        lv_obj_t *b = lv_button_create(confirm_buttons_);
+        lv_obj_set_style_bg_color(b, lv_color_hex(bg), 0);
+        lv_obj_set_style_shadow_width(b, 0, 0);
+        lv_obj_t *l = lv_label_create(b);
+        lv_label_set_text(l, text);
+        lv_obj_set_style_text_color(l, lv_color_hex(fg), 0);
+        lv_obj_add_event_cb(b, event_cb, LV_EVENT_CLICKED, this);
+        return b;
+    };
+    cancel_btn_ = make("Cancel", kChipBg, kText);  // the safe choice comes first
+    yes_btn_ = make("Delete", kError, kBg);
+    lv_obj_add_flag(confirm_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -116,7 +154,26 @@ void ModulesScreen::apply_layout(const Layout &l)
         lv_obj_set_style_pad_hor(r.button, t.space_m, 0);
         lv_obj_set_style_pad_ver(r.button, t.space_s, 0);
         lv_obj_set_style_radius(r.button, t.radius, 0);
+        lv_obj_set_style_pad_hor(r.del, t.space_m, 0);
+        lv_obj_set_style_pad_ver(r.del, t.space_s, 0);
+        lv_obj_set_style_radius(r.del, t.radius, 0);
+        lv_obj_set_style_text_font(r.del_label, font_for(t.text_s), 0);
+        lv_obj_set_style_pad_row(lv_obj_get_parent(r.button), t.space_s, 0);
     }
+    lv_display_t *disp = lv_display_get_default();
+    lv_obj_set_size(confirm_, lv_display_get_horizontal_resolution(disp), lv_display_get_vertical_resolution(disp));
+    lv_obj_set_width(confirm_card_, l.orientation == kLandscape ? l.content.w / 2 : l.content.w - 2 * t.space_l);
+    lv_obj_set_style_pad_all(confirm_card_, t.space_l, 0);
+    lv_obj_set_style_pad_row(confirm_card_, t.space_l, 0);
+    lv_obj_set_style_radius(confirm_card_, t.radius, 0);
+    lv_obj_set_style_text_font(confirm_card_, font_for(t.text_m), 0);
+    lv_obj_set_style_pad_column(confirm_buttons_, t.space_m, 0);
+    for (lv_obj_t *b : {yes_btn_, cancel_btn_}) {
+        lv_obj_set_style_pad_hor(b, t.space_m, 0);
+        lv_obj_set_style_pad_ver(b, t.space_s, 0);
+        lv_obj_set_style_radius(b, t.radius, 0);
+    }
+    lv_obj_center(confirm_card_);
 }
 
 void ModulesScreen::open()
@@ -132,6 +189,8 @@ void ModulesScreen::close()
 {
     open_ = false;
     lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(confirm_, LV_OBJ_FLAG_HIDDEN);
+    confirm_id_.clear();
 }
 
 void ModulesScreen::tick()
@@ -161,6 +220,15 @@ void ModulesScreen::tick()
         }
         set_text(r.status, status);
         lv_obj_set_style_text_color(r.status, lv_color_hex(problem ? kError : kMuted), 0);
+        // "Delete recipes" whenever there is data, installed or not.
+        ModuleData *data = modules_.data(r.id);
+        const int n = data ? data->count() : 0;
+        if (n > 0) {
+            set_text(r.del_label, "Delete " + std::to_string(n) + " " + data->noun(n));
+            lv_obj_remove_flag(r.del, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_add_flag(r.del, LV_OBJ_FLAG_HIDDEN);
+        }
         set_text(r.button_label, installed ? "Remove" : "Install");
         lv_obj_set_style_bg_color(r.button, lv_color_hex(installed ? kChipBg : kAccent), 0);
         lv_obj_set_style_text_color(r.button_label, lv_color_hex(installed ? kText : kBg), 0);
@@ -173,6 +241,15 @@ const ModulesScreen::Row *ModulesScreen::row(const std::string &id) const
         if (r.id == id) return &r;
     return nullptr;
 }
+
+lv_obj_t *ModulesScreen::delete_button(const std::string &id) const { return row(id) ? row(id)->del : nullptr; }
+std::string ModulesScreen::delete_text(const std::string &id) const
+{
+    const Row *r = row(id);
+    return r && !lv_obj_has_flag(r->del, LV_OBJ_FLAG_HIDDEN) ? lv_label_get_text(r->del_label) : "";
+}
+bool ModulesScreen::confirm_shown() const { return !lv_obj_has_flag(confirm_, LV_OBJ_FLAG_HIDDEN); }
+std::string ModulesScreen::confirm_text() const { return lv_label_get_text(confirm_label_); }
 
 lv_obj_t *ModulesScreen::action_button(const std::string &id) const { return row(id) ? row(id)->button : nullptr; }
 std::string ModulesScreen::action_text(const std::string &id) const
@@ -191,6 +268,30 @@ void ModulesScreen::event_cb(lv_event_t *e)
     if (t == self->close_btn_) {
         self->close();
         return;
+    }
+    if (t == self->cancel_btn_ || t == self->yes_btn_) {
+        ModuleData *data = self->modules_.data(self->confirm_id_);
+        lv_obj_add_flag(self->confirm_, LV_OBJ_FLAG_HIDDEN);
+        if (t == self->yes_btn_ && data) {
+            int deleted = 0;
+            const bool ok = data->delete_all(&deleted);
+            self->bus_.publish("notify/toast", ok ? "Deleted " + std::to_string(deleted) + " " + data->noun(deleted)
+                                                  : std::string("Some files could not be deleted"));
+        }
+        self->confirm_id_.clear();
+        self->tick();
+        return;
+    }
+    for (Row &r : self->rows_) {
+        if (t == r.del) {
+            ModuleData *data = self->modules_.data(r.id);
+            if (!data || data->count() == 0) return;
+            self->confirm_id_ = r.id;
+            lv_label_set_text(self->confirm_label_, delete_data_question(*data).c_str());
+            lv_obj_remove_flag(self->confirm_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_move_foreground(self->confirm_);
+            return;
+        }
     }
     for (Row &r : self->rows_) {
         if (t != r.button) continue;

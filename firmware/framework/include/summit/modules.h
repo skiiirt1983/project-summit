@@ -4,6 +4,7 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "summit/settings.h"
@@ -35,6 +36,19 @@ std::vector<std::string> missing_requirements(const ModuleRequirements &req, con
 // One-line summary of a module's requirements for the Modules screen ("" if none).
 std::string requirements_text(const ModuleRequirements &req);
 
+// A module's user data (e.g. the recipes on the SD card). Remove never touches it;
+// deleting it is a separate, confirmed action ("Delete recipes").
+class ModuleData {
+public:
+    virtual ~ModuleData() = default;
+    virtual std::string noun(int count) = 0;  // "recipe" / "recipes"
+    virtual int count() = 0;                  // 0 when there is none (or no card)
+    virtual bool delete_all(int *deleted) = 0;
+};
+
+// "Delete 12 recipes from the SD card? This can't be undone."
+std::string delete_data_question(ModuleData &data);
+
 enum class ModuleResult { Ok, AlreadyInstalled, NotInstalled, UnknownModule, MissingRequirements, SettingsError };
 
 class ModuleManager {
@@ -43,6 +57,9 @@ public:
     bool add(const ModuleManifest &m, std::string *error = nullptr);
     const std::vector<ModuleManifest> &modules() const { return modules_; }
     const ModuleManifest *find(const std::string &id) const;
+    // Optional: the module's data, for the separate "Delete ..." action.
+    void set_data(const std::string &id, ModuleData *data);
+    ModuleData *data(const std::string &id) const;
 
     // Settings keys for every module, to append to the schema before Settings::load().
     std::vector<SettingDef> setting_defs() const;
@@ -60,6 +77,7 @@ public:
 
 private:
     std::vector<ModuleManifest> modules_;
+    std::vector<std::pair<std::string, ModuleData *>> data_;
 };
 
 }  // namespace summit

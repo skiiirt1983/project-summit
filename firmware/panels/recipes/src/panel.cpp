@@ -61,7 +61,7 @@ RecipesPanel::RecipesPanel(RecipeStore &store, ImageSource image_source)
     manifest_.name = "Recipes";
     manifest_.version = "0.1.0";
     manifest_.sizes = kSizeFull;
-    manifest_.subscriptions = {"storage/sd_present", "input/double_tap", "timers/list"};
+    manifest_.subscriptions = {"storage/sd_present", "input/double_tap", "timers/list", "recipes/library_rev"};
     // Glance chips: running timers (never dropped) and "Cooking now" while a recipe is
     // open on another page. Tapping either comes back here.
     GlanceChipDef timers;
@@ -93,7 +93,21 @@ void RecipesPanel::show(PanelContext &ctx, const PanelView &view)
     lv_obj_add_flag(root_, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(root_, gesture_cb, LV_EVENT_GESTURE, this);
     ctx.set_state("recipes/cooking_chip", std::string());  // this page is showing
+    library_changed(ctx.state("recipes/library_rev"));  // deleted while this page was hidden?
+    dirty_ = false;
     render();
+}
+
+// Recipes were deleted (Modules > Delete recipes): close any open recipe.
+void RecipesPanel::library_changed(const Value &rev)
+{
+    const int64_t *r = std::get_if<int64_t>(&rev);
+    if (!r || *r == library_rev_) return;
+    library_rev_ = *r;
+    if (view_ == View::Card || view_ == View::Book) view_ = View::Library;
+    open_id_.clear();
+    session_ = CookSession();
+    dirty_ = true;
 }
 
 void RecipesPanel::hide(PanelContext &ctx)
@@ -120,10 +134,12 @@ void RecipesPanel::tick(PanelContext &, uint32_t)
     }
 }
 
-void RecipesPanel::on_event(PanelContext &, const std::string &topic, const Value &)
+void RecipesPanel::on_event(PanelContext &, const std::string &topic, const Value &v)
 {
     if (topic == "timers/list") {
         if (shown_) render_timers();
+    } else if (topic == "recipes/library_rev") {
+        library_changed(v);
     } else if (topic == "storage/sd_present") {
         dirty_ = true;  // card inserted or removed
     } else if (topic == "input/double_tap" && (view_ == View::Card || view_ == View::Book)) {

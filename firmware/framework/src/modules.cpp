@@ -47,6 +47,29 @@ const ModuleManifest *ModuleManager::find(const std::string &id) const
     return nullptr;
 }
 
+std::string delete_data_question(ModuleData &data)
+{
+    const int n = data.count();
+    return "Delete " + std::to_string(n) + " " + data.noun(n) + " from the SD card? This can't be undone.";
+}
+
+void ModuleManager::set_data(const std::string &id, ModuleData *data)
+{
+    for (auto &d : data_)
+        if (d.first == id) {
+            d.second = data;
+            return;
+        }
+    data_.emplace_back(id, data);
+}
+
+ModuleData *ModuleManager::data(const std::string &id) const
+{
+    for (const auto &d : data_)
+        if (d.first == id) return d.second;
+    return nullptr;
+}
+
 std::vector<SettingDef> ModuleManager::setting_defs() const
 {
     std::vector<SettingDef> out;
