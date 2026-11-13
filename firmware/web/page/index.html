@@ -27,6 +27,8 @@ button.btn.danger{background:var(--error);color:#fff}
 button.btn:disabled{opacity:.5;cursor:default}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
 label{display:block;margin:8px 0 4px;color:var(--muted)}
+textarea{width:100%;padding:8px;border-radius:8px;border:1px solid var(--chip);background:var(--bg);color:var(--text);font:inherit;resize:vertical}
+#rec-pages img,#rec-list img{height:72px;border-radius:6px;border:1px solid var(--chip)}
 input,select{width:100%;max-width:360px;padding:8px;border-radius:8px;border:1px solid var(--chip);background:var(--bg);color:var(--text);font:inherit}
 input[type=checkbox]{width:auto}
 .notice{border-left:4px solid var(--error)}
@@ -44,6 +46,7 @@ ul{margin:0;padding-left:18px}
   <button role="tab" data-tab="status" aria-selected="true">Status</button>
   <button role="tab" data-tab="wifi">Wi-Fi</button>
   <button role="tab" data-tab="firmware">Firmware</button>
+  <button role="tab" data-tab="recipes">Recipes</button>
   <button role="tab" data-tab="modules">Modules</button>
   <button role="tab" data-tab="settings">Settings</button>
   <button role="tab" data-tab="diagnostics">Diagnostics</button>
@@ -90,6 +93,35 @@ ul{margin:0;padding-left:18px}
     <div class="row"><button class="btn" id="fw-upload" disabled>Upload and install</button></div>
     <progress id="fw-upload-progress" max="100" value="0" hidden></progress>
     <div class="msg" id="fw-upload-msg"></div>
+  </div>
+</section>
+
+<section id="recipes">
+  <div class="card notice" id="rec-nocard" hidden>Insert a microSD card in the device to use recipes.</div>
+  <div id="rec-main">
+    <div class="card" id="rec-inbox-card" hidden><h2>New PDFs on the SD card</h2>
+      <p class="muted">Copied into <code>/recipes/inbox</code>. Convert each one here; the PDF is kept with its recipe.</p>
+      <table><tbody id="rec-inbox"></tbody></table></div>
+    <div class="card"><h2>Add a recipe from a PDF</h2>
+      <p class="muted">The PDF is converted in this browser: each page becomes a picture for the device, and the text becomes a draft you can fix before saving.</p>
+      <input type="file" id="rec-file" accept="application/pdf,.pdf">
+      <div class="msg" id="rec-msg"></div></div>
+    <div class="card" id="rec-edit" hidden><h2>Check the recipe</h2>
+      <p class="muted" id="rec-note"></p>
+      <div id="rec-pick-row" hidden><label for="rec-pick">This PDF has more than one recipe. Import:</label><select id="rec-pick"></select></div>
+      <label for="rec-title">Title</label><input id="rec-title" maxlength="120">
+      <label for="rec-servings">Servings (leave empty if unknown)</label><input id="rec-servings" type="number" min="1" max="99">
+      <label for="rec-tags">Tags (comma separated)</label><input id="rec-tags" placeholder="dessert, baking">
+      <label for="rec-ingredients">Ingredients (one per line, e.g. "1 1/2 cup flour, sifted")</label>
+      <textarea id="rec-ingredients" rows="8"></textarea>
+      <label for="rec-steps">Steps (one per line)</label>
+      <textarea id="rec-steps" rows="8"></textarea>
+      <div class="row" id="rec-pages"></div>
+      <div class="row"><button class="btn primary" id="rec-save">Save to device</button><button class="btn" id="rec-cancel">Cancel</button></div>
+      <progress id="rec-progress" max="100" value="0" hidden></progress>
+      <div class="msg" id="rec-save-msg"></div></div>
+    <div class="card"><h2>On the device</h2>
+      <table><tbody id="rec-list"></tbody></table><p class="muted" id="rec-none">No recipes yet.</p></div>
   </div>
 </section>
 
@@ -358,7 +390,10 @@ loaders.diagnostics = async () => {
 };
 $("diag-refresh").addEventListener("click", () => loaders.diagnostics());
 
+// Shared with the Recipes module (recipes.mjs).
+window.summit = { $, el, api, msg, loaders };
 loaders.status().catch((e) => { $("status-dl").replaceChildren(el("dd", "Could not reach the device: " + e.message)); });
 </script>
+<script type="module" src="/recipes.mjs"></script>
 </body>
 </html>

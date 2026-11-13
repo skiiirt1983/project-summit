@@ -18,8 +18,14 @@
 #include "summit/web/api.h"
 #include "summit/web/device.h"
 
-extern const uint8_t index_html_gz_start[] asm("_binary_index_html_gz_start");
-extern const uint8_t index_html_gz_end[] asm("_binary_index_html_gz_end");
+#define SUMMIT_EMBED(sym)                                                    \
+    extern const uint8_t sym##_start[] asm("_binary_" #sym "_start");        \
+    extern const uint8_t sym##_end[] asm("_binary_" #sym "_end")
+SUMMIT_EMBED(index_html_gz);
+SUMMIT_EMBED(recipes_mjs_gz);
+SUMMIT_EMBED(recipe_import_mjs_gz);
+SUMMIT_EMBED(pdf_min_mjs_gz);
+SUMMIT_EMBED(pdf_worker_min_mjs_gz);
 
 namespace summit::web {
 
@@ -143,13 +149,33 @@ std::string header(httpd_req_t *req, const char *name)
     return v;
 }
 
+// Static web files, gzipped into flash (firmware/web/CMakeLists.txt WEB_FILES).
+struct StaticFile {
+    const char *path, *type;
+    const uint8_t *start, *end;
+};
+const StaticFile kStatic[] = {
+    {"/", "text/html; charset=utf-8", index_html_gz_start, index_html_gz_end},
+    {"/recipes.mjs", "text/javascript", recipes_mjs_gz_start, recipes_mjs_gz_end},
+    {"/recipe_import.mjs", "text/javascript", recipe_import_mjs_gz_start, recipe_import_mjs_gz_end},
+    {"/vendor/pdfjs/pdf.min.mjs", "text/javascript", pdf_min_mjs_gz_start, pdf_min_mjs_gz_end},
+    {"/vendor/pdfjs/pdf.worker.min.mjs", "text/javascript", pdf_worker_min_mjs_gz_start, pdf_worker_min_mjs_gz_end},
+};
+
 esp_err_t page(httpd_req_t *req)
 {
-    httpd_resp_set_type(req, "text/html; charset=utf-8");
-    httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-    httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
-    return httpd_resp_send(req, reinterpret_cast<const char *>(index_html_gz_start),
-                           index_html_gz_end - index_html_gz_start);
+    std::string path = req->uri;
+    const size_t q = path.find('?');
+    if (q != std::string::npos) path.resize(q);
+    if (path == "/index.html") path = "/";
+    for (const StaticFile &f : kStatic) {
+        if (path != f.path) continue;
+        httpd_resp_set_type(req, f.type);
+        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
+        httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+        return httpd_resp_send(req, reinterpret_cast<const char *>(f.start), f.end - f.start);
+    }
+    return send(req, json_error(404, "not found"));
 }
 
 esp_err_t module_upload_handler(httpd_req_t *req);
@@ -269,10 +295,10 @@ bool web_server_start(EventBus &bus, StateStore &state, Settings &settings, cons
         return false;
     }
     const httpd_uri_t routes[] = {
-        {.uri = "/", .method = HTTP_GET, .handler = page, .user_ctx = nullptr},
         {.uri = "/api/firmware/upload", .method = HTTP_POST, .handler = upload_handler, .user_ctx = nullptr},
         {.uri = "/api/*", .method = HTTP_GET, .handler = api_handler, .user_ctx = nullptr},
         {.uri = "/api/*", .method = HTTP_POST, .handler = api_handler, .user_ctx = nullptr},
+        {.uri = "/*", .method = HTTP_GET, .handler = page, .user_ctx = nullptr},  // static files, last
     };
     for (const auto &r : routes) httpd_register_uri_handler(server, &r);
     ESP_LOGI(TAG, "web UI on port %d", cfg.server_port);

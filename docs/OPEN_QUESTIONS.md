@@ -4,6 +4,12 @@ Each entry: the question, the choice made, why. Newest first. Say if any should 
 
 ## R6 — Web import
 
+- **Several recipes in one PDF.** Choice: the edit screen offers a choice and imports one at a time; every imported recipe keeps all pages of that PDF. Splitting pages per recipe is not attempted.
+- **Units are normalised** ("cups" → `cup`, "tablespoons" → `tbsp`, "grams" → `g`); ranges take the lower number ("2-3 cloves" → 2). The user can edit before saving.
+- **`thumb.jpg`** (320 px) is written on import for lists. The web UI shows it; the device library still shows text cards (needs a JPEG decoder on the device first).
+- **Parser language.** English headings only (Ingredients / Method / Directions / Instructions / Steps / Preparation). Other languages fall back to pages only, with manual entry.
+- **Editing an existing recipe** from the web UI is not built (the API supports it: `save` with an `id`).
+
 - **Upload limits.** Choice: page / photo images up to 2 MB each, PDFs up to 32 MB, 200 pages per recipe; an upload is refused if the card would have under 8 MB left.
 - **Inbox PDFs after conversion.** Choice: the PDF is moved into the recipe folder as `original.pdf` (not deleted), so the inbox empties and the recipe can be re-converted later.
 - **No delete in the API or storage layer.** Deleting recipes (and "Delete recipes" on module removal) waits for your go-ahead, per D-009.

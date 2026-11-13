@@ -476,6 +476,18 @@ Decided in DECISIONS.md D-008; built in steps R1–R7 (see `docs/KICKOFF.md`). T
 - **Book mode:** the original pages as images, one at a time: Back / Next, swipe, or a double-tap on the case. Fit = full width in landscape (scroll down to read on) and the whole page in portrait; the Zoom button or a double-tap on the page doubles it and dragging pans. A recipe with steps and pages has "Pages" / "Steps" buttons to switch; a scan (pages only) opens straight in book mode.
 - The panel reads recipes through `RecipeStore` (the storage interface) and gets page images through an image-source function, both given to it when it is created. JPEG decoding is the platform's job: libjpeg-turbo in the simulator; the device decoder is not written yet (HARDWARE_TODO).
 
+### Recipe import in the web UI
+
+The **Recipes** tab of the web UI (`firmware/web/page/recipes.mjs`) does the conversion in the browser; the device never parses a PDF.
+
+1. Choose a PDF, or press **Convert** next to a PDF waiting in `/recipes/inbox` (the browser fetches it from the device).
+2. pdf.js (4.10.38, Apache-2.0, vendored in `firmware/web/page/vendor/pdfjs/` and served by the device) renders every page to a JPEG with its long side at 1280 px, plus a 320 px thumbnail of page 1, and extracts the text.
+3. `recipe_import.mjs` turns the text into a draft: title, servings ("Serves 8", "Makes 4"), ingredients under an *Ingredients* heading (quantity incl. fractions like `1 1/2` and `½`, unit, item, note), and steps under *Method / Directions / Instructions / Steps* (numbered lines, or sentences when unnumbered). A PDF with several recipes offers a choice. No heading found (a scan): pages only.
+4. The **edit screen** shows the draft (title, servings, tags, ingredients and steps one per line) with page previews. Nothing is saved until **Save to device**.
+5. Saving posts the recipe (validated by the device), uploads the pages and thumbnail, and keeps the PDF with the recipe as `original.pdf` (an inbox PDF is moved there).
+
+The web files are gzipped into the firmware image (about 510 KB for pdf.js) and served from flash.
+
 ### Recipe web API (for import in the browser)
 
 Provided by the Recipe reader as an extension of the web API (`firmware/panels/recipes/src/web_api.cpp`, host-tested). Nothing here deletes a recipe.

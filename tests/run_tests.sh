@@ -7,6 +7,7 @@ python3 tests/test_firmware_image.py
 python3 tests/test_hardware_id_contract.py
 python3 tests/test_state_topics_contract.py
 python3 tests/test_catalog_tool.py
+node tests/web/test_recipe_import.mjs   # recipe text parser used by the web import
 # C++ framework host tests (same sources as the firmware, no ESP-IDF/LVGL).
 fw=firmware/framework
 out=$(mktemp -d)

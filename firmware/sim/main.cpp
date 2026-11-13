@@ -995,6 +995,13 @@ int run_web(int port)
     SimFacts facts;
     web::WebApi api(app.bus, app.state, *app.settings, control, wifi, facts);
     api.set_modules(&app.modules);
+    {
+        // A PDF "copied onto the SD card from a computer", waiting in the inbox.
+        std::error_code ec;
+        std::filesystem::create_directories(app.sd_dir + "/recipes/inbox", ec);
+        std::filesystem::copy_file(std::string(SUMMIT_FIXTURE_SD) + "/../pdf/lemon-cake.pdf",
+                                   app.sd_dir + "/recipes/inbox/from-sd-card.pdf", ec);
+    }
     recipes::RecipeWebApi recipe_api(*app.recipe_store, *app.sd);
     api.add_extension(&recipe_api);
     sim::HttpSim http(api, SUMMIT_WEB_ROOT, app.sd.get());

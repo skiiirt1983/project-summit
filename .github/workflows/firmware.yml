@@ -50,6 +50,7 @@ jobs:
           npm install --no-save --no-package-lock playwright@1.63.0
           npx playwright install --with-deps chromium
           node tests/web/e2e.mjs build/sim/summit_sim sim-out/web
+          node tests/web/e2e_recipes.mjs build/sim/summit_sim sim-out/web
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4
