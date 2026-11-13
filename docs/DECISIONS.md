@@ -2,6 +2,14 @@
 
 Newest first. Each entry answers a question Claude Code asked. Apply it, update ARCHITECTURE.md where noted, then continue.
 
+## D-011 — Recipe timers across restarts; URL import review (2026-11-13)
+
+1. **Timers across a restart: agree with the proposal.**
+   - Until the RTC is proven on the board, timers stay in memory only. Add "persist timers" to HARDWARE_TODO.md.
+   - Once the RTC works: store running timers in a small NVS entry outside settings, written only on start/cancel. On start-up, a timer that ended while the device was off shows a toast ("Timer finished while off: <name>") and does not ring. A timer still running resumes.
+   - New now: the update engine treats a running recipe timer like an alarm. Pre-flight refuses to install (or go to a previous version) while a timer is running, with the message "Finish or cancel your timers first".
+2. **URL imports saved directly: accepted.** Recipe-site data is usually clean. After a URL import, open the new recipe straight away with a short toast "Imported. Tap Edit to fix anything." No separate pre-save screen.
+
 ## D-010 — Answers to OPEN_QUESTIONS.md R1–R3 (2026-11-12)
 
 1. **No web UI lock.** It's a home device with no emails or passwords on it. D-007 item 4 (pairing) is withdrawn: remove it from D-007 and from ARCHITECTURE.md. No login, no on-device "Allow" prompt.
