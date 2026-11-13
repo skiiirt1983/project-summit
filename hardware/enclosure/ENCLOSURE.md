@@ -233,7 +233,7 @@ still works without them.
       - ironing on flat top faces where it helps
       - seams hidden on a back or inside edge
       - document these settings in the 3MF
-- [ ] TPU parts (2026-11-14): no flat ceilings. Undersides of lips and ledges are 45°; edges that touch
+- [ ] TPU parts (2026-11-13): no flat ceilings. Undersides of lips and ledges are 45°; edges that touch
       the plate are 45° chamfers, not rounds.
 - [ ] Body (2026-11-13): edges on the bed get a 45° chamfer blended into the round (no overhang);
       elephant-foot compensation on; seam on an inside edge; finer layers over the rounded edges.
@@ -261,12 +261,15 @@ still works without them.
     ENCLOSURE.md        # this file
     dimensions.md       # every dimension, marked drawing / measured / PLACEHOLDER
     decisions.md        # dated log of design decisions and defaults to confirm
-    COUPON-RESULTS.md   # form to fill in after printing coupons + "Measure these"
+    REMAINING-TESTS.md  # the one checklist of tests and measurements still to do (+ .docx to fill in)
+    COUPON-RESULTS.md   # record of finished tests and what each answer changed
+    tests/              # pictures used by REMAINING-TESTS
     ref/                # reference images, LyricFlash 3MF
     cad/params.py       # every dimension and clearance
     cad/parts.py        # screen module (bezel, carrier plate, back cover) + inner frame
     cad/peak.py         # body, pads, full assembly, exports
     cad/test_coupons.py # material slices and fit coupons
+    cad/test_pictures.py, cad/remaining_tests.py   # pictures and the REMAINING-TESTS documents
     cad/render_all.py   # review renders (cad/render/ = headless three.js renderer)
     coupons/            # ready-to-print coupon 3MF + STL
     renders/            # latest review renders

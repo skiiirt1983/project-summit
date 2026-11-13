@@ -1,13 +1,13 @@
 """Test coupons, cut from the real model so they test the real fits.
 
-Run:  python test_coupons.py
-  -> ../coupons/coupons-material.3mf   three triangle slices: T1 T2 T3 (TPU for AMS). Printed 2026-11-13
-     ../coupons/coupons-fit-petg.3mf   PETG fit tests: glass ring, seat, clip, mic plate, port block
-     ../coupons/coupons-fit-body.3mf   TPU: SEAT-body, END-bed (bed-end slice)
-     ../coupons/coupons-cap.3mf        TPU: CAP-corner + BODY-corner (the cap's push-fit and seam)
-     plus one STL per coupon there, and render inputs in ../out/coupons/
-Every coupon is laid flat in its print orientation. Per-object slicer settings are
-listed in ../COUPON-RESULTS.md; the 3MF carries shapes and names only.
+Run:  python test_coupons.py          -> the pieces still to print:
+     ../coupons/reprint-tpu.3mf    TPU: BODY-corner
+     ../coupons/reprint-petg.3mf   PETG: CLIP-frame, CLIP-bezel, SNAP-bezel, SNAP-plate, SNAP-cover
+      python test_coupons.py --all    -> also rebuilds the pieces already issued (material slices,
+     SEAT, END-bed, CAP-corner, GLASS-ring, MIC-plate, PORT-block). Only after a design change:
+     the files in ../coupons/ are the ones Paul printed.
+One STL per piece is written next to the 3MF. Every piece lies in its print orientation.
+The 3MF carries shapes and names only; slicer settings are in ../REMAINING-TESTS.md.
 """
 import math
 from pathlib import Path
@@ -86,10 +86,19 @@ def plate_chamfer(part):
 def end_slices():
     """END-bed: the real body's first 12 mm off the plate, in its real print orientation
     (standing on the portrait end): the 45 degree chamfer blended into the round, pad recesses.
-    (END-top was withdrawn on 2026-11-14: that end is now a separate cap.)
+    (END-top was withdrawn on 2026-11-13: that end is now a separate cap.)
     """
     upright = lay_flat(Rot(-90, 0, 0) * peak.body())        # +Y (portrait end) down on the plate
     return {"END-bed": lay_flat(upright & (Pos(0, 0, 6) * Box(400, 400, 12)))}
+
+
+def cap_raw():
+    """CAP-corner and BODY-corner as they sit in the real case (world frame)."""
+    spots = peak.peg_spots()
+    main, cap = peak.split(peak.body(), [spots[1], spots[2]] + [q for i, q in enumerate(spots) if i not in (1, 2)])
+    corner = Pos(114, 0, 23) * Box(72, 400, 50)             # profile X 78..150, Z -2..48
+    below = Pos(0, p.SEAM_Y - p.USB_END * 10, 0) * Box(600, 20, 600)
+    return {"CAP-corner": cap & corner, "BODY-corner": main & corner & below}
 
 
 def cap_corner():
@@ -99,13 +108,9 @@ def cap_corner():
     CAP-corner prints with the port end face on the plate, pegs up.
     BODY-corner is the 20 mm of body below the seam, seam face up with its two peg holes.
     """
-    spots = peak.peg_spots()
-    main, cap = peak.split(peak.body(), [spots[1], spots[2]] + [q for i, q in enumerate(spots) if i not in (1, 2)])
-    corner = Pos(114, 0, 23) * Box(72, 400, 50)             # profile X 78..150, Z -2..48
-    below = Pos(0, p.SEAM_Y - p.USB_END * 10, 0) * Box(600, 20, 600)
-    turn = Rot(-p.USB_END * 90, 0, 0)                       # cap: port end face down
-    return {"CAP-corner": lay_flat(turn * (cap & corner)),
-            "BODY-corner": plate_chamfer(lay_flat(Rot(p.USB_END * 90, 0, 0) * (main & corner & below)))}
+    raw = cap_raw()
+    return {"CAP-corner": lay_flat(Rot(-p.USB_END * 90, 0, 0) * raw["CAP-corner"]),
+            "BODY-corner": plate_chamfer(lay_flat(Rot(p.USB_END * 90, 0, 0) * raw["BODY-corner"]))}
 
 
 def material_slice(label):
@@ -128,33 +133,58 @@ def body_local():
     return peak.face_plane().location.inverse() * world
 
 
-def seat_coupons():
-    """One corner of body + frame + module (the end away from the ports, lower side)."""
+def seat_raw():
+    """One corner of body + frame + bezel as they sit together (module frame): the end away
+    from the ports, lower side."""
     x0, y0 = p.GLASS_L / 2 - 26, p.GLASS_W / 2 - 22
     depth = p.POCKET_D + p.BACK_SKIN + 2
     box = Pos(x0 + 30, y0 + 30, -depth / 2 + 1) * Box(60, 60, depth)
     body_box = Pos(x0 + 22, y0 + 18.5, -depth / 2 + 1) * Box(44, 37, depth)   # trims the rounded outside
-    return {
-        "SEAT-body": plate_chamfer(lay_flat(body_local() & body_box)),
-        "SEAT-frame": lay_flat(parts.frame() & box),
-        "SEAT-bezel": lay_flat(parts.cup() & box, flip=True),
-        "SEAT-cover": lay_flat(parts.cover() & box),
-        "SEAT-plate": lay_flat(parts.plate() & box),
-    }
+    return {"SEAT-body": body_local() & body_box, "SEAT-frame": parts.frame() & box,
+            "SEAT-bezel": parts.cup() & box}
 
 
-def clip_coupons():
-    """A straight piece of the lower long side around one clip."""
+def seat_coupons():
+    raw = seat_raw()
+    return {"SEAT-body": plate_chamfer(lay_flat(raw["SEAT-body"])),
+            "SEAT-frame": lay_flat(raw["SEAT-frame"]),
+            "SEAT-bezel": lay_flat(raw["SEAT-bezel"], flip=True)}
+
+
+def clip_raw():
+    """A straight piece of the lower long side around one clip (module frame)."""
     x = p.CLIP_X[1]
     depth = p.POCKET_D + p.BACK_SKIN + 2
     y_in = p.GLASS_W / 2 - 6
     box = Pos(x, y_in + 15, -depth / 2 + 1) * Box(30, 30, depth)
     body_box = Pos(x, y_in + 9, -depth / 2 + 1) * Box(30, 18, depth)
-    return {
-        "CLIP-body": lay_flat(body_local() & body_box),
-        "CLIP-frame": lay_flat(parts.frame() & box),
-        "CLIP-bezel": lay_flat(parts.cup() & box, flip=True),
-    }
+    return {"CLIP-body": body_local() & body_box, "CLIP-frame": parts.frame() & box,
+            "CLIP-bezel": parts.cup() & box}
+
+
+def clip_coupons():
+    raw = clip_raw()
+    return {"CLIP-body": lay_flat(raw["CLIP-body"]),
+            "CLIP-frame": lay_flat(raw["CLIP-frame"]),
+            "CLIP-bezel": lay_flat(raw["CLIP-bezel"], flip=True)}
+
+
+def snap_raw():
+    """The whole end of the screen module away from the ports, full width: bezel, carrier plate
+    and back cover (module frame). Full width, because the cover is held between the two long
+    walls; a corner piece cannot hold it."""
+    x_from = 22.0
+    depth = p.MOD_D + 2
+    box = Pos(x_from + 40, 0, -depth / 2 + 1) * Box(80, 200, depth)
+    return {"SNAP-bezel": parts.cup() & box, "SNAP-plate": parts.plate() & box,
+            "SNAP-cover": parts.cover() & box}
+
+
+def snap_coupons():
+    raw = snap_raw()
+    return {"SNAP-bezel": lay_flat(raw["SNAP-bezel"], flip=True),
+            "SNAP-plate": lay_flat(raw["SNAP-plate"]),
+            "SNAP-cover": lay_flat(raw["SNAP-cover"])}
 
 
 def glass_ring():
@@ -174,19 +204,24 @@ def mic_plate():
     return plate
 
 
+PORT_BLOCK_BASE = (12.5, 7.0)     # the block's "+0" tunnel. Fixed, so the printed block stays valid:
+                                  # "+1" (13.5 x 8.0) is the size Paul's cable needed and is now USB_WINDOW.
+
+
 def port_block():
     """The full tunnel a USB-C plug passes through, at the real port spacing.
 
-    Left window = USB_WINDOW as modelled, right window = 1 mm larger each way.
-    Lay it on the bench against the board's USB end and push the cables through.
+    "+0" = 12.5 x 7.0, "+1" = 13.5 x 8.0 (now the real opening).
+    Hold it against the board's USB end and push the cables through.
     """
     tunnel = p.SIDE_MARGIN + p.SEAM + p.BEZEL_WALL - p.GLASS_CLEAR
     spacing = abs(p.USB_Y[1] - p.USB_Y[0])
-    height = p.USB_WINDOW[1] + 6
-    block = Pos(0, 0, height / 2) * Box(spacing + p.USB_WINDOW[0] + 12, tunnel, height)
+    height = PORT_BLOCK_BASE[1] + 6
+    block = Pos(0, 0, height / 2) * Box(spacing + PORT_BLOCK_BASE[0] + 12, tunnel, height)
     for i, extra in enumerate((0.0, 1.0)):
         x = (i - 0.5) * spacing
-        block -= Pos(x, 0, height / 2) * Rot(0, 0, 90) * parts.usb_tunnel(tunnel + 1, extra)
+        block -= Pos(x, 0, height / 2) * Rot(0, 0, 90) * parts.usb_tunnel(tunnel + 1, size=(
+            PORT_BLOCK_BASE[0] + extra, PORT_BLOCK_BASE[1] + extra))
     block -= Pos(-spacing / 2, 0, height - 0.4) * extrude(Text("+0", 4), 0.5)
     block -= Pos(spacing / 2, 0, height - 0.4) * extrude(Text("+1", 4), 0.5)
     return block
@@ -226,17 +261,24 @@ def write(named, stem, colours, gap=6.0):
           "all valid" if all(q.is_valid for q in placed.values()) else "INVALID PART")
 
 
+TPU, PETG = "#8d8f8c", "#6a7078"
+
+
+def petg_colour(name):
+    return "#efe6d2" if "bezel" in name or "ring" in name else PETG
+
+
 if __name__ == "__main__":
-    seat, clip = seat_coupons(), clip_coupons()
-    # Stone PLA slice "P1" dropped after Print 1 (2026-11-13): the body is TPU for AMS only.
-    write({name: material_slice(name) for name in ("T1", "T2", "T3")}, "coupons-material",
-          lambda n: "#8d8f8c", gap=4.0)
-    petg = {"GLASS-ring": glass_ring()}
-    petg.update({k: v for k, v in {**seat, **clip}.items() if not k.endswith("body")})
-    clip.pop("CLIP-body")
-    petg.update({"MIC-plate": mic_plate(), "PORT-block": port_block()})
-    write(petg, "coupons-fit-petg", lambda n: "#efe6d2" if "bezel" in n or "ring" in n else "#6a7078")
-    # CLIP-body printed clean on 2026-11-14 and is kept exactly as first issued (CLIP-body.stl),
-    # so it is not rebuilt here.
-    write({"SEAT-body": seat["SEAT-body"], **end_slices()}, "coupons-fit-body", lambda n: "#8d8f8c")
-    write(cap_corner(), "coupons-cap", lambda n: "#8d8f8c")
+    import sys
+    seat, clip, snap, cap = seat_coupons(), clip_coupons(), snap_coupons(), cap_corner()
+    # What Paul still has to print (see ../REMAINING-TESTS.md, group A).
+    write({"BODY-corner": cap["BODY-corner"]}, "reprint-tpu", lambda n: TPU)
+    write({"CLIP-frame": clip["CLIP-frame"], "CLIP-bezel": clip["CLIP-bezel"], **snap}, "reprint-petg", petg_colour)
+    if "--all" in sys.argv:
+        # Pieces already issued and unchanged. Rebuilding them is only needed after a design change;
+        # the files in ../coupons/ are the ones Paul printed.
+        write({name: material_slice(name) for name in ("T1", "T2", "T3")}, "coupons-material", lambda n: TPU, gap=4.0)
+        write({"SEAT-body": seat["SEAT-body"], "CLIP-body": clip["CLIP-body"], "CAP-corner": cap["CAP-corner"],
+               **end_slices()}, "coupons-fit-body", lambda n: TPU)
+        write({"GLASS-ring": glass_ring(), "SEAT-frame": seat["SEAT-frame"], "SEAT-bezel": seat["SEAT-bezel"],
+               "MIC-plate": mic_plate(), "PORT-block": port_block()}, "coupons-fit-petg", petg_colour)

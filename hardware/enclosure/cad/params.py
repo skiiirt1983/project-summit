@@ -66,24 +66,28 @@ GLASS_CLEAR = 0.30         # gap glass edge -> pocket wall, per side  # COUPON: 
 # =============================================================================
 LEDGE = 1.0                # step in the cup wall that the carrier plate seats against
 PLATE_T = 2.0              # carrier plate; screws to the board's four M2.5 standoffs
-PLATE_CLEAR = 0.20         # plate -> cup wall, per side  # COUPON: tune after test print (SEAT)
+PLATE_CLEAR = 0.15         # plate -> cup wall, per side. SEAT results: 0.20 was loose
+                           # COUPON: tune after test print (SNAP)
 SCREW_D = 2.9              # M2.5 clearance hole
 SCREW_HEAD_D = 5.2         # M2.5 countersunk head
 COVER_FLOOR = 1.68         # back cover floor (4 lines at 0.42)
 COVER_RIM = 1.26           # back cover rim (3 lines)
 COVER_CLEAR = 0.20         # back cover -> cup wall, per side  # COUPON: tune after test print (SEAT)
-SNAP_BUMP = 0.40           # back-cover snap ridge height  # COUPON: tune after test print (SEAT)
-SNAP_LEN = 28.0            # back-cover snap ridge length
+SNAP_BUMP = 0.40           # back-cover snap ridge height  # COUPON: tune after test print (SNAP)
+SNAP_LEN = 20.0            # back-cover snap ridge length
+SNAP_X = (-38.0, 38.0)     # two ridges per long side, near the ends. (They were one ridge in the middle,
+                           # which the SEAT corner coupon did not contain, so its cover could not hold.)
 WIRE_NOTCH = (14.0, 6.0)   # PLACEHOLDER — battery + accelerometer wires through the plate
 BUTTON_PIN_D = 1.8         # paperclip hole over each button (default, Paul to confirm)
 SD_SLOT = (18.5, 3.6)      # card slot window in the cup wall
-MIC_HOLE_D = 2.0           # measured (LyricFlash)  # COUPON: tune after test print (MIC)
+MIC_HOLE_D = 2.0           # measured (LyricFlash). MIC results: 1.8 printed clean, so 2.0 is safe; kept
 MIC_WALL = 1.6             # measured (LyricFlash): wall thickness at the hole (= COVER_FLOOR, nearly)
 MIC_CLEAR_D = 4.0          # larger pass-through holes in plate, frame and body skin
 MIC_EXIT_Y = 11.0          # where the sound leaves the back, measured from the centre line.
                            # The mics sit at +/-29.9, behind the solid corners of the triangle, so
                            # the exit holes are moved in to where the hollow is (flat is +/-15.6).
-USB_WINDOW = (12.5, 7.0)   # opening for a cable plug (along the edge, through the thickness)
+USB_WINDOW = (13.5, 8.0)   # opening for a cable plug (along the edge, through the thickness).
+                           # PORT results: Paul's cable needs the +1 tunnel (was 12.5 x 7.0)
                            # COUPON: tune after test print (PORT)
 USB_WINDOW_R = 2.5         # corner radius of the opening, to match a plug's rounded grip
                            # COUPON: tune after test print (PORT)
@@ -98,7 +102,7 @@ FRAME_CLEAR = 0.25         # module -> frame, per side  # COUPON: tune after tes
 FRAME_FIT = 0.00           # frame -> body pocket, per side (0 = snug in TPU; use 0.15 for a rigid PLA body)
                            # COUPON: tune after test print (SEAT)
 FRAME_TOP = 1.5            # frame stops this far below the front face; the body's lip hides it
-# No flat ceilings in TPU (Paul, 2026-11-14, after the flat lip on SEAT-body sagged into strings).
+# No flat ceilings in TPU (Paul, 2026-11-13, after the flat lip on SEAT-body sagged into strings).
 LIP_LAND = 0.6             # straight, crisp edge of the screen opening before the underside slopes away
                            # COUPON: tune after test print (SEAT)
 FRAME_TOP_CHAMFER = 1.2    # 45 degree chamfer on the frame's top outer edge, so it tucks under the sloped lip
@@ -114,7 +118,8 @@ PUSH_HOLE_D = 22.0         # finger hole behind the module, to push it out for s
 CLIP_X = (-35.0, 35.0)     # clip positions along each long side
 CLIP_W = 8.0               # spring finger width
 CLIP_LEN = 14.0            # spring finger length  # COUPON: tune after test print (CLIP)
-CLIP_BUMP = 0.60           # how far the clip bump bites into the module  # COUPON: tune after test print (CLIP)
+CLIP_BUMP = 0.75           # how far the clip bump bites into the module. CLIP results: 0.60 was weak,
+                           # close to no click  # COUPON: tune after test print (CLIP)
 CLIP_R = 1.0               # bump radius
 CLIP_SLOT = 0.8            # slot around each finger
 CLIP_FROM_BACK = 8.0       # bump height above the module's back face
@@ -141,16 +146,18 @@ BACK_SKIN = 1.68           # body skin behind the frame, facing the hollow
 FRONT_MARGIN = 5.0         # body showing above/below the bezel (target image)
 SIDE_MARGIN = 11.0         # body left/right of the bezel (target image)
 
-# --- Port-end cap (Paul, 2026-11-14: option A) --------------------------------------------------
+# --- Port-end cap (Paul, 2026-11-13: option A) --------------------------------------------------
 # The body prints on end. Its last CAP_T at the port end is a separate TPU cap, so the main body's
 # pocket is an open-topped channel with no ceilings. The cap pushes on with pegs: no glue.
-CAP = True                 # approved by Paul 2026-11-15 (renders/peak-views.png); False gives the one-piece body
+CAP = True                 # approved by Paul 2026-11-13 (renders/peak-views.png); False gives the one-piece body
 PEG_D = 5.0                # peg diameter
 PEG_L = 8.0                # peg length
-PEG_FIT = 0.20             # hole is this much larger than the peg on diameter.
-                           # Test 1 (2026-11-15): 0.00 was too tight; it bound, tilted and would not close.
+PEG_FIT = 0.10             # hole is this much larger than the peg on diameter.
+                           # Test 2: 0.20 was loose (faces closed, groove and flush fine).
+                           # Test 1 (2026-11-13): 0.00 was too tight; it bound, tilted and would not close.
                            # COUPON: tune after test print (CAP-corner + BODY-corner)
-PEG_SLOT = 0.4             # all holes but one are stretched this much towards that one, so a small
+PEG_SLOT = 0.2             # (test 2: 0.4 let the cap wobble sideways)
+                           # all holes but one are stretched this much towards that one, so a small
                            # error in peg spacing can't jam the cap. Test 1: each peg seated fully alone,
                            # but the pair would not close. 0 = plain round holes.
                            # COUPON: tune after test print (CAP-corner + BODY-corner)

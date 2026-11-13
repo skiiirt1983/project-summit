@@ -25,9 +25,10 @@ def _along_x(radius, length):
     return Rot(0, 90, 0) * Cylinder(radius, length)
 
 
-def usb_tunnel(length, extra=0.0):
+def usb_tunnel(length, extra=0.0, size=None):
     """One plug-sized tunnel with rounded corners, running along x, centred on the origin."""
-    section = RectangleRounded(p.USB_WINDOW[1] + extra, p.USB_WINDOW[0] + extra, p.USB_WINDOW_R)
+    wide, high = size or p.USB_WINDOW
+    section = RectangleRounded(high + extra, wide + extra, p.USB_WINDOW_R)
     return Rot(0, 90, 0) * extrude(section, length / 2, both=True)
 
 
@@ -75,8 +76,9 @@ def cup():
         for x in p.CLIP_X:                                                         # grooves the frame clips bite into
             part -= Pos(x, side * (p.MODULE_W / 2 + p.CLIP_R - p.CLIP_BUMP - 0.1), clip_z()) * _along_x(
                 p.CLIP_R + 0.1, p.CLIP_W)
-        part -= Pos(0, side * p.CAV2_W / 2, -(p.MOD_D - 3.0)) * Box(                # groove for the back-cover snap
-            p.SNAP_LEN + 2, 2 * (p.SNAP_BUMP + 0.1), 1.6)
+        for x in p.SNAP_X:                                                         # grooves for the back-cover snaps
+            part -= Pos(x, side * p.CAV2_W / 2, -(p.MOD_D - 3.0)) * Box(
+                p.SNAP_LEN + 2, 2 * (p.SNAP_BUMP + 0.1), 1.6)
     return part
 
 
@@ -120,7 +122,8 @@ def cover():
     part += Pos(battery_stop_x() - 0.6, 0, -p.MOD_D + p.COVER_FLOOR + rib_h / 2) * Box(
         1.2, width - 2 * p.COVER_RIM - 16, rib_h)                                  # battery stop
     for side in (-1, 1):
-        part += Pos(0, side * width / 2, -(p.MOD_D - 3.0)) * Box(p.SNAP_LEN, 2 * p.SNAP_BUMP, 1.2)
+        for x in p.SNAP_X:
+            part += Pos(x, side * width / 2, -(p.MOD_D - 3.0)) * Box(p.SNAP_LEN, 2 * p.SNAP_BUMP, 1.2)
     for x, y in mic_exits():                                                      # the LyricFlash mic hole
         part -= Pos(x, y, -p.MOD_D + p.COVER_FLOOR / 2) * Cylinder(p.MIC_HOLE_D / 2, p.COVER_FLOOR + 1)
     part -= Pos(length / 2 - 1.2, 0, -p.MOD_D + 0.6) * Box(2.4, 14, 1.3)            # fingernail notch

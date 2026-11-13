@@ -24,7 +24,7 @@
 
 | Both USB-C openings stay, tidied: rounded corners (R2.5) and a 1 mm round on the outside mouth. PORT coupon updated to the same shape | Paul 2026-11-13; ports stay usable in both orientations | Removing both; keeping one |
 
-## Decided from the TPU fit coupons (SEAT-body, CLIP-body), 2026-11-14
+## Decided from the TPU fit coupons (SEAT-body, CLIP-body), 2026-11-13
 
 | Decision | Why | Rejected |
 |---|---|---|
@@ -36,7 +36,7 @@
 | CLIP-body unchanged | Printed clean | — |
 | New coupons END-bed and END-top: slices of the real body in its real print orientation | Tests the actual plate edge, top rounds, lip and pocket top before a full-body print | Printing the whole body to find out |
 
-## Port-end cap (Paul chose option A, 2026-11-14)
+## Port-end cap (Paul chose option A, 2026-11-13)
 
 Why: printed on end, the port end of the screen opening is a ceiling (lip hanging in the air, a 60 to 77 mm bridge
 on the opening's top edge). Bambu Studio flagged it on END-top. Rejected: printing the body on its bottom; supports
@@ -51,8 +51,21 @@ inside the pocket.
 | A 0.6 mm V-groove runs round the outside at the seam, with a matching groove mirrored at the other end | Paul: the two lines should look intended |
 | The cap prints with the port end face on the plate, pegs up. So both ends of the body now have the same 45° chamfer blended into the round, and the USB mouths are chamfered, not rounded | No rounds on the plate; the two ends now match |
 | With the cap: clip pockets run up to the open top, the finger hole and landscape pad recesses get a teardrop top, landscape pads move 7 mm in to clear the seam, the pocket-top roof is removed | No flat ceilings in TPU |
-| **Approved by Paul 2026-11-15 and applied to the full model (`CAP = True`)** | Renders OK |
+| **Approved by Paul 2026-11-13 and applied to the full model (`CAP = True`)** | Renders OK |
 | Peg holes: 0.20 mm larger than the pegs; one round hole sets the position and every other hole is a 0.4 mm slot pointing at it; 0.5 mm lead-in on every hole. Peg length unchanged | Cap test 1: too tight, and the pair of pegs would not close although each seated fully alone, so the spacing was fighting. The slots are Claude's addition (default, Paul to confirm; `PEG_SLOT = 0` turns them off) |
+
+## Decided from results round 4 ("Results for Claude 2")
+
+| Decision | Why |
+|---|---|
+| Peg holes 0.10 mm larger than the pegs, slots 0.2 mm | Second cap try was loose and wobbled; half steps back, since 0.00 was too tight |
+| Clip bump 0.75 mm | Click was weak, close to none; finger survived ten pulls |
+| USB-C openings 13.5 x 8.0 mm | Paul's cable needs the +1 tunnel |
+| Mic hole stays 2.0 mm | 1.8 printed clean, so the LyricFlash size is safe |
+| Carrier plate 0.05 mm larger per side | Plate was loose on its step |
+| Back-cover snap ridges moved from the middle of each long side to two near the ends; cover snap height unchanged | The SEAT corner coupon contained no snap ridge, so "falls out" was the coupon's fault (Claude's). New full-width SNAP pieces test it properly |
+| Bezel-into-frame clearance unchanged | Loose and right were both ticked; tightening would change the pocket and SEAT-body, which fitted |
+| One checklist of open tests: `REMAINING-TESTS.md` / `.docx`, built by `cad/remaining_tests.py`. `COUPON-RESULTS.md` is now only the record | Paul: the form had become confusing |
 
 ## Fixed 2026-11-13
 - **Mic exit holes were blocked.** The mics sit 29.9 mm off the centre line, which is behind the solid corners of
