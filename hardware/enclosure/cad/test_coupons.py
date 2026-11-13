@@ -115,7 +115,7 @@ def port_block():
     block = Pos(0, 0, height / 2) * Box(spacing + p.USB_WINDOW[0] + 12, tunnel, height)
     for i, extra in enumerate((0.0, 1.0)):
         x = (i - 0.5) * spacing
-        block -= Pos(x, 0, height / 2) * Box(p.USB_WINDOW[0] + extra, tunnel + 1, p.USB_WINDOW[1] + extra)
+        block -= Pos(x, 0, height / 2) * Rot(0, 0, 90) * parts.usb_tunnel(tunnel + 1, extra)
     block -= Pos(-spacing / 2, 0, height - 0.4) * extrude(Text("+0", 4), 0.5)
     block -= Pos(spacing / 2, 0, height - 0.4) * extrude(Text("+1", 4), 0.5)
     return block

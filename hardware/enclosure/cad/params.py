@@ -85,6 +85,9 @@ MIC_EXIT_Y = 11.0          # where the sound leaves the back, measured from the 
                            # the exit holes are moved in to where the hollow is (flat is +/-15.6).
 USB_WINDOW = (12.5, 7.0)   # opening for a cable plug (along the edge, through the thickness)
                            # COUPON: tune after test print (PORT)
+USB_WINDOW_R = 2.5         # corner radius of the opening, to match a plug's rounded grip
+                           # COUPON: tune after test print (PORT)
+USB_MOUTH_R = 1.0          # round on the outside mouth of each opening (Paul 2026-11-13: keep both, tidy them)
 
 # =============================================================================
 # Inner frame (PETG): rigid sleeve inside the TPU body that the module clips into

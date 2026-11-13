@@ -22,6 +22,8 @@
 | No sharp edges: near full round on every outside edge, inside and out. Only the screen opening stays crisp. **Waiting for Paul's OK on the renders (`out/q-round.png`) before the full body changes** | Paul, after handling the slices | Current 7 / 4 mm rounds |
 | Bed end: 45° chamfer blended into the round; elephant-foot compensation on; seam on an inside corner of the opening; 0.08 mm layers over the rounds | No overhang at the bed, rounds don't feel stepped | Plain round at the bed |
 
+| Both USB-C openings stay, tidied: rounded corners (R2.5) and a 1 mm round on the outside mouth. PORT coupon updated to the same shape | Paul 2026-11-13; ports stay usable in both orientations | Removing both; keeping one |
+
 ## Fixed 2026-11-13
 - **Mic exit holes were blocked.** The mics sit 29.9 mm off the centre line, which is behind the solid corners of
   the triangle, so the holes in frame and body did not reach the hollow. The exit holes (cover, frame, body) are now

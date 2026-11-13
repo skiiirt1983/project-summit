@@ -25,14 +25,19 @@ def _along_x(radius, length):
     return Rot(0, 90, 0) * Cylinder(radius, length)
 
 
+def usb_tunnel(length, extra=0.0):
+    """One plug-sized tunnel with rounded corners, running along x, centred on the origin."""
+    section = RectangleRounded(p.USB_WINDOW[1] + extra, p.USB_WINDOW[0] + extra, p.USB_WINDOW_R)
+    return Rot(0, 90, 0) * extrude(section, length / 2, both=True)
+
+
 def usb_windows(x_from, x_to):
     """Two plug-sized tunnels running along x between the given positions."""
     out = None
     for yb in p.USB_Y:
         _, y = p.board_xy(0, yb)
-        box = Pos((x_from + x_to) / 2, y, -p.board_depth(p.USB_H)) * Box(
-            abs(x_to - x_from), p.USB_WINDOW[0], p.USB_WINDOW[1])
-        out = box if out is None else out + box
+        tunnel = Pos((x_from + x_to) / 2, y, -p.board_depth(p.USB_H)) * usb_tunnel(abs(x_to - x_from))
+        out = tunnel if out is None else out + tunnel
     return out
 
 

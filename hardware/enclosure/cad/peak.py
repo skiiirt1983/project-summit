@@ -116,26 +116,23 @@ def body(rounded=None):
     loc = face_plane().location
     raw = shell(rounded=rounded)
     cut = raw - loc * parts.body_cutter()
-    if rounded:                                        # soften the mouths the cuts leave behind
-        before = {tuple(round(v, 2) for v in e.center()) for e in raw.edges()}
-        local = loc.inverse()
-        mouths = []
-        for e in cut.edges():
-            c = e.center()
-            if tuple(round(v, 2) for v in c) in before:
-                continue
-            depth = -(local * Pos(*c)).position.Z      # how far behind the screen face
-            flat = e.bounding_box().size.Y < 1e-6
-            at_usb_end = flat and abs(abs(c.Y) - p.BODY_WIDTH / 2) < 1e-4
-            in_hollow = abs(depth - p.FRONT_T) < 0.05
-            if at_usb_end or in_hollow:
-                mouths.append(e)
-        for radius in (p.SMALL_R, p.SMALL_R / 2):
-            try:
-                cut = fillet(mouths, radius)
-                break
-            except Exception:
-                continue
+    # Soften the mouths the cuts leave behind: USB openings always, holes in the hollow when rounded.
+    before = {tuple(round(v, 2) for v in e.center()) for e in raw.edges()}
+    local = loc.inverse()
+    usb, holes = [], []
+    for e in cut.edges():
+        c = e.center()
+        if tuple(round(v, 2) for v in c) in before:
+            continue
+        depth = -(local * Pos(*c)).position.Z          # how far behind the screen face
+        if e.bounding_box().size.Y < 1e-6 and abs(abs(c.Y) - p.BODY_WIDTH / 2) < 1e-4:
+            usb.append(e)
+        elif abs(depth - p.FRONT_T) < 0.05:
+            holes.append(e)
+    cut = fillet(usb, p.USB_MOUTH_R)
+    if rounded:
+        cut = fillet([e for e in cut.edges() if any((e.center() - h.center()).length < 1e-4 for h in holes)],
+                     p.SMALL_R)
     _, recess = pads_and_recesses()
     return cut - recess
 
