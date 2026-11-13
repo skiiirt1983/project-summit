@@ -7,7 +7,7 @@ import json
 import math
 from pathlib import Path
 
-from build123d import (Axis, Cylinder, Mesher, Plane, Polygon, Pos, Rot, Vector,
+from build123d import (Axis, Cylinder, chamfer, Mesher, Plane, Polygon, Pos, Rot, Vector,
                        export_step, export_stl, extrude, fillet)
 
 import params as p
@@ -66,21 +66,78 @@ def _prism(points, radius, width):
     return extrude(face, width / 2, both=True).rotate(Axis.X, 90)   # sketch Y becomes world Z
 
 
-def shell(width=None, soft_edges=True):
+def _end_face(part, sign, width):
+    """The flat face on one open end (+1 or -1 along Y)."""
+    faces = [f for f in part.faces() if f.bounding_box().size.Y < 1e-6
+             and abs(f.center().Y - sign * width / 2) < 1e-6]
+    return max(faces, key=lambda f: f.area)
+
+
+def _round_loop(part, edges, radius, sign, width, on_bed):
+    """Round a loop of end edges. On the bed end: 45 degree chamfer first, then the round,
+    so the surface never leans out more than 45 degrees from the bed."""
+    if not on_bed:
+        return fillet(edges, radius)
+    drop = radius * (2 - math.sqrt(2))                 # chamfer size that meets the round at 45 degrees
+    part = chamfer(edges, drop)
+    upper = [e for e in part.edges() if e.bounding_box().size.Y < 1e-6
+             and abs(e.center().Y - sign * (width / 2 - drop)) < 1e-4]
+    return fillet(upper, radius)
+
+
+def shell(width=None, soft_edges=True, rounded=None):
     """The hollow triangle on its own, with no pocket."""
     width = width or p.BODY_WIDTH
+    rounded = p.ROUND_ALL if rounded is None else rounded
     outer, inner, _ = profile()
-
-    def soften(part, radius):
-        ends = [e for e in part.edges() if e.bounding_box().size.Y < 1e-6
-                and abs(abs(e.center().Y) - width / 2) < 1e-6]
-        return fillet(ends, radius)
-
     solid = _prism(outer, p.OUTER_R, width)
     hole = _prism(inner, p.INNER_R, width + 2)
     if not soft_edges:
         return solid - hole
-    return soften(soften(solid, p.EDGE_R) - hole, p.EDGE_R_IN)
+    if rounded:
+        r_out = r_in = (p.LEG_T - p.EDGE_FLAT) / 2     # near full round on the 13 mm legs
+    else:
+        r_out, r_in = p.EDGE_R, p.EDGE_R_IN
+    for sign in (1, -1):
+        on_bed = rounded and p.BED_CHAMFER and sign == p.BED_END
+        solid = _round_loop(solid, _end_face(solid, sign, width).outer_wire().edges(),
+                            r_out, sign, width, on_bed)
+    solid -= hole
+    for sign in (1, -1):
+        on_bed = rounded and p.BED_CHAMFER and sign == p.BED_END
+        solid = _round_loop(solid, _end_face(solid, sign, width).inner_wires()[0].edges(),
+                            r_in, sign, width, on_bed)
+    return solid
+
+
+def body(rounded=None):
+    """Shell with the pocket, tunnels, holes and pad recesses cut in."""
+    rounded = p.ROUND_ALL if rounded is None else rounded
+    loc = face_plane().location
+    raw = shell(rounded=rounded)
+    cut = raw - loc * parts.body_cutter()
+    if rounded:                                        # soften the mouths the cuts leave behind
+        before = {tuple(round(v, 2) for v in e.center()) for e in raw.edges()}
+        local = loc.inverse()
+        mouths = []
+        for e in cut.edges():
+            c = e.center()
+            if tuple(round(v, 2) for v in c) in before:
+                continue
+            depth = -(local * Pos(*c)).position.Z      # how far behind the screen face
+            flat = e.bounding_box().size.Y < 1e-6
+            at_usb_end = flat and abs(abs(c.Y) - p.BODY_WIDTH / 2) < 1e-4
+            in_hollow = abs(depth - p.FRONT_T) < 0.05
+            if at_usb_end or in_hollow:
+                mouths.append(e)
+        for radius in (p.SMALL_R, p.SMALL_R / 2):
+            try:
+                cut = fillet(mouths, radius)
+                break
+            except Exception:
+                continue
+    _, recess = pads_and_recesses()
+    return cut - recess
 
 
 def pad_spots():
@@ -114,9 +171,9 @@ def pads_and_recesses():
 def build():
     """All parts in the world frame, keyed by name."""
     loc = face_plane().location
-    pads, recess = pads_and_recesses()
+    pads, _ = pads_and_recesses()
     out = {
-        "body": shell() - loc * parts.body_cutter() - recess,
+        "body": body(),
         "frame": loc * parts.frame(),
         "bezel": loc * parts.cup(),
         "plate": loc * parts.plate(),

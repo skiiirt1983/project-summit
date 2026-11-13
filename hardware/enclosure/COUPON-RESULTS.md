@@ -1,5 +1,7 @@
 # Coupon results (Paul fills this in)
 
+**Status: Print 1 (material slices) is done and applied. Prints 2–3 (fit coupons) and the measurements are still to come.**
+
 Print the coupons, try them, tick or write an answer in each box. Each answer names the
 `cad/params.py` value it changes, so the full model can be updated in one pass.
 Bring the **"Measure these"** numbers back at the same time.
@@ -15,33 +17,30 @@ The 3MF files carry shapes and names only. Set the walls and infill per object i
 
 | File | Object | Material | Walls | Infill | Notes |
 |---|---|---|---|---|---|
-| `coupons-material.3mf` | **T1** | TPU for AMS | 2 | 10 % gyroid | softest |
+| `coupons-material.3mf` (done) | **T1** | TPU for AMS | 2 | 10 % gyroid | softest: **chosen** |
 | | **T2** | TPU for AMS | 3 | 20 % gyroid | middle |
 | | **T3** | TPU for AMS | 5 | 35 % gyroid | firmest |
-| | **P1** | stone PLA | 3 | 15 % gyroid | print on its own plate; delete it from the TPU plate |
 | `coupons-fit-petg.3mf` | **GLASS-ring** | PETG (cream if you have it) | 4 | 15 % | prints face down |
 | | **SEAT-bezel**, **CLIP-bezel** | PETG | 4 | 15 % | print face down |
 | | **SEAT-frame**, **CLIP-frame** | PETG | 4 | 15 % | |
 | | **SEAT-plate**, **SEAT-cover** | PETG | 4 | 15 % | |
 | | **MIC-plate**, **PORT-block** | PETG | 4 | 15 % | |
-| `coupons-fit-body.3mf` | **SEAT-body**, **CLIP-body** | whichever body material won above (first time: TPU at T2) | as the winner | as the winner | supports off |
+| `coupons-fit-body.3mf` | **SEAT-body**, **CLIP-body** | TPU for AMS | 2 | 10 % gyroid (T1) | supports off |
 
-The four material slices are the real triangle outline, 15 mm thick, name sunk into the top.
+The material slices are the real triangle outline, 15 mm thick, name sunk into the top.
 All layer heights 0.2 mm for the coupons, except GLASS-ring and the bezel pieces at 0.12 mm.
 
-## 1. Material slices (T1, T2, T3, P1)
+## 1. Material slices: DONE (Print 1, 2026-11-13)
 
-Squeeze each one, stand it on the desk, press on the "screen" wall, drag it across the desk.
-
-| Question | Answer | Changes |
+| Question | Paul's answer | Applied |
 |---|---|---|
-| Body material: TPU or stone PLA? | ☐ TPU ☐ PLA | PLA → `FRAME_FIT = 0.15`, and tell Claude: the frame can't flex in, so the body needs a split |
-| Which TPU felt right for the **outside** (grip, give)? | ☐ T1 ☐ T2 ☐ T3 | `SOFT_ZONE` |
-| Which TPU is stiff enough to hold the **screen wall** flat? | ☐ T1 ☐ T2 ☐ T3 | `FIRM_ZONE` |
-| None right? Say softer / firmer and by how much | | `TPU_SETTINGS` (walls, infill) |
-| Does it stay put when you tap the screen wall? | ☐ yes ☐ slides ☐ tips | slides → `PAD_D`; tips → `LEG_T`, `BACK_ANGLE` |
-| Layer lines acceptable on the outside? | ☐ yes ☐ no | no → print orientation / split (decision, not a number) |
-| Leg thickness looks right (13 mm now)? | ☐ yes ☐ thinner ☐ thicker | `LEG_T` |
+| Body material | **TPU for AMS.** Not stone PLA, and no other TPUs (no external spools) | `FRAME_FIT` stays 0.00; stone PLA slice P1 and the PLA fallback removed |
+| Feel on the outside | **T1** (2 walls, 10 % gyroid) | `SOFT_ZONE = "T1"` |
+| Stiff enough at the screen wall | **T1 was stiff enough** | `FIRM_ZONE = None`; firm modifier only if the SEAT coupon shows the pocket flexing |
+| Stays put when tapped | **yes** | no change (`PAD_D`, `LEG_T`, `BACK_ANGLE`) |
+| Layer lines on the outside | **OK** | print orientation stays: standing on the portrait end |
+| Back leg 13 mm | **right** | `LEG_T = 13.0` confirmed |
+| Extra | **No sharp edges anywhere**; bed edges 45° chamfer blended into a round; elephant-foot compensation on; seams on an inside edge; finer layers on the curved edges | `ROUND_ALL` (preview, waiting for Paul's OK on `out/q-round.png`), `BED_CHAMFER`, `BODY_PRINT` |
 
 ## 2. GLASS-ring (the front 6 mm of the bezel, all the way round)
 
@@ -62,6 +61,7 @@ the bezel, SEAT-cover snaps in behind it.
 | Question | Answer | Changes |
 |---|---|---|
 | Frame into body | ☐ loose ☐ right ☐ too hard ☐ won't go under the lip | loose → `FRAME_FIT` −0.10; too hard → +0.10; won't go → `FRAME_TOP` or split the body |
+| Does the T1 body wall bulge or flex where the frame sits? | ☐ no ☐ a little ☐ yes | yes → `FIRM_ZONE = "T2"` (firm modifier around the pocket only) |
 | Bezel into frame | ☐ loose ☐ right ☐ tight | loose → `FRAME_CLEAR` −0.05; tight → +0.10 |
 | Seam between cream and body: even? width? | ☐ good ☐ too wide ☐ too tight / rubbing | `SEAM` (now 0.30) |
 | Bezel face flush with the body face? | ☐ flush ☐ proud by ___ ☐ sunk by ___ | `FRAME_FLOOR` / `POCKET_D` (tell Claude the number) |

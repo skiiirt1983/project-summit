@@ -97,6 +97,10 @@ Positive references: `ref/peak-final-60.png` (the chosen design), Paul's concept
 > - Still to explore, with renders: how it prints (split lines that keep layer lines off
 >   the visible faces) and how the screen module attaches and comes out for service.
 >
+> **Materials, decided 2026-11-13 (Print 1): the body is TPU for AMS, whole body at T1 (2 walls, 10 %
+> gyroid). No stone PLA and no other TPUs. No sharp edges anywhere: near full round on every outside
+> edge, inside and out; only the screen opening stays crisp. The notes below are the earlier thinking.**
+>
 > **Materials (2026-11-11): body in TPU for AMS (68D) is a serious option.** Paul has
 > plenty and wants to try it.
 > - Softness comes from slicer settings: fewer walls and lower infill make TPU prints
@@ -229,6 +233,8 @@ still works without them.
       - ironing on flat top faces where it helps
       - seams hidden on a back or inside edge
       - document these settings in the 3MF
+- [ ] Body (2026-11-13): edges on the bed get a 45° chamfer blended into the round (no overhang);
+      elephant-foot compensation on; seam on an inside edge; finer layers over the rounded edges.
 - [ ] Every part prints without supports on visible faces. Supports allowed only inside.
 - [ ] Bezel/front prints face-down for a clean front face.
 - [ ] Wall thickness multiples of line width (0.42 → 1.68 / 2.1 mm).

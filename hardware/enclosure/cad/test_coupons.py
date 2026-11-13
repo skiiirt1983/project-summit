@@ -1,7 +1,7 @@
 """Test coupons, cut from the real model so they test the real fits.
 
 Run:  python test_coupons.py
-  -> ../coupons/coupons-material.3mf   four triangle slices: T1 T2 T3 (TPU for AMS), P1 (stone PLA)
+  -> ../coupons/coupons-material.3mf   three triangle slices: T1 T2 T3 (TPU for AMS). Printed 2026-11-13
      ../coupons/coupons-fit-petg.3mf   PETG fit tests: glass ring, seat, clip, mic plate, port block
      ../coupons/coupons-fit-body.3mf   the body-side halves of the seat and clip tests (body material)
      plus one STL per coupon there, and render inputs in ../out/coupons/
@@ -157,8 +157,9 @@ def write(named, stem, colours, gap=6.0):
 
 if __name__ == "__main__":
     seat, clip = seat_coupons(), clip_coupons()
-    write({name: material_slice(name) for name in ("T1", "T2", "T3", "P1")}, "coupons-material",
-          lambda n: "#b9b4a8" if n == "P1" else "#8d8f8c", gap=4.0)
+    # Stone PLA slice "P1" dropped after Print 1 (2026-11-13): the body is TPU for AMS only.
+    write({name: material_slice(name) for name in ("T1", "T2", "T3")}, "coupons-material",
+          lambda n: "#8d8f8c", gap=4.0)
     petg = {"GLASS-ring": glass_ring()}
     petg.update({k: v for k, v in {**seat, **clip}.items() if not k.endswith("body")})
     petg.update({"MIC-plate": mic_plate(), "PORT-block": port_block()})

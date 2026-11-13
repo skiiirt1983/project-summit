@@ -80,6 +80,9 @@ SD_SLOT = (18.5, 3.6)      # card slot window in the cup wall
 MIC_HOLE_D = 2.0           # measured (LyricFlash)  # COUPON: tune after test print (MIC)
 MIC_WALL = 1.6             # measured (LyricFlash): wall thickness at the hole (= COVER_FLOOR, nearly)
 MIC_CLEAR_D = 4.0          # larger pass-through holes in plate, frame and body skin
+MIC_EXIT_Y = 11.0          # where the sound leaves the back, measured from the centre line.
+                           # The mics sit at +/-29.9, behind the solid corners of the triangle, so
+                           # the exit holes are moved in to where the hollow is (flat is +/-15.6).
 USB_WINDOW = (12.5, 7.0)   # opening for a cable plug (along the edge, through the thickness)
                            # COUPON: tune after test print (PORT)
 
@@ -114,6 +117,13 @@ OUTER_R = 16.0             # outer corner radius (brief)
 INNER_R = 12.0             # read off the target image
 EDGE_R = 7.0               # soft outer edge on the two open ends (target image)
 EDGE_R_IN = 4.0            # soft edge into the opening (target image)
+# Rounded version (Paul, 2026-11-13: no sharp edges, near full round inside and out).
+# Preview only until Paul OKs the renders; then ROUND_ALL becomes True for the full body.
+ROUND_ALL = False
+EDGE_FLAT = 0.4            # flat left between the outer and inner round on a leg's end
+BED_END = 1                # which end sits on the print bed: +1 = the portrait end (away from the ports)
+BED_CHAMFER = True         # bed end: 45 degree chamfer blended into the round, so nothing overhangs
+SMALL_R = 1.0              # round on the mouths of the USB tunnels and the holes in the hollow
 BACK_SKIN = 1.68           # body skin behind the frame, facing the hollow
 FRONT_MARGIN = 5.0         # body showing above/below the bezel (target image)
 SIDE_MARGIN = 11.0         # body left/right of the bezel (target image)
@@ -135,9 +145,18 @@ TPU_SETTINGS = {           # COUPON: tune after test print (T1 / T2 / T3)
     "T2": {"walls": 3, "infill_pct": 20, "pattern": "gyroid"},   # middle
     "T3": {"walls": 5, "infill_pct": 35, "pattern": "gyroid"},   # firmest
 }
-PLA_SETTINGS = {"walls": 3, "infill_pct": 15, "pattern": "gyroid"}   # stone PLA slice "P1"
-SOFT_ZONE = "T1"           # setting used for the whole body  # COUPON: tune after test print
-FIRM_ZONE = "T3"           # setting inside the firm modifier  # COUPON: tune after test print
+# Stone PLA ("P1") was dropped after Print 1: the body is TPU for AMS only, no external spools.
+BODY_PRINT = {             # slicer settings for the body (Bambu Studio); not geometry
+    "orientation": "standing on the portrait end (BED_END), supports only inside the pocket",
+    "elephant_foot_compensation_mm": 0.15,      # on; COUPON: tune after test print
+    "seam": "painted onto an inside corner of the triangle opening",
+    "layer_height_mm": 0.20,
+    "layer_height_on_rounds_mm": 0.08,          # variable layer height over the rounded ends
+}
+SOFT_ZONE = "T1"           # whole body. Decided from Print 1 (2026-11-13): T1 felt right
+FIRM_ZONE = None           # Print 1: T1 was stiff enough at the screen wall, so no firm modifier.
+                           # Set to "T2"/"T3" only if the SEAT coupon shows the pocket flexing.
+                           # COUPON: tune after test print (SEAT)
 FIRM_ZONE_MARGIN = 4.0     # firm modifier = frame pocket grown by this much  # COUPON: tune after test print
 
 

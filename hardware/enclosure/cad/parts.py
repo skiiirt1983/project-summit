@@ -4,6 +4,8 @@ Module frame: origin at the centre of the bezel face, x along the long side
 (USB-C ports at -x), y down the slope (buttons and card slot at -y), +z out of
 the screen. Depths below the face are negative z.
 """
+import math
+
 from build123d import (Box, CounterSinkHole, Cylinder, Pos, RectangleRounded,
                        Rot, extrude)
 
@@ -35,7 +37,14 @@ def usb_windows(x_from, x_to):
 
 
 def mic_points():
+    """Where the mics are (holes in the carrier plate go here)."""
     return [p.board_xy(*m) for m in p.MICS]
+
+
+def mic_exits():
+    """Where the sound leaves through cover, frame and body: same position along the
+    module, but moved in towards the centre line so the holes open into the hollow."""
+    return [(x, math.copysign(p.MIC_EXIT_Y, y)) for x, y in mic_points()]
 
 
 def clip_z():
@@ -107,7 +116,7 @@ def cover():
         1.2, width - 2 * p.COVER_RIM - 16, rib_h)                                  # battery stop
     for side in (-1, 1):
         part += Pos(0, side * width / 2, -(p.MOD_D - 3.0)) * Box(p.SNAP_LEN, 2 * p.SNAP_BUMP, 1.2)
-    for x, y in mic_points():                                                      # the LyricFlash mic hole
+    for x, y in mic_exits():                                                      # the LyricFlash mic hole
         part -= Pos(x, y, -p.MOD_D + p.COVER_FLOOR / 2) * Cylinder(p.MIC_HOLE_D / 2, p.COVER_FLOOR + 1)
     part -= Pos(length / 2 - 1.2, 0, -p.MOD_D + 0.6) * Box(2.4, 14, 1.3)            # fingernail notch
     return part
@@ -120,7 +129,7 @@ def frame():
     part = slab(p.FRAME_L, p.FRAME_W, p.FRAME_R, -p.FRAME_TOP, floor_z - p.FRAME_FLOOR)
     part -= slab(inner_l, inner_w, p.BEZEL_R + p.FRAME_CLEAR, 1, floor_z)
     part -= Pos(0, 0, floor_z - p.FRAME_FLOOR / 2) * Cylinder(p.PUSH_HOLE_D / 2, p.FRAME_FLOOR + 1)
-    for x, y in mic_points():
+    for x, y in mic_exits():
         part -= Pos(x, y, floor_z - p.FRAME_FLOOR / 2) * Cylinder(p.MIC_CLEAR_D / 2, p.FRAME_FLOOR + 1)
     part -= usb_windows(-p.FRAME_L / 2 - 1, -p.MODULE_L / 2 + 1)
     tip = clip_z() + 3.0                                                           # free end, towards the front
@@ -145,7 +154,7 @@ def body_cutter():
                 -p.FRAME_TOP, -p.POCKET_D)
     skin_z = -p.POCKET_D - p.BACK_SKIN / 2
     cut += Pos(0, 0, skin_z) * Cylinder(p.PUSH_HOLE_D / 2, p.BACK_SKIN + 2)
-    for x, y in mic_points():
+    for x, y in mic_exits():
         cut += Pos(x, y, skin_z) * Cylinder(p.MIC_CLEAR_D / 2, p.BACK_SKIN + 2)
     cut += usb_windows(-p.BODY_WIDTH / 2 - 1, -p.FRAME_L / 2 + 1)
     tip = clip_z() + 3.0
