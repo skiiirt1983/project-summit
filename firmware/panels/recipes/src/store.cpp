@@ -99,6 +99,32 @@ bool RecipeStore::mark_cooked(const std::string &id, int64_t unix_time)
     return save(id, r);
 }
 
+int RecipeStore::count()
+{
+    std::vector<DirEntry> dirs;
+    int n = 0;
+    if (storage_.list(kRoot, dirs))
+        for (const DirEntry &d : dirs)
+            if (d.is_dir && d.name != "inbox") ++n;
+    return n;
+}
+
+bool RecipeStore::delete_all(int *deleted)
+{
+    std::vector<DirEntry> dirs;
+    if (!storage_.present() || !storage_.list(kRoot, dirs)) return false;
+    int n = 0;
+    bool ok = true;
+    for (const DirEntry &d : dirs) {
+        if (!d.is_dir || d.name == "inbox") continue;  // inbox PDFs are not recipes yet: kept
+        if (storage_.remove_tree(std::string(kRoot) + "/" + d.name)) ++n;
+        else ok = false;
+    }
+    if (deleted) *deleted = n;
+    std::vector<IndexEntry> index;
+    return rebuild_index(index) && ok;
+}
+
 std::vector<std::string> RecipeStore::inbox()
 {
     std::vector<std::string> out;

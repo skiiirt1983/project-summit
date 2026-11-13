@@ -48,6 +48,9 @@ public:
     virtual bool read_chunk(const std::string &path, int64_t offset, size_t max_bytes, std::string &out) = 0;
     // Renames a file within the card (parents of `to` created). Fails if `to` exists.
     virtual bool move(const std::string &from, const std::string &to) = 0;
+    // Deletes a folder and everything in it. Only ever called for an explicit, confirmed
+    // user action (e.g. "Delete recipes"). Refuses "/" and top-level folders.
+    virtual bool remove_tree(const std::string &dir) = 0;
 };
 
 // Storage on a mounted POSIX file system: a local folder on the host / simulator,
@@ -69,6 +72,7 @@ public:
     int64_t size(const std::string &path) override;
     bool read_chunk(const std::string &path, int64_t offset, size_t max_bytes, std::string &out) override;
     bool move(const std::string &from, const std::string &to) override;
+    bool remove_tree(const std::string &dir) override;
     // Host file name for a card path ("" if invalid), e.g. for LVGL's file system driver.
     std::string host_path(const std::string &path) const;
 

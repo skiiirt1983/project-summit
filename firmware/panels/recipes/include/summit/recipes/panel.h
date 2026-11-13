@@ -72,6 +72,8 @@ private:
     PanelContext *ctx_ = nullptr;
     PanelView pv_;
     bool shown_ = false, dirty_ = false;
+    int64_t library_rev_ = 0;  // last recipes/library_rev seen (recipes deleted since?)
+    void library_changed(const Value &rev);
     View view_ = View::Library;
     std::vector<IndexEntry> index_, filtered_;
     std::vector<std::string> tags_;

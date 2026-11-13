@@ -33,6 +33,12 @@ public:
     // Records that the recipe was opened for cooking (for "recently cooked first").
     bool mark_cooked(const std::string &id, int64_t unix_time);
 
+    // How many recipe folders are on the card (readable or not).
+    int count();
+    // Deletes every recipe folder and the index. Explicit, confirmed user action only
+    // ("Delete recipes"). PDFs still waiting in the inbox are kept. Returns how many were deleted.
+    bool delete_all(int *deleted = nullptr);
+
     // PDFs in /recipes/inbox waiting for conversion (file names, sorted).
     std::vector<std::string> inbox();
 

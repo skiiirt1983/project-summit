@@ -66,6 +66,8 @@ extern "C" void app_main(void)
     // Modules ship in the firmware but start uninstalled (ARCHITECTURE.md "Modules").
     static summit::ModuleManager modules;
     modules.add(summit::recipes::module_manifest());
+    static summit::recipes::RecipeModuleData recipe_data(recipe_store, state);
+    modules.set_data("recipes", &recipe_data);
     for (const auto &d : registry.setting_defs()) schema.defs.push_back(d);
     for (const auto &d : modules.setting_defs()) schema.defs.push_back(d);
 
