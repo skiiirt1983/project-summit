@@ -2,6 +2,24 @@
 
 Newest first. Each entry answers a question Claude Code asked. Apply it, update ARCHITECTURE.md where noted, then continue.
 
+## D-012 — Low-power sleep that wakes for timers and alarms; accelerometer interrupt pin (2026-11-13)
+
+### Sleep mode
+- **Goal:** on battery, the device sleeps (screen off, Wi-Fi off, ESP32-P4 deep sleep) whenever nothing needs it, and wakes itself on time for timers and alarms. A 4-hour recipe timer must ring on time from sleep.
+- **Enter sleep:** after the idle timeout (setting, default 5 min) with no touch, or face-down for 30 s; never while a recipe is open with the screen-on rule active, while an update runs, or while on USB power if the user has chosen "stay on when charging" (setting, default on).
+- **Before sleeping:** save running timers and the next alarm to RTC memory (survives deep sleep) and set the RTC timer wake for the earliest due item minus a wake margin (default 5 s; measure the real wake-to-screen time on the board and set the margin to cover it).
+- **Wake sources:** RTC timer (timer/alarm due), LIS2DW12 INT1 (pick-up / double-tap), power button. Note which one woke us.
+- **After wake:** fast path. Timer/alarm wake → bring up screen + audio and ring before starting Wi-Fi. Pick-up/tap wake → show the clock immediately, then start Wi-Fi and refresh data in the background. Show stale data with its age rather than a blank panel.
+- **Timers across sleep:** they survive deep sleep (RTC memory + RTC timer keep counting). This replaces the "memory only until the RTC is proven" interim in D-011 for the sleep case. Full power loss (battery dead or disconnected) still follows D-011 (needs the external RTC; HARDWARE_TODO).
+- **Wi-Fi while asleep:** none. Optional later: a periodic wake (e.g. every 30 min) to refresh weather/calendar, off by default.
+- **Testing:** host tests for the sleep scheduler (earliest due item, wake margin, what blocks sleep). Simulator: fake sleep/wake. Real deep-sleep current, wake time and C6 power-down are hardware items for HARDWARE_TODO.md.
+
+### Accelerometer interrupt pin change (wiring, not yet wired)
+- Only LP GPIOs (GPIO0–15 on the ESP32-P4) can wake the chip from deep sleep. GPIO21 cannot.
+- **Move LIS2DW12 INT1 from GPIO21 to GPIO4** (proposed; on the 40-pin header per the schematic net list). Optional INT2 → GPIO5 instead of GPIO22.
+- Confirm against the ESP32-P4 datasheet LP GPIO list and the board silkscreen in Phase 1 before wiring; if GPIO4/5 aren't usable, pick another free GPIO in 0–15. Add this check to HARDWARE_TODO.md.
+- Update ARCHITECTURE.md (wiring table, sleep section), CLAUDE.md if it names the pin, and any code constant that uses GPIO21.
+
 ## D-011 — Recipe timers across restarts; URL import review (2026-11-13)
 
 1. **Timers across a restart: agree with the proposal.**
