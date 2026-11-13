@@ -119,6 +119,23 @@ try {
   await page.waitForSelector('#rec-list tr[data-recipe="tomato-salsa"]');
   await shot("12-recipes-library");
 
+  // 6. From a website: the device fetches the page and reads its schema.org Recipe.
+  await page.fill("#rec-url", "https://recipes.example.com/simple");
+  await page.click("#rec-url-go");
+  await page.waitForSelector("#rec-url-msg.ok", { timeout: 15000 });
+  check((await page.textContent("#rec-url-msg")).includes("Classic Banana Bread") && (await page.textContent("#rec-url-msg")).includes("7 ingredients, 3 steps, with its photo"), "URL import: " + (await page.textContent("#rec-url-msg")));
+  const bread = (await library()).recipes.find((r) => r.id === "classic-banana-bread");
+  check(bread && bread.has_card && bread.pages === 0 && bread.has_photo, "URL recipe saved: steps only, with photo");
+  await page.fill("#rec-url", "https://recipes.example.com/no-recipe");
+  await page.click("#rec-url-go");
+  await page.waitForSelector("#rec-url-msg.err", { timeout: 15000 });
+  check((await page.textContent("#rec-url-msg")).includes("no recipe data"), "page without a recipe explained");
+  await page.fill("#rec-url", "https://192.168.1.1/admin");
+  await page.click("#rec-url-go");
+  await page.waitForSelector("#rec-url-msg.err");
+  check((await page.textContent("#rec-url-msg")).includes("https://"), "local address refused");
+  await shot("13-recipes-url-import");
+
   // 5. Not a PDF.
   await page.setInputFiles("#rec-file", { name: "notes.pdf", mimeType: "application/pdf", buffer: Buffer.from("this is not a pdf") });
   await page.waitForSelector("#rec-msg.err", { timeout: 30000 });

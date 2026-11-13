@@ -95,6 +95,7 @@ bool RecipeWebApi::handle(const Request &req, Response &out)
     else if (p == "/api/recipes/file" && get) out = file(req.query);
     else if (p == "/api/recipes/inbox" && get) out = inbox_file(req.query);
     else if (p == "/api/recipes/inbox/done" && post) out = inbox_done(req.body);
+    else if (p == "/api/recipes/import-url" && post) out = import_url(req.body);
     else return false;
     return true;
 }
@@ -192,6 +193,36 @@ Response RecipeWebApi::inbox_done(const std::string &body)
     if (!storage_.move(std::string("/recipes/inbox/") + name->valuestring, folder + "/original.pdf"))
         return json_error(409, "could not move the PDF (already converted?)");
     return ok_json("{\"ok\":true}");
+}
+
+Response RecipeWebApi::import_url(const std::string &body)
+{
+    if (!fetcher_) return json_error(501, "importing from a website is not available on this device");
+    JsonPtr j = parse(body);
+    const cJSON *u = j ? cJSON_GetObjectItemCaseSensitive(j.get(), "url") : nullptr;
+    if (!cJSON_IsString(u) || !valid_import_url(u->valuestring))
+        return json_error(400, "enter the full address of a recipe page, starting with https://");
+    const std::string url = u->valuestring;
+    std::string page, err;
+    if (!fetcher_->get(url, kMaxPageBytes, page, &err)) return json_error(502, "could not fetch the page: " + err);
+    WebRecipe w;
+    if (!extract_recipe_jsonld(page, url, w, &err)) return json_error(422, err);
+    const std::string id = store_.new_id(w.recipe.title);
+    if (!store_.save(id, w.recipe)) return json_error(500, "could not save the recipe");
+    // The main photo, if the page names one and it really is a JPEG. Optional.
+    bool photo = false;
+    std::string image;
+    if (!w.photo_url.empty() && fetcher_->get(w.photo_url, static_cast<size_t>(kMaxImageBytes), image, &err) &&
+        image.size() > 3 && static_cast<unsigned char>(image[0]) == 0xFF && static_cast<unsigned char>(image[1]) == 0xD8) {
+        photo = storage_.write(RecipeStore::photo_path(id), image);
+        std::vector<IndexEntry> index;
+        if (photo) store_.rebuild_index(index);
+    }
+    JsonWriter w2;
+    w2.begin_object().key("ok").value(true).key("id").value(id).key("title").value(w.recipe.title);
+    w2.key("ingredients").value(static_cast<int64_t>(w.recipe.ingredients.size()));
+    w2.key("steps").value(static_cast<int64_t>(w.recipe.steps.size())).key("photo").value(photo).end_object();
+    return ok_json(w2.str());
 }
 
 std::unique_ptr<web::UploadSink> RecipeWebApi::upload(const Request &req, int64_t length, Response &error)

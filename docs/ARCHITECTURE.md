@@ -488,6 +488,14 @@ The **Recipes** tab of the web UI (`firmware/web/page/recipes.mjs`) does the con
 
 The web files are gzipped into the firmware image (about 510 KB for pdf.js) and served from flash.
 
+### Recipe import from a website
+
+- In the web UI's Recipes tab, paste a recipe page's address. `POST /api/recipes/import-url` makes the **device** fetch the page and read its schema.org `Recipe` JSON-LD block (`firmware/panels/recipes/src/jsonld.cpp`, host-tested on the sample pages in `tests/fixtures/web/`).
+- Understood shapes: a plain `Recipe` object, one inside `@graph` or an array, `@type` as a list; `recipeYield` as a number, text or list; `recipeIngredient` lines (parsed into quantity / unit / item / note like the PDF import); `recipeInstructions` as text, `HowToStep` or `HowToSection`; `image` as a URL, list or `ImageObject`; `keywords` and `recipeCategory` become tags. HTML tags and entities are cleaned.
+- Result: a card-mode recipe (no pages) with `source = {type: "url", url}`, plus the main photo as `photo.jpg` when the page names one over https and it is a JPEG. It is saved directly (no edit screen yet).
+- Only public `https://` addresses are fetched: no IP addresses, `localhost`, single-label or `.local` / `.lan` names, ports or credentials; redirects are re-checked. Pages are capped at 2 MB.
+- The device-side fetcher (`firmware/panels/recipes/esp/url_fetch.cpp`) is written but **untested on hardware**; the simulator uses the sample pages instead of the internet.
+
 ### Recipe web API (for import in the browser)
 
 Provided by the Recipe reader as an extension of the web API (`firmware/panels/recipes/src/web_api.cpp`, host-tested). Nothing here deletes a recipe.
@@ -501,6 +509,7 @@ Provided by the Recipe reader as an extension of the web API (`firmware/panels/r
 | `GET /api/recipes/file?id=&name=` | those files back, streamed from the card |
 | `GET /api/recipes/inbox?name=` | a PDF waiting in `/recipes/inbox/` |
 | `POST /api/recipes/inbox/done` | `{"name", "id"}`: moves the inbox PDF into the recipe as `original.pdf` (kept for re-conversion) |
+| `POST /api/recipes/import-url` | `{"url"}`: the device fetches the page and saves its schema.org Recipe (and photo) |
 
 Large bodies are streamed in both directions (`StorageWriter`, `read_chunk`), never held whole in RAM. Without a card every endpoint answers 409 "Insert a microSD card".
 

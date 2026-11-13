@@ -149,6 +149,48 @@ TEST(no_card_and_routing)
     CHECK(!r.api.open_upload({"POST", "/api/recipes/file", "", "", "id=a&name=photo.jpg"}, 0, err) && err.status == 411);
 }
 
+struct MapFetcher : PageFetcher {
+    std::vector<std::string> asked;
+    bool get(const std::string &url, size_t max, std::string &body, std::string *error) override
+    {
+        asked.push_back(url);
+        if (url == "https://site.example.com/pie")
+            body = R"(<script type="application/ld+json">{"@type":"Recipe","name":"Web Pie","recipeYield":"6",
+                     "image":"https://site.example.com/pie.jpg","recipeIngredient":["2 cups flour"],
+                     "recipeInstructions":[{"@type":"HowToStep","text":"Bake 40 minutes."}]}</script>)";
+        else if (url == "https://site.example.com/pie.jpg") body = std::string("\xFF\xD8\xFF\xE0 jpeg bytes");
+        else if (url == "https://site.example.com/article") body = "<html>nothing</html>";
+        else {
+            *error = "HTTP 404";
+            return false;
+        }
+        return body.size() <= max;
+    }
+};
+
+TEST(import_from_url)
+{
+    Rig r;
+    const char *req = R"({"url":"https://site.example.com/pie"})";
+    CHECK(r.post("/api/recipes/import-url", req).status == 501);  // no fetcher: not available
+    MapFetcher f;
+    r.recipes->set_fetcher(&f);
+    Response ok = r.post("/api/recipes/import-url", req);
+    CHECK(ok.status == 200 && ok.body.find("\"id\":\"web-pie\"") != std::string::npos && ok.body.find("\"photo\":true") != std::string::npos);
+    Recipe saved;
+    CHECK(r.store->load("web-pie", saved) && saved.servings == 6 && saved.source.type == "url" &&
+          saved.source.url == "https://site.example.com/pie" && saved.ingredients[0].unit == "cup" && saved.steps.size() == 1);
+    CHECK(r.sd->exists("/recipes/web-pie/photo.jpg"));
+    CHECK(r.post("/api/recipes/import-url", R"({"url":"https://site.example.com/article"})").status == 422);
+    CHECK(r.post("/api/recipes/import-url", R"({"url":"https://site.example.com/missing"})").status == 502);
+    // Addresses the device must never fetch are refused before any request is made.
+    const size_t asked = f.asked.size();
+    for (const char *bad : {R"({"url":"http://site.example.com/pie"})", R"({"url":"https://192.168.1.1/"})",
+                            R"({"url":"https://nas.local/x"})", R"({"url":"file:///etc/passwd"})", R"({})"})
+        CHECK(r.post("/api/recipes/import-url", bad).status == 400);
+    CHECK(f.asked.size() == asked);
+}
+
 int main()
 {
     RUN(query_params);
@@ -156,5 +198,6 @@ int main()
     RUN(save_list_get_and_files);
     RUN(inbox_download_and_done);
     RUN(no_card_and_routing);
+    RUN(import_from_url);
     return report("recipe web api");
 }

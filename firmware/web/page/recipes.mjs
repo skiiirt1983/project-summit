@@ -148,6 +148,16 @@ $("rec-file").addEventListener("change", async () => {
   if (file.size > 32 * 1024 * 1024) { msg("rec-msg", "This PDF is larger than 32 MB.", "err"); return; }
   await startImport(await file.arrayBuffer(), file.name, false);
 });
+$("rec-url-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("rec-url-go").disabled = true; msg("rec-url-msg", "The device is fetching the page…");
+  try {
+    const r = await api("/api/recipes/import-url", { method: "POST", json: { url: $("rec-url").value.trim() } });
+    msg("rec-url-msg", "Imported \u201C" + r.title + "\u201D: " + r.ingredients + " ingredients, " + r.steps + " steps" + (r.photo ? ", with its photo." : "."), "ok");
+    $("rec-url").value = ""; await loaders.recipes();
+  } catch (err) { msg("rec-url-msg", err.message, "err"); }
+  $("rec-url-go").disabled = false;
+});
 $("rec-pick").addEventListener("change", () => fillDraft(+$("rec-pick").value));
 $("rec-save").addEventListener("click", save);
 $("rec-cancel").addEventListener("click", () => { $("rec-edit").hidden = true; $("rec-file").value = ""; job = null; msg("rec-msg", ""); });
