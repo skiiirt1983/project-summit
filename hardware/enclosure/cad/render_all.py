@@ -32,6 +32,7 @@ render("scene.json", "peak-views.png")
 steps = {"frame": 45, "cover": 85, "battery": 112, "accelerometer": 112, "plate": 140,
          "display": 165, "glass": 165, "view": 165, "bezel": 200}
 offsets = {k: tuple(c * d for c in n) for k, d in steps.items()}
+offsets["cap"] = (0, p.USB_END * 45.0, 0)                 # the cap pulls off sideways
 peak.write_scene(peak.OUT, built, "scene-exploded.json", offsets=offsets, hide=("pads",), views=[
     {"label": "Pulled apart, from the front", "dir": [-0.6, -1.0, 0.5], "noground": True},
     {"label": "Pulled apart, from behind", "dir": [1.0, -1.0, 0.35], "noground": True},

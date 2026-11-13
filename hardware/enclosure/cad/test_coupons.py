@@ -3,7 +3,8 @@
 Run:  python test_coupons.py
   -> ../coupons/coupons-material.3mf   three triangle slices: T1 T2 T3 (TPU for AMS). Printed 2026-11-13
      ../coupons/coupons-fit-petg.3mf   PETG fit tests: glass ring, seat, clip, mic plate, port block
-     ../coupons/coupons-fit-body.3mf   TPU: SEAT-body, END-bed (bed-end slice), CAP-corner + BODY-corner (push-fit and seam)
+     ../coupons/coupons-fit-body.3mf   TPU: SEAT-body, END-bed (bed-end slice)
+     ../coupons/coupons-cap.3mf        TPU: CAP-corner + BODY-corner (the cap's push-fit and seam)
      plus one STL per coupon there, and render inputs in ../out/coupons/
 Every coupon is laid flat in its print orientation. Per-object slicer settings are
 listed in ../COUPON-RESULTS.md; the 3MF carries shapes and names only.
@@ -98,14 +99,8 @@ def cap_corner():
     CAP-corner prints with the port end face on the plate, pegs up.
     BODY-corner is the 20 mm of body below the seam, seam face up with its two peg holes.
     """
-    was = p.CAP
-    p.CAP = True
-    p.derive()
-    try:
-        main, cap = peak.split(peak.body())
-    finally:
-        p.CAP = was
-        p.derive()
+    spots = peak.peg_spots()
+    main, cap = peak.split(peak.body(), [spots[1], spots[2]] + [q for i, q in enumerate(spots) if i not in (1, 2)])
     corner = Pos(114, 0, 23) * Box(72, 400, 50)             # profile X 78..150, Z -2..48
     below = Pos(0, p.SEAM_Y - p.USB_END * 10, 0) * Box(600, 20, 600)
     turn = Rot(-p.USB_END * 90, 0, 0)                       # cap: port end face down
@@ -243,5 +238,5 @@ if __name__ == "__main__":
     write(petg, "coupons-fit-petg", lambda n: "#efe6d2" if "bezel" in n or "ring" in n else "#6a7078")
     # CLIP-body printed clean on 2026-11-14 and is kept exactly as first issued (CLIP-body.stl),
     # so it is not rebuilt here.
-    write({"SEAT-body": seat["SEAT-body"], **end_slices(), **cap_corner()}, "coupons-fit-body",
-          lambda n: "#8d8f8c")
+    write({"SEAT-body": seat["SEAT-body"], **end_slices()}, "coupons-fit-body", lambda n: "#8d8f8c")
+    write(cap_corner(), "coupons-cap", lambda n: "#8d8f8c")

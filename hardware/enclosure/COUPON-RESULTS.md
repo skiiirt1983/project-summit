@@ -1,6 +1,6 @@
 # Coupon results (Paul fills this in)
 
-**Status: Print 1 (material slices) is done and applied. From Print 2, SEAT-body and CLIP-body are back (2026-11-14) and applied. The body now gets a push-on port-end cap, so `coupons-fit-body.3mf` is new again (2026-11-14, second issue): SEAT-body, END-bed, CAP-corner, BODY-corner. PETG fit coupons and the measurements are still to come.**
+**Status: Print 1 (material slices) is done and applied. From Print 2, SEAT-body and CLIP-body are back (2026-11-14) and applied. The body now gets a push-on port-end cap, and the cap coupons have their own file, `coupons-cap.3mf` (CAP-corner, BODY-corner; BODY-corner reissued 2026-11-15). `coupons-fit-body.3mf` holds SEAT-body and END-bed, both unchanged since 2026-11-14. PETG fit coupons and the measurements are still to come.**
 
 Print the coupons, try them, tick or write an answer in each box. Each answer names the
 `cad/params.py` value it changes, so the full model can be updated in one pass.
@@ -27,8 +27,8 @@ The 3MF files carry shapes and names only. Set the walls and infill per object i
 | | **MIC-plate**, **PORT-block** | PETG | 4 | 15 % | |
 | `coupons-fit-body.3mf` (**new 2026-11-14**) | **SEAT-body** | TPU for AMS | 2 | 10 % gyroid (T1) | supports off. Lip now has a 45° underside; plate edges are 1 mm 45° chamfers |
 | | **END-bed** | TPU for AMS | 2 | 10 % gyroid (T1) | the real body's first 12 mm off the plate. Supports off, elephant-foot compensation 0.15, 0.08 mm layers over the rounds |
-| | **CAP-corner** | TPU for AMS | 2 | 10 % gyroid (T1) | one corner of the port-end cap, printed end-face down with its two pegs up. Supports off |
-| | **BODY-corner** | TPU for AMS | 2 | 10 % gyroid (T1) | the 20 mm of body under it, seam face up with two peg holes. Supports off |
+| `coupons-cap.3mf` | **CAP-corner** | TPU for AMS | 2 | 10 % gyroid (T1) | one corner of the port-end cap, end-face down, two pegs up. Unchanged: reuse the printed one |
+| | **BODY-corner** (**new 2026-11-15**) | TPU for AMS | 2 | 10 % gyroid (T1) | the 20 mm of body under it, seam face up: one round hole, one short slot. Supports off |
 | (kept) | **CLIP-body** | — | — | — | printed clean on 2026-11-14; no reprint. `CLIP-body.stl` is unchanged |
 
 SEAT-frame and CLIP-frame changed on 2026-11-14 (their top outer edge is now chamfered to tuck under the sloped
@@ -71,16 +71,25 @@ is now a separate cap; see 1d.
 
 ## 1d. CAP-corner + BODY-corner (the push-on cap: fit and seam)
 
-Push the two pegs of CAP-corner into BODY-corner until the faces meet. Pull it off and push it on ten times.
+**Test 1, 2026-11-15 (peg hole = peg, `PEG_FIT = 0.00`):**
+
+| Paul's finding | Applied |
+|---|---|
+| Too tight: needed force, would not close, very hard to pull apart | `PEG_FIT = 0.20` |
+| Faces don't close: gap about 0.5 mm one side, 1 to 2 mm the other. Each peg pushed in on its own goes all the way | Not a depth problem, so `PEG_L` is unchanged. The two pegs were fighting each other. All holes but one are now a short slot pointing at that one (`PEG_SLOT = 0.4`), and every hole has a 0.5 mm lead-in (`PEG_LEAD`) |
+| Seam groove and flush faces: can't judge until it closes | Recheck in test 2 |
+| CAP-corner plate edge clean; pegs round and upright | No change. **CAP-corner is unchanged: reuse the printed one** |
+
+**Test 2: reprint BODY-corner only** (`coupons/coupons-cap.3mf`, or `BODY-corner.stl`). Push the printed CAP-corner
+into it until the faces meet. Pull it off and push it on ten times.
 
 | Question | Answer | Changes |
 |---|---|---|
-| Push-fit | ☐ falls off ☐ loose ☐ right: snug, comes off by hand ☐ too tight ☐ won't go in | loose → `PEG_FIT` −0.10; too tight → +0.10; won't go → +0.20 |
-| Do the faces close up all the way round? | ☐ yes ☐ gap of ___ mm | gap → `PEG_L` −0.5 (pegs bottoming out), or tell Claude |
+| Push-fit | ☐ falls off ☐ loose ☐ right: snug, comes off by hand ☐ too tight ☐ won't go in | loose → `PEG_FIT` −0.10; too tight → +0.10 |
+| Do the faces close up all the way round? | ☐ yes ☐ gap of ___ mm, even ☐ gap, uneven | even gap → `PEG_L` −0.5; uneven → `PEG_SLOT` +0.3 |
+| Does the cap wobble or shift sideways once on? | ☐ no ☐ yes | yes → `PEG_SLOT` −0.2 |
 | Seam: does the little V-groove look intended? | ☐ yes ☐ too faint ☐ too heavy | `GROOVE` (now 0.6) |
 | Do the outside faces line up across the seam? | ☐ flush ☐ step of ___ mm | step → more or thicker pegs (tell Claude) |
-| CAP-corner: the edge on the plate (45° into the round) | ☐ clean ☐ flares ☐ sags | same fix as END-bed |
-| Pegs printed round and upright? | ☐ yes ☐ leaning / stringy | `PEG_D` up to 6 |
 
 ## 2. GLASS-ring (the front 6 mm of the bezel, all the way round)
 

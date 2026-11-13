@@ -51,7 +51,8 @@ inside the pocket.
 | A 0.6 mm V-groove runs round the outside at the seam, with a matching groove mirrored at the other end | Paul: the two lines should look intended |
 | The cap prints with the port end face on the plate, pegs up. So both ends of the body now have the same 45° chamfer blended into the round, and the USB mouths are chamfered, not rounded | No rounds on the plate; the two ends now match |
 | With the cap: clip pockets run up to the open top, the finger hole and landscape pad recesses get a teardrop top, landscape pads move 7 mm in to clear the seam, the pocket-top roof is removed | No flat ceilings in TPU |
-| **Preview only (`CAP = False`) until Paul OKs `renders/q-cap.png`.** Coupons CAP-corner and BODY-corner already use it | Paul: show before changing the full model |
+| **Approved by Paul 2026-11-15 and applied to the full model (`CAP = True`)** | Renders OK |
+| Peg holes: 0.20 mm larger than the pegs; one round hole sets the position and every other hole is a 0.4 mm slot pointing at it; 0.5 mm lead-in on every hole. Peg length unchanged | Cap test 1: too tight, and the pair of pegs would not close although each seated fully alone, so the spacing was fighting. The slots are Claude's addition (default, Paul to confirm; `PEG_SLOT = 0` turns them off) |
 
 ## Fixed 2026-11-13
 - **Mic exit holes were blocked.** The mics sit 29.9 mm off the centre line, which is behind the solid corners of

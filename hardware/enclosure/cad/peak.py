@@ -18,7 +18,7 @@ OUT = Path(__file__).resolve().parent.parent / "out"
 COLOURS = {"body": "#8d8f8c", "cap": "#8d8f8c", "frame": "#3a3d40", "bezel": "#efe6d2", "plate": "#5b6470",
            "cover": "#4a4f55", "pads": "#1f6f6b", "glass": "#0b0b0d", "view": "#1d2b3a",
            "display": "#1b3a2a", "battery": "#3b6ea8", "accelerometer": "#8a3fa0"}
-PRINTED = ("body", "frame", "bezel", "plate", "cover", "pads")
+PRINTED = ("body", "cap", "frame", "bezel", "plate", "cover", "pads")
 
 
 def _line_x(p0, d0, p1, d1):
@@ -171,19 +171,48 @@ def peg_spots():
             (apex[0] + 3 * up[0], apex[1] - 2 * p.OUTER_R + 3 * up[1])]            # top corner
 
 
-def split(whole):
-    """Cut the body at the seam: (main body, cap). Pegs on the cap, holes in the main body."""
+def _peg_hole(towards):
+    """One peg hole, built along +Z from the seam face. `towards` = direction (in the hole's own
+    X-Y) of the reference peg; the hole is stretched PEG_SLOT that way. None = plain round hole."""
+    r, depth = (p.PEG_D + p.PEG_FIT) / 2, p.PEG_L + 0.5
+    ends = [(0.0, 0.0)]
+    if towards and p.PEG_SLOT > 0:
+        ux, uy = towards
+        ends = [(-ux * p.PEG_SLOT / 2, -uy * p.PEG_SLOT / 2), (ux * p.PEG_SLOT / 2, uy * p.PEG_SLOT / 2)]
+    hole = None
+    for ex, ey in ends:
+        one = Pos(ex, ey, depth / 2) * Cylinder(r, depth)
+        one += Pos(ex, ey, p.PEG_LEAD / 2 - 0.01) * Cone(r + p.PEG_LEAD, r, p.PEG_LEAD)      # lead-in
+        hole = one if hole is None else hole + one
+    if len(ends) == 2:
+        angle = math.degrees(math.atan2(towards[1], towards[0]))
+        hole += Rot(0, 0, angle) * (Pos(0, 0, depth / 2) * Box(p.PEG_SLOT, 2 * r, depth))
+    return hole
+
+
+def split(whole, spots=None):
+    """Cut the body at the seam: (main body, cap). Pegs on the cap, holes in the main body.
+
+    The first peg in `spots` gets a round hole and sets the position. Every other hole is a short
+    slot pointing at it, which still stops the cap turning but forgives spacing errors.
+    """
     sign = p.USB_END
+    spots = spots or peg_spots()
     side = Pos(0, p.SEAM_Y + sign * 300, 0) * Box(600, 600, 600)       # everything on the ports side of the seam
     cap, main = whole & side, whole - side
-    for x, z in peg_spots():
+    turn = Rot(sign * 90, 0, 0)                                        # +Z becomes "away from the ports"
+    x0, z0 = spots[0]
+    for i, (x, z) in enumerate(spots):
         tip = 0.8
         peg = Pos(0, 0, (p.PEG_L - tip) / 2) * Cylinder(p.PEG_D / 2, p.PEG_L - tip)
         peg += Pos(0, 0, p.PEG_L - tip / 2) * Cone(p.PEG_D / 2, p.PEG_D / 2 - tip, tip)
-        hole = Pos(0, 0, (p.PEG_L + 0.5) / 2) * Cylinder((p.PEG_D + p.PEG_FIT) / 2, p.PEG_L + 0.5)
-        turn = Rot(sign * 90, 0, 0)                                    # +Z becomes "away from the ports"
+        towards = None
+        if i:
+            dx, dz = x0 - x, z0 - z
+            n = math.hypot(dx, dz)
+            towards = (dx / n, sign * dz / n)                          # world Z is the hole's own Y, times sign
         cap += Pos(x, p.SEAM_Y + sign * 0.01, z) * turn * peg
-        main -= Pos(x, p.SEAM_Y + sign * 0.01, z) * turn * hole
+        main -= Pos(x, p.SEAM_Y + sign * 0.01, z) * turn * _peg_hole(towards)
     return main, cap
 
 
@@ -264,7 +293,7 @@ def export(out=OUT):
     built = build()
     write_scene(out, built)
     mesher = Mesher()
-    for name in PRINTED:
+    for name in (n for n in PRINTED if n in built):
         export_step(built[name], str(out / f"{name}.step"))
         built[name].label = name
         mesher.add_shape(built[name])
@@ -277,5 +306,5 @@ if __name__ == "__main__":
     built = export()
     size = built["body"].bounding_box().size
     print("body", [round(v, 1) for v in size], "front wall", round(p.FRONT_T, 1), "module depth", round(p.MOD_D, 1))
-    for name in PRINTED:
+    for name in (n for n in PRINTED if n in built):
         print(f"  {name:6s} valid={built[name].is_valid} volume={built[name].volume / 1000:.1f} cm3")

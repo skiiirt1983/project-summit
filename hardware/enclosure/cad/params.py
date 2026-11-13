@@ -144,10 +144,17 @@ SIDE_MARGIN = 11.0         # body left/right of the bezel (target image)
 # --- Port-end cap (Paul, 2026-11-14: option A) --------------------------------------------------
 # The body prints on end. Its last CAP_T at the port end is a separate TPU cap, so the main body's
 # pocket is an open-topped channel with no ceilings. The cap pushes on with pegs: no glue.
-CAP = False                # preview only until Paul OKs the renders; then True for the full model
+CAP = True                 # approved by Paul 2026-11-15 (renders/peak-views.png); False gives the one-piece body
 PEG_D = 5.0                # peg diameter
 PEG_L = 8.0                # peg length
-PEG_FIT = 0.0              # hole is this much larger than the peg on diameter (0 = snug in TPU)
+PEG_FIT = 0.20             # hole is this much larger than the peg on diameter.
+                           # Test 1 (2026-11-15): 0.00 was too tight; it bound, tilted and would not close.
+                           # COUPON: tune after test print (CAP-corner + BODY-corner)
+PEG_SLOT = 0.4             # all holes but one are stretched this much towards that one, so a small
+                           # error in peg spacing can't jam the cap. Test 1: each peg seated fully alone,
+                           # but the pair would not close. 0 = plain round holes.
+                           # COUPON: tune after test print (CAP-corner + BODY-corner)
+PEG_LEAD = 0.5             # 45 degree lead-in at the mouth of each hole
                            # COUPON: tune after test print (CAP-corner + BODY-corner)
 GROOVE = 0.6               # depth of the V-groove at the seam, and of the matching groove at the other end
                            # COUPON: tune after test print (CAP-corner + BODY-corner)
