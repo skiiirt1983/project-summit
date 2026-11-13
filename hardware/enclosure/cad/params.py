@@ -120,9 +120,9 @@ OUTER_R = 16.0             # outer corner radius (brief)
 INNER_R = 12.0             # read off the target image
 EDGE_R = 7.0               # soft outer edge on the two open ends (target image)
 EDGE_R_IN = 4.0            # soft edge into the opening (target image)
-# Rounded version (Paul, 2026-11-13: no sharp edges, near full round inside and out).
-# Preview only until Paul OKs the renders; then ROUND_ALL becomes True for the full body.
-ROUND_ALL = False
+# Decided 2026-11-13: no sharp edges. Every outside edge is a near full round, inside and
+# out; only the screen opening stays crisp. (False gives the earlier EDGE_R / EDGE_R_IN rounds.)
+ROUND_ALL = True
 EDGE_FLAT = 0.4            # flat left between the outer and inner round on a leg's end
 BED_END = 1                # which end sits on the print bed: +1 = the portrait end (away from the ports)
 BED_CHAMFER = True         # bed end: 45 degree chamfer blended into the round, so nothing overhangs

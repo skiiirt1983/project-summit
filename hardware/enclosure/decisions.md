@@ -19,8 +19,8 @@
 | No firm zone for now; add one around the screen module only if the SEAT coupon needs it | T1 was stiff enough | Firm modifier by default |
 | Back leg and bottom 13 mm | Confirmed on the slice | 9 mm |
 | Print standing on the portrait end | Layer lines on the outside were OK; it stays put when tapped | Split body |
-| No sharp edges: near full round on every outside edge, inside and out. Only the screen opening stays crisp. **Waiting for Paul's OK on the renders (`out/q-round.png`) before the full body changes** | Paul, after handling the slices | Current 7 / 4 mm rounds |
-| Bed end: 45° chamfer blended into the round; elephant-foot compensation on; seam on an inside corner of the opening; 0.08 mm layers over the rounds | No overhang at the bed, rounds don't feel stepped | Plain round at the bed |
+| No sharp edges: near full round on every outside edge, inside and out. Only the screen opening stays crisp. **Approved by Paul 2026-11-13 and applied to the full body (`ROUND_ALL = True`)** | Paul, after handling the slices | Current 7 / 4 mm rounds |
+| Bed end (the portrait end) only: 45° chamfer blended into the round; the port end is a plain full round (default, Paul to confirm; he has not asked for matching ends); elephant-foot compensation on; seam on an inside corner of the opening; 0.08 mm layers over the rounds | No overhang at the bed, rounds don't feel stepped | Plain round at the bed |
 
 | Both USB-C openings stay, tidied: rounded corners (R2.5) and a 1 mm round on the outside mouth. PORT coupon updated to the same shape | Paul 2026-11-13; ports stay usable in both orientations | Removing both; keeping one |
 

@@ -40,7 +40,7 @@ All layer heights 0.2 mm for the coupons, except GLASS-ring and the bezel pieces
 | Stays put when tapped | **yes** | no change (`PAD_D`, `LEG_T`, `BACK_ANGLE`) |
 | Layer lines on the outside | **OK** | print orientation stays: standing on the portrait end |
 | Back leg 13 mm | **right** | `LEG_T = 13.0` confirmed |
-| Extra | **No sharp edges anywhere**; bed edges 45° chamfer blended into a round; elephant-foot compensation on; seams on an inside edge; finer layers on the curved edges | `ROUND_ALL` (preview, waiting for Paul's OK on `out/q-round.png`), `BED_CHAMFER`, `BODY_PRINT` |
+| Extra | **No sharp edges anywhere**; bed edges 45° chamfer blended into a round; elephant-foot compensation on; seams on an inside edge; finer layers on the curved edges | `ROUND_ALL = True` (approved and applied 2026-11-13), `BED_CHAMFER`, `BODY_PRINT` |
 
 ## 2. GLASS-ring (the front 6 mm of the bezel, all the way round)
 

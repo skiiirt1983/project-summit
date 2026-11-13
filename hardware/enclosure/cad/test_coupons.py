@@ -53,7 +53,8 @@ def material_slice(label):
 
 def body_local():
     """The body, moved into the module frame so coupons can be cut square."""
-    world = peak.shell() - peak.face_plane().location * parts.body_cutter()
+    # Plain end rounds: the fit features are the same, and the files stay as first issued.
+    world = peak.shell(rounded=False) - peak.face_plane().location * parts.body_cutter()
     return peak.face_plane().location.inverse() * world
 
 
