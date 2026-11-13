@@ -59,6 +59,10 @@ All layer heights 0.2 mm for the coupons, except GLASS-ring and the bezel pieces
 
 ## 1c. END-bed and END-top (new: slices of the real body, printed standing up like the real thing)
 
+> **2026-11-14: do not print END-top.** Bambu Studio's "floating cantilevers" warning is real: the screen
+> opening's top edge hangs in the air in this print orientation. See `decisions.md`, "OPEN, blocking the body
+> print". END-bed and SEAT-body are fine to print.
+
 | Question | Answer | Changes |
 |---|---|---|
 | END-bed: first layer and the 45° edge at the plate | ☐ clean ☐ flares ☐ sags | flares → elephant-foot compensation up (`BODY_PRINT`); sags → tell Claude: bed end goes to a plain 1 mm chamfer, no round |

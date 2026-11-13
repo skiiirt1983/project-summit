@@ -36,6 +36,25 @@
 | CLIP-body unchanged | Printed clean | — |
 | New coupons END-bed and END-top: slices of the real body in its real print orientation | Tests the actual plate edge, top rounds, lip and pocket top before a full-body print | Printing the whole body to find out |
 
+## OPEN, blocking the body print: the screen opening's top edge (found 2026-11-14)
+
+Bambu Studio flagged floating cantilevers on END-top, and it is right. With the body standing on its end, the
+port end of the screen opening is a ceiling: the lip there hangs down 1.6 mm with nothing under it (60 mm long),
+the opening's own top edge is a 60 to 77 mm bridge, and the pocket top still has a 17.8 mm flat strip. This cannot
+be fixed with chamfers: a 45 degree roof over a 77 mm opening needs about 38 mm of height and there are 9 mm.
+SEAT-body and END-bed have no such surfaces (checked on the meshes). **Do not print END-top.**
+
+Options for Paul (print split, brief 8.4):
+- **A. Port-end cap.** Body prints on end with the pocket open at the top; the last ~11 mm at the port end is a
+  separate TPU cap printed flat and glued on pegs. Everything prints the way the clean coupons did. Cost: one thin
+  seam around the body near the port end (could be mirrored by a groove at the other end so it looks intended).
+- **B. Print it on its bottom, as it sits.** One piece, no seam. Needs: no TPU lip (the cream bezel grows from
+  4.5 to about 6.4 mm to hide the frame instead), a 60 degree overhang inside the pocket (hidden by the frame) and
+  along the screen opening's top edge (visible), 45 degree chamfers on the two base corners, layer lines running
+  the other way. Needs a new coupon first.
+- **C. Keep it as is, with supports only inside the top of the pocket.** One piece, no redesign. TPU supports fuse
+  and leave scars on the opening's top edge.
+
 ## Fixed 2026-11-13
 - **Mic exit holes were blocked.** The mics sit 29.9 mm off the centre line, which is behind the solid corners of
   the triangle, so the holes in frame and body did not reach the hollow. The exit holes (cover, frame, body) are now
