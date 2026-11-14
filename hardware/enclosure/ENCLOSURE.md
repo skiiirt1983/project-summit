@@ -317,9 +317,11 @@ still works without them.
 
 ## 8. Open decisions (settle with Paul, with renders)
 
-> **2026-11-12:** 3 is decided (stands on the end away from the USB-C ports). For the rest, Claude
-> picked defaults so the full model could be built; they are listed in `decisions.md` as
-> "default, Paul to confirm". Coupon answers go in `COUPON-RESULTS.md`.
+> **2026-11-14 status:** 1 (TPU for AMS, T1), 2 (snap-fit module with four clips, pulled out of the
+> open port end), 3 (stands on the end away from the USB-C ports) and 4 (a push-on port-end cap, six
+> pegs, no glue) are decided and tested on coupons. For the rest, Claude picked defaults so the full
+> model could be built; they are in `decisions.md` as "default, Paul to confirm". Open tests:
+> `REMAINING-TESTS.md`; finished ones: `COUPON-RESULTS.md`.
 
 1. **Body material:** TPU for AMS (which soft/firm settings) or stone-look PLA? Decided by coupons.
 2. **Screen module attachment:** how it locks into the body and comes out for service.

@@ -76,6 +76,13 @@ inside the pocket.
 | Back-cover snap ridge 0.50 mm (was 0.40) | Held but weak. The bezel's groove follows automatically |
 | Back cover opens with a bent paperclip through a 2.5 x 10 mm slot in its floor, beside the battery. The old edge notch is gone (default, Paul to confirm) | The cover sits flush, so a fingernail cannot catch it, and an edge notch can only push the cover in, not pull it out. The slot works like the button holes. Only the SNAP coupon tests it (with a test slot); the real slot position is untested |
 
+## Decided from results round 6 (PETG retest)
+
+| Decision | Why |
+|---|---|
+| Back cover finished: snap ridge 0.50, level, opens with a paperclip through the pull slot | Snap right, level, opens |
+| Carrier plate 0.20 mm per side (was 0.175) | Still tight at 0.175 on the full-width piece. The corner piece that read "loose" at 0.20 could not bind, so it was a weak test. The plate is screwed to the board, so a little play costs nothing |
+
 ## Fixed 2026-11-13
 - **Mic exit holes were blocked.** The mics sit 29.9 mm off the centre line, which is behind the solid corners of
   the triangle, so the holes in frame and body did not reach the hollow. The exit holes (cover, frame, body) are now
@@ -103,7 +110,7 @@ Paul asked for the full model to be built ahead without waiting. Each of these i
 | 8.8 | Wall mount: none | Not needed for the Peak | Keyhole in the back leg |
 | 8.9 | Branding: none | Brief: no logos on the front | Small wordmark on the back leg |
 | 8.6 | Colours: grey stone-look body, cream bezel, teal pads | As in the target picture | — |
-| 8.4 | Print: body in one piece, standing on its portrait end, supports only inside the pocket. Bezel face down. | Layer lines run around the triangle, no supports on visible faces | Split body (needed if PLA) |
+| 8.4 | (superseded: see "Port-end cap") Body printed in two parts: main body standing on its portrait end, cap on its port end, no supports. Bezel face down | Layer lines run around the triangle, no supports on visible faces | One piece |
 | — | Pads: 4× Ø12 under the bottom, 3× Ø8 on the portrait end, 2.5 thick in 1.5 recesses | The portrait end has only a narrow flat ring on the legs | Printed-in TPU feet |
 | — | CAD layout: `params.py`, `parts.py` (module + frame), `peak.py` (body + assembly), `test_coupons.py`, `render_all.py` | One file per part was more files than the model needs | Brief's `bezel.py` / `back_shell.py` / `base.py` |
 
@@ -111,5 +118,5 @@ Paul asked for the full model to be built ahead without waiting. Each of these i
 - Front wall is 34.7 mm thick because the battery is a 13 mm placeholder. Each mm off the battery comes straight off the wall.
 - The lip-to-glass gap depends on two STEP heights (7.6 + 4.0). Measurement 4 in `COUPON-RESULTS.md` checks it.
 - Mic path is about 20 mm from mic to open air, through the free strip beside the battery and out 19 mm sideways of the mic. Needs a listening test on the real board before the design is frozen.
-- The frame goes in under a 1.9 mm TPU lip. The SEAT coupon tests whether 68D TPU flexes enough.
-- Nothing has been printed. Fits are as drawn, not as tested.
+- The frame goes in from the open port end under a 1.9 mm TPU lip: the SEAT test passed ("right").
+- Printed and tested so far (all coupons, no full parts): material slices, body ends, the cap push-fit, the clip, the seat, the back-cover snap and the port block. Not yet tested: anything on the real board (glass ring, port line-up, plate holes), the real pull-slot position, the listening test for the mics, and a full body print.

@@ -66,8 +66,9 @@ GLASS_CLEAR = 0.30         # gap glass edge -> pocket wall, per side  # COUPON: 
 # =============================================================================
 LEDGE = 1.0                # step in the cup wall that the carrier plate seats against
 PLATE_T = 2.0              # carrier plate; screws to the board's four M2.5 standoffs
-PLATE_CLEAR = 0.175        # plate -> cup wall, per side. 0.20 was loose on the corner piece, 0.15 was
-                           # tight on the full-width SNAP piece, so halfway  # COUPON: tune after test print (SNAP)
+PLATE_CLEAR = 0.20         # plate -> cup wall, per side. Full-width SNAP piece: 0.15 tight, 0.175 still tight.
+                           # (0.20 read 'loose' on a corner piece, which cannot bind, so that was a weak test; the
+                           # screws to the board hold the plate, so a little play is fine)  # COUPON: tune after test print (SNAP)
 SCREW_D = 2.9              # M2.5 clearance hole
 SCREW_HEAD_D = 5.2         # M2.5 countersunk head
 COVER_FLOOR = 1.68         # back cover floor (4 lines at 0.42)

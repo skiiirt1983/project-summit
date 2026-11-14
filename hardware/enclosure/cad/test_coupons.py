@@ -1,7 +1,7 @@
 """Test coupons, cut from the real model so they test the real fits.
 
 Run:  python test_coupons.py          -> the pieces still to print:
-     ../coupons/reprint-petg.3mf   PETG: SNAP-bezel, SNAP-plate, SNAP-cover
+     ../coupons/reprint-petg.3mf   PETG: SNAP-plate (SNAP-bezel and SNAP-cover printed and finished)
       python test_coupons.py --all    -> also rebuilds the pieces already issued (material slices,
      SEAT, END-bed, CAP-corner, GLASS-ring, MIC-plate, PORT-block). Only after a design change:
      the files in ../coupons/ are the ones Paul printed.
@@ -272,7 +272,7 @@ if __name__ == "__main__":
     seat, clip, snap, cap = seat_coupons(), clip_coupons(), snap_coupons(), cap_corner()
     # What Paul still has to print (see ../REMAINING-TESTS.md, group A).
     # Cap and clip tests passed on the second print (BODY-corner, CLIP-frame, CLIP-bezel): nothing to reissue.
-    write(snap, "reprint-petg", petg_colour)
+    write({"SNAP-plate": snap["SNAP-plate"]}, "reprint-petg", petg_colour)
     if "--all" in sys.argv:
         # Pieces already issued and unchanged. Rebuilding them is only needed after a design change;
         # the files in ../coupons/ are the ones Paul printed.

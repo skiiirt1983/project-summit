@@ -6,36 +6,31 @@ Only what is still open. Finished tests are not here (the record of those is COU
 
 ## A. Reprints (pieces changed by your last results)
 
-One file to print: coupons/reprint-petg.3mf (three PETG pieces). The cap and clip tests passed on the second print and are finished.
+One piece to print: SNAP-plate (coupons/reprint-petg.3mf). The cap, clip, seat and back-cover tests are finished.
 
-### A3. Back cover snap, carrier plate and the cover's pull slot
+### A3. Carrier plate, one more try
 
 ![A3](tests/A3-snap.png)
 
-**What you're testing and why:** Retest of the end of the screen module. Last time the plate was tight (it is now a little looser), the cover held but weak (its snap ridge is now taller), and a fingernail could not open it. The cover sits flush with the back, so there is nothing to grip: it now has a small slot you hook with a bent paperclip, the same trick as the button holes. This test piece has its slot in the middle; the real cover has it beside the battery.
+**What you're testing and why:** The back cover is done: the snap is right, it sits level and it opens. The plate was still a little tight on its step, so it is now 0.025 mm per side looser. It is screwed to the board anyway, so it only needs to drop in freely. Only this one piece needs printing again.
 
 | Piece | Where it is | Note |
 |---|---|---|
-| **SNAP-bezel** | coupons/reprint-petg.3mf (or SNAP-bezel.stl) | new |
-| **SNAP-plate** | coupons/reprint-petg.3mf (or SNAP-plate.stl) | new; keep it for test C3 |
-| **SNAP-cover** | coupons/reprint-petg.3mf (or SNAP-cover.stl) | new, with a test slot |
+| **SNAP-plate** | coupons/reprint-petg.3mf (or SNAP-plate.stl) | print this one; keep it for test C3 |
+| **SNAP-bezel, SNAP-cover** | already printed | reuse them |
 
-**Print settings:** PETG, 4 walls, 15 % infill, 0.2 mm layers, supports off. SNAP-bezel prints face down.
+**Print settings:** PETG, 4 walls, 15 % infill, 0.2 mm layers, supports off.
 
 **What to do:**
 
 1. Lay SNAP-bezel face down on the table.
-2. Drop SNAP-plate in. It should sit on the small step inside the walls.
-3. Press SNAP-cover in behind it until it snaps.
-4. Turn it over and shake it.
-5. Bend a paperclip into an L. Push the short end through the slot, turn it a quarter turn so it catches under the floor, and pull gently straight out.
+2. Drop the new SNAP-plate in. It should sit on the small step inside the walls.
+3. Press SNAP-cover in behind it, then turn it over and shake it.
 
 | Question | Answer |
 |---|---|
-| The plate on its step? | ☐ loose, slides about  ☐ right  ☐ tight  ☐ won't go in |
-| The cover snap? | ☐ falls out  ☐ holds but weak  ☐ right  ☐ too hard to open |
-| Is the cover's back level with the bezel's back edge? | ☐ level  ☐ sticks out ___ mm  ☐ sunk ___ mm |
-| Does the paperclip open the cover? | ☐ yes, easily  ☐ yes, but hard  ☐ no, it slips out  ☐ something bent or broke |
+| The plate on its step? | ☐ loose, slides about  ☐ right: drops in, no binding  ☐ tight  ☐ won't go in |
+| Does the cover still snap and open as before? | ☐ yes  ☐ no |
 
 ## B. Tests not done yet
 
@@ -43,7 +38,7 @@ Nothing left here. The seat test is finished, and the T1/T2/T3 material test was
 
 ## C. Needs the board (when it arrives)
 
-C1 to C3 use printed pieces on the real board. C4 is reading labels.
+C1 to C3 use printed pieces on the real board (C3 uses the new SNAP-plate from A3). C4 is reading labels.
 
 ### C1. Glass ring on the real screen
 
@@ -249,10 +244,7 @@ Calipers, in mm, one decimal. D1 to D2 and D5 need the battery, D3, D4 and D7 th
 
 | Test | Answer | Changes in cad/params.py |
 |---|---|---|
-| A3 | plate | `loose -> PLATE_CLEAR -0.025 (now 0.175); tight -> +0.025` |
-| A3 | cover snap | `falls out/weak -> SNAP_BUMP +0.10 (now 0.50); too hard -> -0.10; sloppy -> COVER_CLEAR -0.05` |
-| A3 | cover level | `COVER_FLOOR / MOD_D` |
-| A3 | paperclip | `hard/slips -> PULL_SLOT bigger (now 2.5 x 10); bent/broke -> thicker cover floor (COVER_FLOOR)` |
+| A3 | plate | `loose -> PLATE_CLEAR -0.025 (now 0.20); tight -> +0.025` |
 | C1 | glass | `rattles -> GLASS_CLEAR -0.10; tight -> +0.10; won't go -> +0.20` |
 | C1 | lip / border / gap | `LIP_OVERLAP; BEZEL_WALL; LIP_GAP with D4` |
 | C2 | line-up / home | `USB_Y; USB_WINDOW, USB_WINDOW_R` |
