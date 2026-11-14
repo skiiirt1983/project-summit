@@ -67,6 +67,15 @@ inside the pocket.
 | Bezel-into-frame clearance unchanged | Loose and right were both ticked; tightening would change the pocket and SEAT-body, which fitted |
 | One checklist of open tests: `REMAINING-TESTS.md` / `.docx`, built by `cad/remaining_tests.py`. `COUPON-RESULTS.md` is now only the record | Paul: the form had become confusing |
 
+## Decided from results round 5 (REMAINING-TESTS groups A and B)
+
+| Decision | Why |
+|---|---|
+| **Cap, clip and seat are finished.** Peg holes 0.10 + 0.2 slots, clip bump 0.75, seam 0.30, groove 0.6 all stay as they are | All answers right / flush / good |
+| Carrier plate 0.175 mm per side (was 0.15) | 0.20 loose on a corner piece, 0.15 tight on the full-width piece |
+| Back-cover snap ridge 0.50 mm (was 0.40) | Held but weak. The bezel's groove follows automatically |
+| Back cover opens with a bent paperclip through a 2.5 x 10 mm slot in its floor, beside the battery. The old edge notch is gone (default, Paul to confirm) | The cover sits flush, so a fingernail cannot catch it, and an edge notch can only push the cover in, not pull it out. The slot works like the button holes. Only the SNAP coupon tests it (with a test slot); the real slot position is untested |
+
 ## Fixed 2026-11-13
 - **Mic exit holes were blocked.** The mics sit 29.9 mm off the centre line, which is behind the solid corners of
   the triangle, so the holes in frame and body did not reach the hollow. The exit holes (cover, frame, body) are now

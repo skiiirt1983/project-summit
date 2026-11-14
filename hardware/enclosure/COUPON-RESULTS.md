@@ -60,6 +60,28 @@ END-top was then withdrawn (Bambu Studio's floating-cantilever warning was real)
 | MIC-plate | Smallest clean hole | 1.8 | `MIC_HOLE_D` stays 2.0 (LyricFlash) |
 | PORT-block | Which tunnel fits the cable | +1 | `USB_WINDOW` (12.5, 7.0) → **(13.5, 8.0)** |
 
+## Round 5: REMAINING-TESTS groups A and B (everything that does not need the board)
+
+| Test | Question | Paul's answer | Applied |
+|---|---|---|---|
+| Cap, third try | Push-fit | right: snug, comes off by hand | `PEG_FIT = 0.10` confirmed |
+| | Faces close all the way round | yes | no change |
+| | Wobbles or shifts sideways | no | `PEG_SLOT = 0.2` confirmed |
+| | Groove looks intended; faces flush | yes; flush | `GROOVE = 0.6` confirmed |
+| | Pad pocket with pointed top printed clean | yes | no change. **Cap test finished** |
+| Clip, second try | Click and hold | right | `CLIP_BUMP = 0.75` confirmed |
+| | Finger after ten pulls; printed free | fine; yes | no change. **Clip test finished** |
+| Back cover snap | Plate on its step | tight (it was loose on the corner piece at 0.20, tight on the full-width piece at 0.15) | `PLATE_CLEAR` 0.15 -> **0.175**, halfway rather than the form's +0.05, which is the value that was loose |
+| | Cover snap | holds but weak | `SNAP_BUMP` 0.40 -> **0.50** |
+| | Cover back level with the bezel | level | no change |
+| | Open with a fingernail | no, needs a tool | A flush cover has nothing to grip, so the notch is replaced by a 2.5 x 10 mm **pull slot** through the cover floor for a bent paperclip (`PULL_SLOT`). Real cover: in the free strip beside the battery. Default, Paul to confirm; the brief allows a spudger |
+| Seat | Frame into body; bezel into frame | right; right | no change |
+| | Body wall bulges or flexes | a little | no change (`FIRM_ZONE` stays off) |
+| | Line between cream and body; bezel face level | good, even; level | `SEAM = 0.30` confirmed. **Seat test finished** (this also resolves the earlier double tick on "bezel into frame") |
+
+Retest left: **SNAP-bezel, SNAP-plate, SNAP-cover** (all three change: the cover ridge height changes the bezel's groove too).
+Waiting on the board: C1 to C4. Calipers: D1 to D8.
+
 ## Cross-check: every test this form ever asked
 
 | Test | Questions | Status |
@@ -85,8 +107,9 @@ SEAT-body, which fitted.
 
 | File | Pieces | State |
 |---|---|---|
-| `coupons/reprint-tpu.3mf` | BODY-corner | **to print** (REMAINING-TESTS A1) |
-| `coupons/reprint-petg.3mf` | CLIP-frame, CLIP-bezel, SNAP-bezel, SNAP-plate, SNAP-cover | **to print** (A2, A3) |
+| `coupons/reprint-petg.3mf` | SNAP-bezel, SNAP-plate, SNAP-cover | **to print** (REMAINING-TESTS A3) |
 | `coupons/coupons-material.3mf` | T1, T2, T3 | printed, finished |
-| `coupons/coupons-fit-body.3mf` | SEAT-body, END-bed | printed, unchanged |
+| `coupons/coupons-fit-body.3mf` | SEAT-body, END-bed | printed, finished |
+| `BODY-corner.stl`, `CAP-corner.stl`, `CLIP-frame.stl`, `CLIP-bezel.stl`, `CLIP-body.stl`, `SEAT-frame.stl`, `SEAT-bezel.stl`, `MIC-plate.stl`, `PORT-block.stl` | | printed, finished (no reissue needed) |
+| `GLASS-ring.stl` | | printed or to print when the board is here (C1) |
 | `coupons/*.stl` | one per piece | CAP-corner, CLIP-body, SEAT-frame, SEAT-bezel, GLASS-ring, MIC-plate, PORT-block are as first issued |

@@ -66,14 +66,18 @@ GLASS_CLEAR = 0.30         # gap glass edge -> pocket wall, per side  # COUPON: 
 # =============================================================================
 LEDGE = 1.0                # step in the cup wall that the carrier plate seats against
 PLATE_T = 2.0              # carrier plate; screws to the board's four M2.5 standoffs
-PLATE_CLEAR = 0.15         # plate -> cup wall, per side. SEAT results: 0.20 was loose
-                           # COUPON: tune after test print (SNAP)
+PLATE_CLEAR = 0.175        # plate -> cup wall, per side. 0.20 was loose on the corner piece, 0.15 was
+                           # tight on the full-width SNAP piece, so halfway  # COUPON: tune after test print (SNAP)
 SCREW_D = 2.9              # M2.5 clearance hole
 SCREW_HEAD_D = 5.2         # M2.5 countersunk head
 COVER_FLOOR = 1.68         # back cover floor (4 lines at 0.42)
 COVER_RIM = 1.26           # back cover rim (3 lines)
+PULL_SLOT = (2.5, 10.0)    # slot through the cover floor for a bent paperclip, like the button holes.
+                           # SNAP test: a fingernail cannot get behind a flush cover, so it needs a tool.
+                           # COUPON: tune after test print (SNAP)
 COVER_CLEAR = 0.20         # back cover -> cup wall, per side  # COUPON: tune after test print (SEAT)
-SNAP_BUMP = 0.40           # back-cover snap ridge height  # COUPON: tune after test print (SNAP)
+SNAP_BUMP = 0.50           # back-cover snap ridge height. SNAP test: 0.40 held but weak
+                           # COUPON: tune after test print (SNAP)
 SNAP_LEN = 20.0            # back-cover snap ridge length
 SNAP_X = (-38.0, 38.0)     # two ridges per long side, near the ends. (They were one ridge in the middle,
                            # which the SEAT corner coupon did not contain, so its cover could not hold.)

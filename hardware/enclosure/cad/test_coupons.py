@@ -1,8 +1,7 @@
 """Test coupons, cut from the real model so they test the real fits.
 
 Run:  python test_coupons.py          -> the pieces still to print:
-     ../coupons/reprint-tpu.3mf    TPU: BODY-corner
-     ../coupons/reprint-petg.3mf   PETG: CLIP-frame, CLIP-bezel, SNAP-bezel, SNAP-plate, SNAP-cover
+     ../coupons/reprint-petg.3mf   PETG: SNAP-bezel, SNAP-plate, SNAP-cover
       python test_coupons.py --all    -> also rebuilds the pieces already issued (material slices,
      SEAT, END-bed, CAP-corner, GLASS-ring, MIC-plate, PORT-block). Only after a design change:
      the files in ../coupons/ are the ones Paul printed.
@@ -177,7 +176,7 @@ def snap_raw():
     depth = p.MOD_D + 2
     box = Pos(x_from + 40, 0, -depth / 2 + 1) * Box(80, 200, depth)
     return {"SNAP-bezel": parts.cup() & box, "SNAP-plate": parts.plate() & box,
-            "SNAP-cover": parts.cover() & box}
+            "SNAP-cover": parts.cover(test_slot_x=x_from + 22.0) & box}
 
 
 def snap_coupons():
@@ -272,8 +271,8 @@ if __name__ == "__main__":
     import sys
     seat, clip, snap, cap = seat_coupons(), clip_coupons(), snap_coupons(), cap_corner()
     # What Paul still has to print (see ../REMAINING-TESTS.md, group A).
-    write({"BODY-corner": cap["BODY-corner"]}, "reprint-tpu", lambda n: TPU)
-    write({"CLIP-frame": clip["CLIP-frame"], "CLIP-bezel": clip["CLIP-bezel"], **snap}, "reprint-petg", petg_colour)
+    # Cap and clip tests passed on the second print (BODY-corner, CLIP-frame, CLIP-bezel): nothing to reissue.
+    write(snap, "reprint-petg", petg_colour)
     if "--all" in sys.argv:
         # Pieces already issued and unchanged. Rebuilding them is only needed after a design change;
         # the files in ../coupons/ are the ones Paul printed.

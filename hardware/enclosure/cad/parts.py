@@ -110,8 +110,12 @@ def battery_stop_x():
     return inner_half - 0.5 - p.BATT_L - 0.5
 
 
-def cover():
-    """Back cover: a shallow tub that snaps into the cup and holds the battery."""
+def cover(test_slot_x=None):
+    """Back cover: a shallow tub that snaps into the cup and holds the battery.
+
+    The pull slot goes in the free strip beside the battery (the battery would block it anywhere
+    else). The SNAP coupon has no free strip, so it passes test_slot_x for a test slot.
+    """
     length, width = p.CAV2_L - 2 * p.COVER_CLEAR, p.CAV2_W - 2 * p.COVER_CLEAR
     radius = p.GLASS_R + p.GLASS_CLEAR + p.LEDGE - p.COVER_CLEAR
     top = -(p.PLATE_Z + p.PLATE_T)
@@ -126,7 +130,9 @@ def cover():
             part += Pos(x, side * width / 2, -(p.MOD_D - 3.0)) * Box(p.SNAP_LEN, 2 * p.SNAP_BUMP, 1.2)
     for x, y in mic_exits():                                                      # the LyricFlash mic hole
         part -= Pos(x, y, -p.MOD_D + p.COVER_FLOOR / 2) * Cylinder(p.MIC_HOLE_D / 2, p.COVER_FLOOR + 1)
-    part -= Pos(length / 2 - 1.2, 0, -p.MOD_D + 0.6) * Box(2.4, 14, 1.3)            # fingernail notch
+    slot_x = test_slot_x if test_slot_x is not None else battery_stop_x() - 4.0
+    part -= Pos(slot_x, 0, -p.MOD_D + p.COVER_FLOOR / 2) * Box(                    # paperclip pull slot
+        p.PULL_SLOT[0], p.PULL_SLOT[1], p.COVER_FLOOR + 1)
     return part
 
 

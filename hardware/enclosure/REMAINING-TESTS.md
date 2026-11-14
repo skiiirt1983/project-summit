@@ -1,78 +1,24 @@
 # Remaining tests
 
-**Left to do: A. Reprints: 3 · B. Tests not done yet: 1 · C. Needs the board: 4 · D. Measurements: 8**
+**Left to do: A. Reprints: 1 · B. Tests not done yet: 0 · C. Needs the board: 4 · D. Measurements: 8**
 
 Only what is still open. Finished tests are not here (the record of those is COUPON-RESULTS.md). Tick a box or write in a blank. Never press on the screen glass.
 
 ## A. Reprints (pieces changed by your last results)
 
-Two files to print: coupons/reprint-tpu.3mf (one TPU piece) and coupons/reprint-petg.3mf (five PETG pieces).
+One file to print: coupons/reprint-petg.3mf (three PETG pieces). The cap and clip tests passed on the second print and are finished.
 
-### A1. Cap push-fit, third try
-
-![A1](tests/A1-cap.png)
-
-**What you're testing and why:** The end cap pushes onto the body with pegs, no glue. Last time it was loose and wobbled, so the holes are now a little smaller. This checks the cap is snug, sits flat and still comes off by hand.
-
-| Piece | Where it is | Note |
-|---|---|---|
-| **BODY-corner** | coupons/reprint-tpu.3mf (or BODY-corner.stl) | print this one |
-| **CAP-corner** | already printed | reuse it, it has not changed |
-
-**Print settings:** TPU for AMS, 2 walls, 10 % gyroid, 0.2 mm layers, supports off. It prints with the two holes facing up.
-
-**What to do:**
-
-1. Push the two pegs of CAP-corner into the two holes of the new BODY-corner until the faces meet.
-2. Look at the gap all the way round, then try to rock and slide the cap sideways.
-3. Pull it off and push it back on ten times.
-
-| Question | Answer |
-|---|---|
-| How is the push-fit? | ☐ falls off  ☐ loose  ☐ right: snug, comes off by hand  ☐ too tight  ☐ won't go in |
-| Do the faces close up all the way round? | ☐ yes  ☐ even gap of ___ mm  ☐ uneven gap, ___ to ___ mm |
-| Does the cap wobble or shift sideways once on? | ☐ no  ☐ a little  ☐ yes |
-| Does the small groove at the join still look intended? | ☐ yes  ☐ too faint  ☐ too heavy |
-| Do the outside faces line up across the join? | ☐ flush  ☐ step of ___ mm |
-| The round pocket with a pointed top on the outside of BODY-corner (for a foot pad): printed clean? | ☐ yes  ☐ no |
-
-### A2. Clip click, second try
-
-![A2](tests/A2-clip.png)
-
-**What you're testing and why:** Four spring clips hold the screen module in the case. Last time the click was weak, close to none, so the bump on the clip is now bigger. This checks it clicks and holds without the clip breaking.
-
-| Piece | Where it is | Note |
-|---|---|---|
-| **CLIP-frame** | coupons/reprint-petg.3mf (or CLIP-frame.stl) | print this one |
-| **CLIP-bezel** | coupons/reprint-petg.3mf (or CLIP-bezel.stl) | print this one |
-| **CLIP-body** | already printed | reuse it |
-
-**Print settings:** PETG, 4 walls, 15 % infill, 0.2 mm layers, supports off. CLIP-bezel prints face down.
-
-**What to do:**
-
-1. Push CLIP-frame into CLIP-body.
-2. Slide CLIP-bezel in from the front until it clicks.
-3. Pull it out and push it in ten times, then look at the little spring finger on the frame.
-
-| Question | Answer |
-|---|---|
-| Click and hold? | ☐ no click  ☐ weak  ☐ right  ☐ too stiff |
-| The spring finger after ten pulls? | ☐ fine  ☐ turned white  ☐ snapped |
-| Did the finger print free (slots around it open)? | ☐ yes  ☐ fused |
-
-### A3. Back cover snap and carrier plate
+### A3. Back cover snap, carrier plate and the cover's pull slot
 
 ![A3](tests/A3-snap.png)
 
-**What you're testing and why:** My mistake last time: the corner piece I gave you did not include the cover's snap ridge, so it could never hold. The cover grips between the two long walls, so this test is the whole end of the screen module, full width. It also re-checks the plate, which was loose and is now a touch larger.
+**What you're testing and why:** Retest of the end of the screen module. Last time the plate was tight (it is now a little looser), the cover held but weak (its snap ridge is now taller), and a fingernail could not open it. The cover sits flush with the back, so there is nothing to grip: it now has a small slot you hook with a bent paperclip, the same trick as the button holes. This test piece has its slot in the middle; the real cover has it beside the battery.
 
 | Piece | Where it is | Note |
 |---|---|---|
 | **SNAP-bezel** | coupons/reprint-petg.3mf (or SNAP-bezel.stl) | new |
 | **SNAP-plate** | coupons/reprint-petg.3mf (or SNAP-plate.stl) | new; keep it for test C3 |
-| **SNAP-cover** | coupons/reprint-petg.3mf (or SNAP-cover.stl) | new |
+| **SNAP-cover** | coupons/reprint-petg.3mf (or SNAP-cover.stl) | new, with a test slot |
 
 **Print settings:** PETG, 4 walls, 15 % infill, 0.2 mm layers, supports off. SNAP-bezel prints face down.
 
@@ -81,47 +27,19 @@ Two files to print: coupons/reprint-tpu.3mf (one TPU piece) and coupons/reprint-
 1. Lay SNAP-bezel face down on the table.
 2. Drop SNAP-plate in. It should sit on the small step inside the walls.
 3. Press SNAP-cover in behind it until it snaps.
-4. Turn it over and shake it. Then open the cover with a fingernail in the notch at its end.
+4. Turn it over and shake it.
+5. Bend a paperclip into an L. Push the short end through the slot, turn it a quarter turn so it catches under the floor, and pull gently straight out.
 
 | Question | Answer |
 |---|---|
 | The plate on its step? | ☐ loose, slides about  ☐ right  ☐ tight  ☐ won't go in |
 | The cover snap? | ☐ falls out  ☐ holds but weak  ☐ right  ☐ too hard to open |
 | Is the cover's back level with the bezel's back edge? | ☐ level  ☐ sticks out ___ mm  ☐ sunk ___ mm |
-| Can you open it with a fingernail at the notch? | ☐ yes  ☐ no, needs a tool |
+| Does the paperclip open the cover? | ☐ yes, easily  ☐ yes, but hard  ☐ no, it slips out  ☐ something bent or broke |
 
 ## B. Tests not done yet
 
-The T1/T2/T3 material test is not here: I have your answers (TPU for AMS, T1, no firm zone, 13 mm legs right).
-
-### B1. Seat: body, frame and bezel corner
-
-![B1](tests/B1-seat.png)
-
-**What you're testing and why:** This is one corner of the real case: the soft body, the stiff frame inside it, and the cream bezel. It checks how the three fit and how the thin line between cream and body looks. Your results document had ticks for this test, but your message says you have not done it, so it is here to be sure. If the ticks were real, tick "same as my results document" and skip the rest.
-
-| Piece | Where it is | Note |
-|---|---|---|
-| **SEAT-body** | already printed (coupons/coupons-fit-body.3mf) | TPU |
-| **SEAT-frame** | coupons/SEAT-frame.stl | PETG; print it if you have not |
-| **SEAT-bezel** | coupons/SEAT-bezel.stl | PETG, face down; print it if you have not |
-
-**Print settings:** PETG, 4 walls, 15 % infill, 0.2 mm layers, supports off for the frame and bezel.
-
-**What to do:**
-
-1. Push SEAT-frame into SEAT-body, under the sloped lip.
-2. Push SEAT-bezel into the frame until its face is level with the body.
-3. Look at the line between cream and body, and press on the body wall beside the frame.
-
-| Question | Answer |
-|---|---|
-| Already done? | ☐ same as my results document, skip the rest  ☐ no, answers below |
-| Frame into body? | ☐ loose  ☐ right  ☐ too hard  ☐ won't go under the lip |
-| Does the soft body wall bulge or flex where the frame sits? | ☐ no  ☐ a little  ☐ yes |
-| Bezel into frame? | ☐ loose  ☐ right  ☐ tight |
-| The line between cream and body? | ☐ good, even  ☐ too wide  ☐ too tight, rubbing |
-| Bezel face level with the body face? | ☐ level  ☐ sticks out ___ mm  ☐ sunk ___ mm |
+Nothing left here. The seat test is finished, and the T1/T2/T3 material test was answered long ago (TPU for AMS, T1, no firm zone, 13 mm legs right).
 
 ## C. Needs the board (when it arrives)
 
@@ -331,22 +249,10 @@ Calipers, in mm, one decimal. D1 to D2 and D5 need the battery, D3, D4 and D7 th
 
 | Test | Answer | Changes in cad/params.py |
 |---|---|---|
-| A1 | push-fit | `loose -> PEG_FIT -0.05; too tight -> +0.05; won't go -> +0.10` |
-| A1 | faces close | `even gap -> PEG_L -0.5; uneven -> PEG_SLOT +0.1` |
-| A1 | wobble | `yes -> PEG_SLOT -0.1; a little -> leave` |
-| A1 | groove / flush | `GROOVE; step -> more or thicker pegs (peg_spots)` |
-| A1 | pad pocket | `no -> teardrop in pads_and_recesses()` |
-| A2 | click | `none/weak -> CLIP_BUMP +0.10; too stiff -> CLIP_BUMP -0.10 or CLIP_LEN +3` |
-| A2 | finger | `white/snapped -> CLIP_LEN +4, CLIP_BUMP -0.10; second failure -> magnets (brief: one iteration)` |
-| A2 | printed free | `fused -> CLIP_SLOT +0.2` |
-| A3 | plate | `loose -> PLATE_CLEAR -0.05; tight -> +0.05` |
-| A3 | cover snap | `falls out/weak -> SNAP_BUMP +0.10; too hard -> -0.10; sloppy -> COVER_CLEAR -0.05` |
+| A3 | plate | `loose -> PLATE_CLEAR -0.025 (now 0.175); tight -> +0.025` |
+| A3 | cover snap | `falls out/weak -> SNAP_BUMP +0.10 (now 0.50); too hard -> -0.10; sloppy -> COVER_CLEAR -0.05` |
 | A3 | cover level | `COVER_FLOOR / MOD_D` |
-| A3 | fingernail | `no -> larger notch in parts.cover()` |
-| B1 | frame into body | `loose -> FRAME_FIT -0.10; too hard -> +0.10` |
-| B1 | wall flex | `yes -> FIRM_ZONE = 'T2' (modifier-firm-zone.stl); a little -> leave` |
-| B1 | bezel into frame | `loose -> FRAME_CLEAR -0.05 (changes pocket size: reissue SEAT-body); tight -> +0.10` |
-| B1 | line / level | `SEAM (0.30); FRAME_FLOOR / POCKET_D` |
+| A3 | paperclip | `hard/slips -> PULL_SLOT bigger (now 2.5 x 10); bent/broke -> thicker cover floor (COVER_FLOOR)` |
 | C1 | glass | `rattles -> GLASS_CLEAR -0.10; tight -> +0.10; won't go -> +0.20` |
 | C1 | lip / border / gap | `LIP_OVERLAP; BEZEL_WALL; LIP_GAP with D4` |
 | C2 | line-up / home | `USB_Y; USB_WINDOW, USB_WINDOW_R` |

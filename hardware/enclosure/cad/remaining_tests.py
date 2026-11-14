@@ -64,22 +64,25 @@ TESTS = [
          questions=[("Click and hold?", ["no click", "weak", "right", "too stiff"]),
                     ("The spring finger after ten pulls?", ["fine", "turned white", "snapped"]),
                     ("Did the finger print free (slots around it open)?", ["yes", "fused"])]),
-    dict(id="A3", title="Back cover snap and carrier plate", pic="A3-snap.png",
-         why="My mistake last time: the corner piece I gave you did not include the cover's snap ridge, so it could never "
-             "hold. The cover grips between the two long walls, so this test is the whole end of the screen module, full width. "
-             "It also re-checks the plate, which was loose and is now a touch larger.",
+    dict(id="A3", title="Back cover snap, carrier plate and the cover's pull slot", pic="A3-snap.png",
+         why="Retest of the end of the screen module. Last time the plate was tight (it is now a little looser), the "
+             "cover held but weak (its snap ridge is now taller), and a fingernail could not open it. The cover sits "
+             "flush with the back, so there is nothing to grip: it now has a small slot you hook with a bent paperclip, "
+             "the same trick as the button holes. This test piece has its slot in the middle; the real cover has it "
+             "beside the battery.",
          pieces=[("SNAP-bezel", "coupons/reprint-petg.3mf (or SNAP-bezel.stl)", "new"),
                  ("SNAP-plate", "coupons/reprint-petg.3mf (or SNAP-plate.stl)", "new; keep it for test C3"),
-                 ("SNAP-cover", "coupons/reprint-petg.3mf (or SNAP-cover.stl)", "new")],
+                 ("SNAP-cover", "coupons/reprint-petg.3mf (or SNAP-cover.stl)", "new, with a test slot")],
          settings=PETG + ". SNAP-bezel prints face down.",
          steps=["Lay SNAP-bezel face down on the table.",
                 "Drop SNAP-plate in. It should sit on the small step inside the walls.",
                 "Press SNAP-cover in behind it until it snaps.",
-                "Turn it over and shake it. Then open the cover with a fingernail in the notch at its end."],
+                "Turn it over and shake it.",
+                "Bend a paperclip into an L. Push the short end through the slot, turn it a quarter turn so it catches under the floor, and pull gently straight out."],
          questions=[("The plate on its step?", ["loose, slides about", "right", "tight", "won't go in"]),
                     ("The cover snap?", ["falls out", "holds but weak", "right", "too hard to open"]),
                     ("Is the cover's back level with the bezel's back edge?", ["level", "sticks out ___ mm", "sunk ___ mm"]),
-                    ("Can you open it with a fingernail at the notch?", ["yes", "no, needs a tool"])]),
+                    ("Does the paperclip open the cover?", ["yes, easily", "yes, but hard", "no, it slips out", "something bent or broke"])]),
     dict(id="B1", title="Seat: body, frame and bezel corner", pic="B1-seat.png",
          why="This is one corner of the real case: the soft body, the stiff frame inside it, and the cream bezel. It checks "
              "how the three fit and how the thin line between cream and body looks. Your results document had ticks for this "
@@ -182,24 +185,16 @@ TESTS = [
          questions=[("Fit a speaker?", ["yes", "no"]), ("Diameter and depth", ["___ mm across", "___ mm deep"])]),
 ]
 
+# Finished with the second print (A1 cap, A2 clip, B1 seat): kept in the source for reference, not listed.
+FINISHED = {"A1", "A2", "B1"}
+TESTS = [t for t in TESTS if t["id"] not in FINISHED]
+
 # For Claude: what each answer changes. Kept out of the questions on purpose.
 FOR_CLAUDE = [
-    ("A1", "push-fit", "loose -> PEG_FIT -0.05; too tight -> +0.05; won't go -> +0.10"),
-    ("A1", "faces close", "even gap -> PEG_L -0.5; uneven -> PEG_SLOT +0.1"),
-    ("A1", "wobble", "yes -> PEG_SLOT -0.1; a little -> leave"),
-    ("A1", "groove / flush", "GROOVE; step -> more or thicker pegs (peg_spots)"),
-    ("A1", "pad pocket", "no -> teardrop in pads_and_recesses()"),
-    ("A2", "click", "none/weak -> CLIP_BUMP +0.10; too stiff -> CLIP_BUMP -0.10 or CLIP_LEN +3"),
-    ("A2", "finger", "white/snapped -> CLIP_LEN +4, CLIP_BUMP -0.10; second failure -> magnets (brief: one iteration)"),
-    ("A2", "printed free", "fused -> CLIP_SLOT +0.2"),
-    ("A3", "plate", "loose -> PLATE_CLEAR -0.05; tight -> +0.05"),
-    ("A3", "cover snap", "falls out/weak -> SNAP_BUMP +0.10; too hard -> -0.10; sloppy -> COVER_CLEAR -0.05"),
+    ("A3", "plate", "loose -> PLATE_CLEAR -0.025 (now 0.175); tight -> +0.025"),
+    ("A3", "cover snap", "falls out/weak -> SNAP_BUMP +0.10 (now 0.50); too hard -> -0.10; sloppy -> COVER_CLEAR -0.05"),
     ("A3", "cover level", "COVER_FLOOR / MOD_D"),
-    ("A3", "fingernail", "no -> larger notch in parts.cover()"),
-    ("B1", "frame into body", "loose -> FRAME_FIT -0.10; too hard -> +0.10"),
-    ("B1", "wall flex", "yes -> FIRM_ZONE = 'T2' (modifier-firm-zone.stl); a little -> leave"),
-    ("B1", "bezel into frame", "loose -> FRAME_CLEAR -0.05 (changes pocket size: reissue SEAT-body); tight -> +0.10"),
-    ("B1", "line / level", "SEAM (0.30); FRAME_FLOOR / POCKET_D"),
+    ("A3", "paperclip", "hard/slips -> PULL_SLOT bigger (now 2.5 x 10); bent/broke -> thicker cover floor (COVER_FLOOR)"),
     ("C1", "glass", "rattles -> GLASS_CLEAR -0.10; tight -> +0.10; won't go -> +0.20"),
     ("C1", "lip / border / gap", "LIP_OVERLAP; BEZEL_WALL; LIP_GAP with D4"),
     ("C2", "line-up / home", "USB_Y; USB_WINDOW, USB_WINDOW_R"),
@@ -331,8 +326,8 @@ def summary():
 INTRO = ("Only what is still open. Finished tests are not here (the record of those is COUPON-RESULTS.md). "
          "Tick a box or write in a blank. Never press on the screen glass.")
 GROUP_NOTES = {
-    "A": "Two files to print: coupons/reprint-tpu.3mf (one TPU piece) and coupons/reprint-petg.3mf (five PETG pieces).",
-    "B": "The T1/T2/T3 material test is not here: I have your answers (TPU for AMS, T1, no firm zone, 13 mm legs right).",
+    "A": "One file to print: coupons/reprint-petg.3mf (three PETG pieces). The cap and clip tests passed on the second print and are finished.",
+    "B": "Nothing left here. The seat test is finished, and the T1/T2/T3 material test was answered long ago (TPU for AMS, T1, no firm zone, 13 mm legs right).",
     "C": "C1 to C3 use printed pieces on the real board. C4 is reading labels.",
     "D": "Calipers, in mm, one decimal. D1 to D2 and D5 need the battery, D3, D4 and D7 the board, D6 the accelerometer.",
 }
