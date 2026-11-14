@@ -17,6 +17,7 @@ Updated after every merge so a new session can continue (D-009).
 | R6b | Web UI import page: pdf.js conversion, text parser, edit screen, inbox conversion, sample PDFs, browser test | done (#14) |
 | R7 | Recipe URL import: JSON-LD extraction (device fetch coded, untested) | done (#15) |
 | D-011 | Updates refuse while a recipe timer runs; URL import shows the new recipe with Edit | done (#19) |
+| D-012 S1 | Sleep rules (when to sleep, timed wake, what blocks), RTC snapshot, timers restored after sleep; INT1 moved to GPIO4 in docs | done (#20) |
 | D-010 | "Delete recipes" button with count confirm (device + web UI); web UI lock withdrawn | done (#16) |
 | F1 | Edit a saved recipe in the web UI (also covers fixing URL imports) | done (#17) |
 | F2 | Library thumbnails (`thumb.jpg`) in the Recipes panel (simulator; device needs the JPEG decoder) | done (#18) |

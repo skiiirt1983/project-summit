@@ -20,6 +20,13 @@ struct KitchenTimer {
     int remaining_s(uint64_t now_ms) const;
 };
 
+// A running timer as kept across deep sleep (D-012).
+struct SavedTimer {
+    std::string name;
+    int total_s = 0;
+    uint64_t remaining_ms = 0;  // at the moment it was saved
+};
+
 class Timers {
 public:
     static constexpr size_t kMax = 8;
@@ -32,6 +39,13 @@ public:
     void dismiss_ringing();  // stops every ringing timer
     // Advances time. Returns the timers that finished since the last call.
     std::vector<KitchenTimer> tick(uint64_t now_ms);
+
+    // Running (not ringing) timers, for saving before sleep.
+    std::vector<SavedTimer> save(uint64_t now_ms) const;
+    // Replaces all timers after `slept_ms` asleep. One that came due meanwhile rings at the next tick.
+    void restore(const std::vector<SavedTimer> &saved, uint64_t slept_ms, uint64_t now_ms);
+    // Time until the earliest running timer ends; -1 if none is running.
+    int64_t next_due_ms(uint64_t now_ms) const;
 
     const std::vector<KitchenTimer> &all() const { return timers_; }
     bool ringing() const;
@@ -60,6 +74,9 @@ public:
     // Call a few times a second from the UI loop (after bus.dispatch()).
     void tick(uint64_t now_ms);
     const Timers &timers() const { return timers_; }
+    std::vector<SavedTimer> save() const { return timers_.save(now_ms_); }
+    void restore(const std::vector<SavedTimer> &saved, uint64_t slept_ms, uint64_t now_ms);
+    int64_t next_due_ms() const { return timers_.next_due_ms(now_ms_); }
 
 private:
     void publish(uint64_t now_ms);
