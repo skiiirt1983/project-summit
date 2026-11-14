@@ -72,6 +72,9 @@ PreflightInput preflight_now()
     in.next_alarm_in_s = state_int("alarm/next_in_s", -1);
     in.wifi_connected = state_bool("net/wifi_connected");
     in.time_synced = state_bool("time/synced");
+    Value timers = g->state->get("timers/list");
+    const std::string *list = std::get_if<std::string>(&timers);
+    in.timer_running = list && !list->empty();
     return in;
 }
 
@@ -228,6 +231,11 @@ void do_install(const std::string &version)
 
 void do_previous()
 {
+    const std::string blocker = previous_version_blocker(preflight_now());
+    if (!blocker.empty()) {
+        g->bus->publish("notify/toast", blocker);
+        return;
+    }
     const esp_partition_t *spare = esp_ota_get_next_update_partition(nullptr);
     esp_app_desc_t desc;
     esp_ota_img_states_t st;

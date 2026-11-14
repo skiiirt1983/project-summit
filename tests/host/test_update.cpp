@@ -173,6 +173,13 @@ TEST(preflight_rules)
     in.from_network = false;  // web upload: no TLS, no clock needed
     CHECK(preflight(in) == 0);
     CHECK(preflight_message(kNeedPower) == "Connect USB power or charge to 40% first");
+    // D-011: a running recipe timer blocks installs, uploads and going back a version.
+    CHECK(previous_version_blocker(in).empty());
+    in.timer_running = true;
+    CHECK(preflight(in) == kTimerRunning);
+    CHECK(preflight_message(kTimerRunning) == "Finish or cancel your timers first");
+    CHECK(previous_version_blocker(in) == "Finish or cancel your timers first");
+    in.timer_running = false;
 }
 
 // ---- fake image + writer ----------------------------------------------------

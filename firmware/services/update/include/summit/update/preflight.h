@@ -13,6 +13,7 @@ struct PreflightInput {
     bool time_synced = false;      // needed for TLS certificate checks
     int64_t image_size = 0;
     int64_t slot_size = 0;
+    bool timer_running = false;    // a recipe timer is running or ringing (D-011)
     bool from_network = true;      // catalog download (false = web upload over the LAN)
 };
 
@@ -22,10 +23,14 @@ enum PreflightFail : uint32_t {
     kNoWifi = 4,
     kNoTime = 8,       // clock not synced (catalog download only)
     kDoesNotFit = 16,  // image larger than the spare slot (or empty)
+    kTimerRunning = 32,  // a recipe timer would be lost by the restart
 };
 
 constexpr int kMinBatteryPct = 40;
 constexpr int64_t kAlarmGuardS = 15 * 60;
+
+// Going back to the previous version restarts the device too: "" if allowed, else why not.
+std::string previous_version_blocker(const PreflightInput &in);
 
 // 0 = all clear; otherwise PreflightFail bits.
 uint32_t preflight(const PreflightInput &in);

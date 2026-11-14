@@ -196,8 +196,11 @@ $("rec-url-form").addEventListener("submit", async (e) => {
   $("rec-url-go").disabled = true; msg("rec-url-msg", "The device is fetching the page…");
   try {
     const r = await api("/api/recipes/import-url", { method: "POST", json: { url: $("rec-url").value.trim() } });
-    msg("rec-url-msg", "Imported \u201C" + r.title + "\u201D: " + r.ingredients + " ingredients, " + r.steps + " steps" + (r.photo ? ", with its photo." : "."), "ok");
+    msg("rec-url-msg", "Imported \u201C" + r.title + "\u201D: " + r.ingredients + " ingredients, " + r.steps + " steps" + (r.photo ? ", with its photo." : ".") + " Tap Edit to fix anything.", "ok");
     $("rec-url").value = ""; await loaders.recipes();
+    // Show the new recipe straight away (D-011): its row, with Edit next to it.
+    const row = $("rec-list").querySelector('tr[data-recipe="' + r.id + '"]');
+    if (row) { row.classList.add("new"); row.scrollIntoView({ block: "center" }); }
   } catch (err) { msg("rec-url-msg", err.message, "err"); }
   $("rec-url-go").disabled = false;
 });

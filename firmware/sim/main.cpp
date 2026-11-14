@@ -495,6 +495,17 @@ void selftest(App &app)
         EXPECT(stage() == "failed" && up.status_text().find("40%") != std::string::npos, "pre-flight blocks: %s",
                up.status_text().c_str());
         app.state.set("power/usb_power", true);
+        // D-011: a running recipe timer blocks the install too.
+        app.bus.publish("timers/start", std::string("600|Eggs"));
+        run_ms(app, 300);
+        click(up.install_button());
+        run_ms(app, 100);
+        EXPECT(stage() == "failed" && up.status_text().find("Finish or cancel your timers first") != std::string::npos,
+               "running timer blocks the install: %s", up.status_text().c_str());
+        EXPECT(app.timers->timers().all().size() == 1, "timer exists");
+        if (!app.timers->timers().all().empty())
+            app.bus.publish("timers/cancel", int64_t{app.timers->timers().all()[0].id});
+        run_ms(app, 300);
 
         // Install: full-screen progress, strip hidden, then ready to restart.
         click(up.install_button());

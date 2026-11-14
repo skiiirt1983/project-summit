@@ -124,6 +124,7 @@ try {
   await page.click("#rec-url-go");
   await page.waitForSelector("#rec-url-msg.ok", { timeout: 15000 });
   check((await page.textContent("#rec-url-msg")).includes("Classic Banana Bread") && (await page.textContent("#rec-url-msg")).includes("7 ingredients, 3 steps, with its photo"), "URL import: " + (await page.textContent("#rec-url-msg")));
+  check((await page.textContent("#rec-url-msg")).endsWith("Tap Edit to fix anything.") && (await page.locator('#rec-list tr.new[data-recipe="classic-banana-bread"] button[data-edit]').count()) === 1, "imported recipe shown with Edit next to it");
   const bread = (await library()).recipes.find((r) => r.id === "classic-banana-bread");
   check(bread && bread.has_card && bread.pages === 0 && bread.has_photo, "URL recipe saved: steps only, with photo");
   await page.fill("#rec-url", "https://recipes.example.com/no-recipe");
