@@ -22,6 +22,8 @@
 #include "summit/sd_card.h"
 #include "summit/state_store.h"
 #include "summit/system_settings.h"
+#include "summit/deep_sleep.h"
+#include "summit/power_service.h"
 #include "summit/timers.h"
 #include "summit/update/device.h"
 #include "summit/web/device.h"
@@ -97,6 +99,15 @@ extern "C" void app_main(void)
 
     // Kitchen timers. They are ticked from the UI loop, which starts with the display BSP (Phase 1).
     static summit::TimerService timers(bus, state);
+
+    // Sleep (D-012). The rules are host-tested; deep sleep itself is untested on hardware.
+    // PowerService::tick() runs from the UI loop (Phase 1), so nothing sleeps before then.
+    static summit::DeepSleepPort sleep_port(summit::board::kAccelInt1Gpio);
+    static summit::PowerService power(bus, state, settings, timers, sleep_port);
+    {
+        const summit::BootWake wake = summit::read_boot_wake();
+        power.on_wake(wake.cause, wake.blob.data(), wake.blob.size(), wake.slept_ms, 0);
+    }
 
     static summit::PanelHost host(registry, bus, state, settings);
     state.set("system/hardware_id", std::string(SUMMIT_HARDWARE_ID));

@@ -286,6 +286,10 @@ The state store and event bus are the public API between services, panels and th
 | `ui/swipe_lock` | bool: the shown panel takes horizontal swipes itself | shown panel (Recipes, while a recipe is open) | shell (no page swipe) |
 | `ui/keep_awake` | bool: keep the screen on (30 min safety timeout) | shown panel (Recipes, while a recipe is open) | power service |
 | `input/double_tap` | event: bool, double-tap on the case | IMU service (LIS2DW12) | Recipes (next step / page) |
+| `input/activity` | event: bool, a touch on the screen | shell | power service (restarts the idle-sleep time) |
+| `sensor/face_down` | bool: lying face-down | IMU service (LIS2DW12) | power service (sleep after 30 s) |
+| `power/sleep_blocker` | string: why the device is not sleeping (active, keep_awake, updating, charging, ringing, due_soon, disabled); empty = going to sleep | power service | diagnostics |
+| `power/wake_cause` | string: power_on, timer, motion, button | power service | shell / services (fast path after wake), diagnostics |
 | `recipes/cooking` | string: title of the open recipe; empty = none | Recipes panel | web UI, diagnostics |
 | `timers/start` | event: string "<seconds>\|<name>" | Recipes panel | timer service |
 | `timers/cancel` | event: int timer id | Recipes panel | timer service |
@@ -562,8 +566,8 @@ Code: `firmware/panels/recipes` (`recipe.h`, `quantity.h`, `step_time.h`), host-
 
 On battery the device sleeps whenever nothing needs it (screen off, Wi-Fi off, ESP32-P4 deep sleep) and wakes itself in time for timers and alarms. The rules are pure code in `firmware/services/power/` (`summit/sleep.h`), host-tested in `tests/host/test_sleep.cpp`; the deep-sleep call sits behind `SleepPort` and is untested until Phase 1.
 
-- **Enter sleep:** no touch for the idle timeout (setting, default 5 min; 0 = never), or face-down for 30 s.
-- **Never while:** a recipe is open with the screen-on rule (`ui/keep_awake`), an update runs, a timer or alarm is ringing, or on USB power with "stay on when charging" on (setting, default on). These hold face-down too.
+- **Enter sleep:** no touch for the idle timeout (setting `power/idle_sleep_min`, default 5 min; 0 = never), or face-down for 30 s. `PowerService` (`summit/power_service.h`) checks once a second.
+- **Never while:** a recipe is open with the screen-on rule (`ui/keep_awake`), an update runs, a timer or alarm is ringing, or on USB power with "stay on when charging" on (setting `power/stay_on_charging`, default on). These hold face-down too. The screen-on rule itself ends after 30 minutes without a touch, so a forgotten open recipe cannot drain the battery.
 - **Before sleeping:** running timers (name, length, time left) and the next alarm are written to RTC memory as one small blob (magic number + CRC-32, at most 1 KB; a damaged blob is ignored). The RTC timer is set for the earliest due item minus the wake margin (default 5 s, to be measured on the board). If something is due within the margin the device stays awake for it.
 - **Wake sources:** RTC timer (timer/alarm due), LIS2DW12 INT1 (pick-up / double-tap), power button. The cause is published as `power/wake_cause`.
 - **After wake, fast path:** timer/alarm wake → screen + audio and ring before Wi-Fi starts. Pick-up / button wake → the clock at once, Wi-Fi and data refresh in the background. Panels show the last data with its age rather than a blank page.

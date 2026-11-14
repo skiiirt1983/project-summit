@@ -18,6 +18,7 @@ Updated after every merge so a new session can continue (D-009).
 | R7 | Recipe URL import: JSON-LD extraction (device fetch coded, untested) | done (#15) |
 | D-011 | Updates refuse while a recipe timer runs; URL import shows the new recipe with Edit | done (#19) |
 | D-012 S1 | Sleep rules (when to sleep, timed wake, what blocks), RTC snapshot, timers restored after sleep; INT1 moved to GPIO4 in docs | done (#20) |
+| D-012 S2 | Power service on the bus, sleep settings, fake sleep/wake in the simulator, device deep-sleep port (compiled only) | done (#21) |
 | D-010 | "Delete recipes" button with count confirm (device + web UI); web UI lock withdrawn | done (#16) |
 | F1 | Edit a saved recipe in the web UI (also covers fixing URL imports) | done (#17) |
 | F2 | Library thumbnails (`thumb.jpg`) in the Recipes panel (simulator; device needs the JPEG decoder) | done (#18) |
@@ -25,8 +26,8 @@ Updated after every merge so a new session can continue (D-009).
 **All planned Recipe reader steps (R1–R7) are built for the simulator.** What is left, in suggested order:
 
 1. Nothing is waiting on Paul: D-010 answered the open items (R1-R3 defaults accepted). Defaults for R4-R7 are in `docs/OPEN_QUESTIONS.md` for review when convenient.
-2. One follow-up is left that needs no hardware but needs Paul's decision first (see `docs/OPEN_QUESTIONS.md`, "Follow-ups after R7"): keeping timers across a restart.
-3. Phase 1 on the board: everything in `docs/HARDWARE_TODO.md` (display/touch BSP and UI loop first; then SD card, Wi-Fi, JPEG decoder, double-tap, audio).
+2. No-hardware work is done. D-011 and D-012 are applied; the sleep defaults chosen are in `docs/OPEN_QUESTIONS.md` ("D-012 — Sleep") for review.
+3. Phase 1 on the board: everything in `docs/HARDWARE_TODO.md` (display/touch BSP and UI loop first; then SD card, Wi-Fi, JPEG decoder, double-tap, audio, deep sleep and the INT1 pin check).
 
 How to work here: branch `recipes/stepN-...` from `main`, `bash tests/run_tests.sh`, build the simulator (`firmware/sim/README.md`), run `summit_sim --selftest`, `node tests/web/e2e.mjs` and `node tests/web/e2e_recipes.mjs`, open a PR, merge when CI is green.
 

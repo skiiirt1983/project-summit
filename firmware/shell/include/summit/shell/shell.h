@@ -38,6 +38,7 @@ constexpr const char *kAlarmRinging = "alarm/ringing";      // bool
 constexpr const char *kAmbient = "ui/ambient";              // bool: night / ambient clock
 constexpr const char *kUpdating = "update/in_progress";     // bool
 constexpr const char *kSettingsNotice = "system/settings_notice";  // string, empty = none
+constexpr const char *kActivity = "input/activity";     // event (shell -> power service): a touch
 constexpr const char *kSwipeLock = "ui/swipe_lock";        // bool, set by the shown panel
 constexpr const char *kRotationLocked = "shell/rotation_locked";  // written by the shell
 constexpr const char *kCurrentPanel = "shell/current_panel";      // written by the shell

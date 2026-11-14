@@ -25,6 +25,6 @@ ${CC:-gcc} -std=c99 -g -fsanitize=address,undefined -c third_party/cjson/cJSON.c
 web_srcs="$wb/src/api.cpp $out/cJSON.o"
 recipe_srcs="$rc/src/module.cpp $rc/src/recipe.cpp $rc/src/quantity.cpp $rc/src/step_time.cpp $rc/src/store.cpp $rc/src/cook.cpp $rc/src/web_api.cpp $rc/src/jsonld.cpp"
 for t in test_event_bus test_settings test_panels test_settings_schema test_shell_logic test_update test_web_api test_modules test_recipes test_storage test_timers test_recipe_api test_jsonld test_sleep; do
-  $cxx $srcs $shell_srcs $update_srcs $web_srcs $recipe_srcs $tm/src/timers.cpp firmware/services/power/src/sleep.cpp tests/host/$t.cpp -o "$out/$t"
+  $cxx $srcs $shell_srcs $update_srcs $web_srcs $recipe_srcs $tm/src/timers.cpp firmware/services/power/src/sleep.cpp firmware/services/power/src/power_service.cpp tests/host/$t.cpp -o "$out/$t"
   "$out/$t"
 done

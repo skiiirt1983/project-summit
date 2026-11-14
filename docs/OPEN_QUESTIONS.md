@@ -4,6 +4,21 @@ Each entry: the question, the choice made, why. Newest first. Say if any should 
 
 **D-010 (2026-11-13): Paul accepted all R1-R3 defaults below and the SD wiring guesses (still to be checked on the board, see HARDWARE_TODO.md).**
 
+## D-012 — Sleep
+
+- **Ringing blocks sleep.** Not in D-012's list, added: the device does not sleep while a timer or alarm is ringing.
+- **Blockers beat face-down.** Choice: an update, an open recipe, ringing, or "stay on when charging" keep the device awake even face-down.
+- **"Stay on when charging" also applies face-down.** D-012 lists it only under idle; say if face-down on USB should still sleep.
+- **Open recipe limit.** Choice: the screen-on rule holds for 30 minutes without a touch (the limit already in ARCHITECTURE.md for `ui/keep_awake`), then normal sleep rules apply.
+- **Something due within the wake margin** (5 s): the device stays awake for it instead of sleeping.
+- **Idle timeout 0 = never** sleep when idle (face-down still sleeps). Settings: `power/idle_sleep_min` (default 5), `power/stay_on_charging` (default on); both additive, no schema bump.
+- **What a touch is.** Choice: any press on the screen (`input/activity` from the shell) and a double-tap on the case restart the idle time; turning the device back over does too.
+- **Snapshot.** Up to 8 timers (names cut to 80 bytes) and the next alarm, under 1 KB. A ringing timer is not saved.
+- **Alarms.** There is no alarm service yet; the rules already take `alarm/next_in_s` for the wake time.
+- **Simulator.** In interactive runs a "sleep" wakes at once with a toast; the self-test fakes the sleep and the timer wake.
+- **Power button wake** is not armed: its pin is not known yet (HARDWARE_TODO).
+- **Periodic refresh wake** (optional in D-012): not built.
+
 ## Follow-ups after R7
 
 - **Editing a saved recipe (web UI).** Choice: an "Edit" button per recipe in the Recipes tab opens the same form as import, filled from the device. It changes text only (title, servings, tags, ingredients, steps); pages, photo, source and created date are kept, and the recipe keeps its id (so its folder name does not change with the title). Why: no rename means nothing on the card moves.

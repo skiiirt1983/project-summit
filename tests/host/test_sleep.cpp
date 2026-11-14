@@ -2,7 +2,10 @@
 #include <vector>
 
 #include "check.h"
+#include "fake_storage.h"
+#include "summit/power_service.h"
 #include "summit/sleep.h"
+#include "summit/system_settings.h"
 
 using namespace summit;
 
@@ -175,6 +178,161 @@ TEST(wake_plan)
     CHECK(std::string(wake_cause_name(WakeCause::Motion)) == "motion" && std::string(wake_cause_name(WakeCause::Timer)) == "timer");
 }
 
+namespace {
+
+struct FakePort : SleepPort {
+    int entered = 0;
+    std::vector<uint8_t> blob;
+    int64_t wake_in_ms = 0;
+    void enter(const std::vector<uint8_t> &snapshot, int64_t wake) override
+    {
+        ++entered;
+        blob = snapshot;
+        wake_in_ms = wake;
+    }
+};
+
+struct Rig {
+    EventBus bus{64};
+    StateStore state{bus};
+    FakeStorage storage;
+    Settings settings{system_settings_schema(), storage, &bus};
+    TimerService timers{bus, state};
+    FakePort port;
+    PowerService power{bus, state, settings, timers, port};
+    uint64_t now = 0;
+    Rig() { settings.load(); }
+    void run(uint64_t ms)  // the UI loop, 4 ticks a second
+    {
+        const uint64_t end = now + ms;
+        while (now < end) {
+            now += 250;
+            bus.dispatch();
+            timers.tick(now);
+            power.tick(now);
+        }
+        bus.dispatch();
+    }
+    std::string str(const char *k) { return std::get<std::string>(state.get(k)); }
+};
+
+}  // namespace
+
+TEST(service_sleeps_when_idle_and_wakes_for_a_timer)
+{
+    Rig r;
+    CHECK(std::get<int64_t>(r.settings.get("power/idle_sleep_min")) == 5 &&
+          std::get<bool>(r.settings.get("power/stay_on_charging")));
+    CHECK(r.str("power/wake_cause") == "power_on");
+    r.run(1000);
+    r.bus.publish("timers/start", std::string("14400|Stew: Step 4 of 6"));  // 4 hours
+    r.run(4 * kMin);
+    CHECK(r.port.entered == 0 && r.str("power/sleep_blocker") == "active");
+    r.bus.publish("input/activity", true);  // a touch restarts the idle time
+    r.run(4 * kMin + 30000);
+    CHECK(r.port.entered == 0);
+    r.run(31000);
+    CHECK(r.port.entered == 1 && r.power.asleep() && r.str("power/sleep_blocker").empty());
+    // Wakes 5 s before the timer; the timer is in the blob.
+    SleepSnapshot snap;
+    CHECK(decode_snapshot(r.port.blob.data(), r.port.blob.size(), snap) && snap.timers.size() == 1);
+    const int64_t left = snap.timers.empty() ? 0 : static_cast<int64_t>(snap.timers[0].remaining_ms);
+    CHECK(r.port.wake_in_ms == left - 5000 && left > 3 * 3600 * 1000);
+    CHECK(decode_snapshot(r.port.blob.data(), r.port.blob.size(), snap) && snap.timers.size() == 1 &&
+          snap.timers[0].name == "Stew: Step 4 of 6" && snap.wake_for == WakeFor::Timer);
+    r.run(10 * kMin);
+    CHECK(r.port.entered == 1);  // asleep: nothing more happens
+
+    // Deep sleep restarts the firmware: a fresh rig, clock from 0, woken by the RTC timer.
+    Rig w;
+    std::vector<std::string> critical;
+    w.bus.subscribe("notify/toast_critical", [&](const std::string &, const Value &v) { critical.push_back(std::get<std::string>(v)); });
+    w.power.on_wake(WakeCause::Timer, r.port.blob.data(), r.port.blob.size(), static_cast<uint64_t>(r.port.wake_in_ms), 0);
+    CHECK(w.str("power/wake_cause") == "timer" && w.timers.timers().all().size() == 1);
+    w.run(4750);
+    CHECK(critical.empty());
+    w.run(500);
+    CHECK(critical.size() == 1 && critical[0] == "Timer done: Stew: Step 4 of 6");  // on time
+    // While it rings the device stays awake; a minute later it stops and the idle time runs again.
+    w.run(4 * kMin);
+    CHECK(w.port.entered == 0);
+    w.run(3 * kMin);
+    CHECK(w.port.entered == 1 && w.port.wake_in_ms == -1);
+}
+
+TEST(service_blockers_and_settings)
+{
+    Rig r;
+    r.state.set("power/usb_power", true);
+    r.run(6 * kMin);
+    CHECK(r.port.entered == 0 && r.str("power/sleep_blocker") == "charging");
+    r.settings.set("power/stay_on_charging", false);
+    r.run(2000);
+    CHECK(r.port.entered == 1);
+
+    Rig k;  // recipe open: stays on, but only for 30 minutes without a touch
+    k.state.set("ui/keep_awake", true);
+    k.run(29 * kMin);
+    CHECK(k.port.entered == 0 && k.str("power/sleep_blocker") == "keep_awake");
+    k.run(2 * kMin);
+    CHECK(k.port.entered == 1);
+
+    Rig u;
+    u.state.set("update/in_progress", true);
+    u.state.set("sensor/face_down", true);
+    u.run(6 * kMin);
+    CHECK(u.port.entered == 0 && u.str("power/sleep_blocker") == "updating");
+
+    Rig f;  // face-down: 30 s, even right after a touch
+    f.run(1000);
+    f.bus.publish("input/activity", true);
+    f.state.set("sensor/face_down", true);
+    f.run(29000);
+    CHECK(f.port.entered == 0);
+    f.run(2000);
+    CHECK(f.port.entered == 1);
+
+    Rig n;  // idle sleep off; an alarm sets the wake time
+    n.settings.set("power/idle_sleep_min", int64_t{0});
+    n.state.set("alarm/next_in_s", int64_t{3600});
+    n.run(20 * kMin);
+    CHECK(n.port.entered == 0 && n.str("power/sleep_blocker") == "disabled");
+    n.settings.set("power/idle_sleep_min", int64_t{1});
+    n.run(2000);
+    SleepSnapshot snap;
+    CHECK(n.port.entered == 1 && n.port.wake_in_ms == 3600 * 1000 - 5000 &&
+          decode_snapshot(n.port.blob.data(), n.port.blob.size(), snap) && snap.wake_for == WakeFor::Alarm &&
+          snap.next_alarm_s == 3600);
+}
+
+TEST(service_wake_by_motion_and_bad_blob)
+{
+    Rig r;
+    r.run(1000);
+    r.bus.publish("timers/start", std::string("600|Eggs"));
+    r.run(6 * kMin);
+    CHECK(r.port.entered == 1);
+    Rig w;  // picked up after 2 minutes
+    w.power.on_wake(WakeCause::Motion, r.port.blob.data(), r.port.blob.size(), 2 * kMin, 0);
+    CHECK(w.str("power/wake_cause") == "motion" && w.timers.timers().all().size() == 1);
+    const int64_t left = w.timers.timers().next_due_ms(0);
+    CHECK(left > 100 * 1000 && left < 4 * static_cast<int64_t>(kMin));
+    w.run(4 * kMin);
+    CHECK(w.port.entered == 0);  // the wake counts as activity; the timer rang in between
+    // Damaged blob, or a cold start: no timers, no crash.
+    std::vector<uint8_t> bad = r.port.blob;
+    bad[6] ^= 0xFF;
+    Rig b;
+    b.power.on_wake(WakeCause::Timer, bad.data(), bad.size(), 1000, 0);
+    CHECK(b.timers.timers().all().empty() && b.str("power/wake_cause") == "timer");
+    Rig c;
+    c.power.on_wake(WakeCause::PowerOn, r.port.blob.data(), r.port.blob.size(), 0, 0);
+    CHECK(c.timers.timers().all().empty());
+    Rig z;
+    z.power.on_wake(WakeCause::Button, nullptr, 0, 0, 0);
+    CHECK(z.str("power/wake_cause") == "button");
+}
+
 int main()
 {
     RUN(idle_and_face_down_enter_sleep);
@@ -183,5 +341,8 @@ int main()
     RUN(snapshot_round_trip_and_rejects_damage);
     RUN(timers_survive_sleep);
     RUN(wake_plan);
+    RUN(service_sleeps_when_idle_and_wakes_for_a_timer);
+    RUN(service_blockers_and_settings);
+    RUN(service_wake_by_motion_and_bad_blob);
     return report("sleep scheduler");
 }
