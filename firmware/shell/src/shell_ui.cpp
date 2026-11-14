@@ -817,6 +817,7 @@ void Shell::on_input(lv_event_t *e)
     lv_point_t p;
     lv_indev_get_point(indev_, &p);
     if (lv_event_get_code(e) == LV_EVENT_PRESSED) {
+        d_.bus.publish(topics::kActivity, true);  // any touch resets the idle-sleep timer
         press_ = last_ = p;
         last_ms_ = lv_tick_get();
         velocity_ = 0.0f;

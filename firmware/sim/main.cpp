@@ -34,6 +34,7 @@
 #include "summit/recipes/web_api.h"
 #include "summit/storage.h"
 #include "summit/system_settings.h"
+#include "summit/power_service.h"
 #include "summit/timers.h"
 
 #if SUMMIT_SIM_SDL
@@ -91,6 +92,21 @@ struct FakeStorage : SettingsStorage {
     ReadStatus read_backup(std::string &out) override { out = backup; return ReadStatus::Ok; }
 };
 
+// Stands in for deep sleep: remembers what the device would keep and when it would wake.
+struct FakeSleepPort : SleepPort {
+    bool pending = false;
+    std::vector<uint8_t> blob;
+    int64_t wake_in_ms = -1;
+    int entered = 0;
+    void enter(const std::vector<uint8_t> &snapshot, int64_t wake) override
+    {
+        pending = true;
+        blob = snapshot;
+        wake_in_ms = wake;
+        ++entered;
+    }
+};
+
 struct App {
     EventBus bus{256};
     StateStore state{bus};
@@ -108,6 +124,9 @@ struct App {
     std::unique_ptr<shell::Shell> shell;
     std::unique_ptr<sim::FakeUpdateService> updates;
     std::unique_ptr<TimerService> timers;
+    FakeSleepPort sleep_port;
+    std::unique_ptr<PowerService> power;
+    bool auto_wake = true;  // interactive runs: "sleep" wakes at once (as if picked up)
 };
 
 void run_ms(App &app, uint32_t ms)
@@ -119,6 +138,14 @@ void run_ms(App &app, uint32_t ms)
         app.bus.dispatch();
         if (app.updates) app.updates->tick(g_ms);
         if (app.timers) app.timers->tick(g_ms);
+        if (app.power) {
+            app.power->tick(g_ms);
+            if (app.sleep_port.pending && app.auto_wake) {
+                app.sleep_port.pending = false;
+                app.power->on_wake(WakeCause::Motion, app.sleep_port.blob.data(), app.sleep_port.blob.size(), 0, g_ms);
+                app.bus.publish("notify/toast", std::string("Simulator: the device would sleep now"));
+            }
+        }
         app.shell->tick(g_ms);
         lv_timer_handler();
     }
@@ -812,6 +839,50 @@ void selftest(App &app)
         run_ms(app, 100);
     }
 
+    // --- Sleep (D-012): fake sleep/wake. Idle on battery sleeps; a timer wakes it on time ---
+    {
+        auto blocker = [&] { return std::get<std::string>(app.state.get("power/sleep_blocker")); };
+        auto flag = [&](const char *k) { Value v = app.state.get(k); return std::get_if<bool>(&v) && std::get<bool>(v); };
+        app.auto_wake = false;
+        for (int i = 0; i < 100 && app.shell->toast_showing(); ++i) run_ms(app, 200);
+        app.settings->set("power/idle_sleep_min", int64_t{1});
+        tap(app, app.shell->layout().content.w / 2, app.shell->layout().content.y + app.shell->layout().content.h - 8);
+        run_ms(app, 70 * 1000);
+        EXPECT(app.sleep_port.entered == 0 && blocker() == "charging", "on USB power it stays on (%s)", blocker().c_str());
+        app.state.set("power/usb_power", false);
+        app.bus.publish("timers/start", std::string("90|Tea"));
+        tap(app, app.shell->layout().content.w / 2, app.shell->layout().content.y + app.shell->layout().content.h - 8);
+        run_ms(app, 55 * 1000);
+        EXPECT(app.sleep_port.entered == 0 && blocker() == "active", "a touch restarts the idle time (%s)", blocker().c_str());
+        run_ms(app, 7 * 1000);
+        EXPECT(app.sleep_port.entered == 1 && app.power->asleep(), "idle for a minute on battery: sleeps");
+        SleepSnapshot snap;
+        const bool ok = decode_snapshot(app.sleep_port.blob.data(), app.sleep_port.blob.size(), snap);
+        EXPECT(ok && snap.timers.size() == 1 && snap.timers[0].name == "Tea" &&
+                   app.sleep_port.wake_in_ms == static_cast<int64_t>(snap.timers[0].remaining_ms) - 5000 &&
+                   app.sleep_port.wake_in_ms > 15000 && app.sleep_port.wake_in_ms < 30000,
+               "timer saved; wake set 5 s before it ends (%lld ms)", static_cast<long long>(app.sleep_port.wake_in_ms));
+        // Deep sleep: nothing runs. Then the RTC timer wakes the device.
+        const uint64_t slept = static_cast<uint64_t>(app.sleep_port.wake_in_ms);
+        g_ms += static_cast<uint32_t>(slept);
+        app.sleep_port.pending = false;
+        app.power->on_wake(WakeCause::Timer, app.sleep_port.blob.data(), app.sleep_port.blob.size(), slept, g_ms);
+        run_ms(app, 4000);
+        EXPECT(std::get<std::string>(app.state.get("power/wake_cause")) == "timer" && !flag("timers/ringing") &&
+                   has_chip(app, "timers"),
+               "woke for the timer; it is still counting");
+        run_ms(app, 1500);
+        EXPECT(flag("timers/ringing") && app.shell->toast_showing(), "the timer rings on time after sleep");
+        EXPECT(blocker() == "ringing" && app.sleep_port.entered == 1, "stays awake while it rings (%s)", blocker().c_str());
+        shot("32-landscape-timer-after-sleep");
+        app.bus.publish("timers/dismiss", true);
+        app.state.set("power/usb_power", true);
+        app.settings->set("power/idle_sleep_min", int64_t{5});
+        app.auto_wake = true;
+        run_ms(app, 300);
+        for (int i = 0; i < 100 && app.shell->toast_showing(); ++i) run_ms(app, 200);
+    }
+
     // --- Rotate to portrait 720x1280 (400 ms debounce, then re-layout) ---
     app.shell->go_to_panel("home_clock", false);
     app.state.set("sensor/orientation", std::string("portrait"));
@@ -970,6 +1041,7 @@ int start_app(App &app, shell::Shell::ApplyOrientation apply)
     app.settings->load();
     app.host = std::make_unique<PanelHost>(app.registry, app.bus, app.state, *app.settings);
     app.timers = std::make_unique<TimerService>(app.bus, app.state);
+    app.power = std::make_unique<PowerService>(app.bus, app.state, *app.settings, *app.timers, app.sleep_port);
     app.updates = std::make_unique<sim::FakeUpdateService>(app.bus, app.state, *app.settings, "0.0.1");
     sim::publish_placeholders(app.state);
     publish_storage_state(*app.sd, app.state);
