@@ -118,7 +118,7 @@ TESTS = [
     dict(id="C3", title="Carrier plate on the board", pic="C3-plate.png",
          why="The board screws to the carrier plate through its brass standoffs. This checks the holes and the cut-out in the "
              "plate are where the real board needs them.",
-         pieces=[("SNAP-plate", "from test A3", "reuse it")],
+         pieces=[("SNAP-plate", "already printed", "reuse it")],
          settings="Nothing to print.",
          steps=["Lay the board glass down on a soft cloth.",
                 "Lay SNAP-plate on the brass standoffs at the end away from the USB-C ports, countersunk side up.",
@@ -179,12 +179,11 @@ TESTS = [
 ]
 
 # Finished with the second print (A1 cap, A2 clip, B1 seat): kept in the source for reference, not listed.
-FINISHED = {"A1", "A2", "B1"}
+FINISHED = {"A1", "A2", "A3", "B1"}
 TESTS = [t for t in TESTS if t["id"] not in FINISHED]
 
 # For Claude: what each answer changes. Kept out of the questions on purpose.
 FOR_CLAUDE = [
-    ("A3", "plate", "loose -> PLATE_CLEAR -0.025 (now 0.20); tight -> +0.025"),
         ("C1", "glass", "rattles -> GLASS_CLEAR -0.10; tight -> +0.10; won't go -> +0.20"),
     ("C1", "lip / border / gap", "LIP_OVERLAP; BEZEL_WALL; LIP_GAP with D4"),
     ("C2", "line-up / home", "USB_Y; USB_WINDOW, USB_WINDOW_R"),
@@ -316,9 +315,9 @@ def summary():
 INTRO = ("Only what is still open. Finished tests are not here (the record of those is COUPON-RESULTS.md). "
          "Tick a box or write in a blank. Never press on the screen glass.")
 GROUP_NOTES = {
-    "A": "One piece to print: SNAP-plate (coupons/reprint-petg.3mf). The cap, clip, seat and back-cover tests are finished.",
+    "A": "Nothing left to print. The cap, clip, seat and back-cover tests are all finished.",
     "B": "Nothing left here. The seat test is finished, and the T1/T2/T3 material test was answered long ago (TPU for AMS, T1, no firm zone, 13 mm legs right).",
-    "C": "C1 to C3 use printed pieces on the real board (C3 uses the new SNAP-plate from A3). C4 is reading labels.",
+    "C": "C1 to C3 use printed pieces on the real board (C3 uses the SNAP-plate you already printed). C4 is reading labels.",
     "D": "Calipers, in mm, one decimal. D1 to D2 and D5 need the battery, D3, D4 and D7 the board, D6 the accelerometer.",
 }
 

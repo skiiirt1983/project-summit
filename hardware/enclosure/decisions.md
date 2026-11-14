@@ -81,7 +81,7 @@ inside the pocket.
 | Decision | Why |
 |---|---|
 | Back cover finished: snap ridge 0.50, level, opens with a paperclip through the pull slot | Snap right, level, opens |
-| Carrier plate 0.20 mm per side (was 0.175) | Still tight at 0.175 on the full-width piece. The corner piece that read "loose" at 0.20 could not bind, so it was a weak test. The plate is screwed to the board, so a little play costs nothing |
+| Carrier plate stays 0.175 mm per side. A change to 0.20 was made and reverted the same day | Paul: it was fine before the change. Tight is acceptable because the screws to the board hold the plate. No plate reprint |
 
 ## Fixed 2026-11-13
 - **Mic exit holes were blocked.** The mics sit 29.9 mm off the centre line, which is behind the solid corners of

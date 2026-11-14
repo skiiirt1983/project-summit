@@ -89,9 +89,7 @@ Waiting on the board: C1 to C4. Calipers: D1 to D8.
 | Cover snap | right | `SNAP_BUMP = 0.50` confirmed |
 | Cover back level with the bezel | level | no change |
 | Opening the cover | "yes". The form he used still had the old wording ("with a fingernail at the notch"; the notch is now a paperclip slot), so read as: it opens | `PULL_SLOT` kept. Real slot position untested |
-| Plate on its step | still tight (0.175) | `PLATE_CLEAR` 0.175 -> **0.20**. The screws to the board hold the plate, so it only has to drop in freely |
-
-Retest left: **SNAP-plate only** (one small piece). Everything else on the back cover is finished.
+| Plate on its step | tight at 0.175, but Paul: "I thought it was ok before the change" | **`PLATE_CLEAR` stays 0.175.** I had loosened it to 0.20 and reverted: tight is fine because the screws to the board hold the plate. **Back cover finished, no reprint** |
 
 ## Cross-check: every test this form ever asked
 
@@ -118,7 +116,7 @@ SEAT-body, which fitted.
 
 | File | Pieces | State |
 |---|---|---|
-| `coupons/reprint-petg.3mf` | SNAP-plate | **to print** (REMAINING-TESTS A3). SNAP-bezel and SNAP-cover are printed and finished |
+| `SNAP-bezel.stl`, `SNAP-plate.stl` (0.175), `SNAP-cover.stl` | | printed, finished |
 | `coupons/coupons-material.3mf` | T1, T2, T3 | printed, finished |
 | `coupons/coupons-fit-body.3mf` | SEAT-body, END-bed | printed, finished |
 | `BODY-corner.stl`, `CAP-corner.stl`, `CLIP-frame.stl`, `CLIP-bezel.stl`, `CLIP-body.stl`, `SEAT-frame.stl`, `SEAT-bezel.stl`, `MIC-plate.stl`, `PORT-block.stl` | | printed, finished (no reissue needed) |

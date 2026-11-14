@@ -1,36 +1,12 @@
 # Remaining tests
 
-**Left to do: A. Reprints: 1 · B. Tests not done yet: 0 · C. Needs the board: 4 · D. Measurements: 8**
+**Left to do: A. Reprints: 0 · B. Tests not done yet: 0 · C. Needs the board: 4 · D. Measurements: 8**
 
 Only what is still open. Finished tests are not here (the record of those is COUPON-RESULTS.md). Tick a box or write in a blank. Never press on the screen glass.
 
 ## A. Reprints (pieces changed by your last results)
 
-One piece to print: SNAP-plate (coupons/reprint-petg.3mf). The cap, clip, seat and back-cover tests are finished.
-
-### A3. Carrier plate, one more try
-
-![A3](tests/A3-snap.png)
-
-**What you're testing and why:** The back cover is done: the snap is right, it sits level and it opens. The plate was still a little tight on its step, so it is now 0.025 mm per side looser. It is screwed to the board anyway, so it only needs to drop in freely. Only this one piece needs printing again.
-
-| Piece | Where it is | Note |
-|---|---|---|
-| **SNAP-plate** | coupons/reprint-petg.3mf (or SNAP-plate.stl) | print this one; keep it for test C3 |
-| **SNAP-bezel, SNAP-cover** | already printed | reuse them |
-
-**Print settings:** PETG, 4 walls, 15 % infill, 0.2 mm layers, supports off.
-
-**What to do:**
-
-1. Lay SNAP-bezel face down on the table.
-2. Drop the new SNAP-plate in. It should sit on the small step inside the walls.
-3. Press SNAP-cover in behind it, then turn it over and shake it.
-
-| Question | Answer |
-|---|---|
-| The plate on its step? | ☐ loose, slides about  ☐ right: drops in, no binding  ☐ tight  ☐ won't go in |
-| Does the cover still snap and open as before? | ☐ yes  ☐ no |
+Nothing left to print. The cap, clip, seat and back-cover tests are all finished.
 
 ## B. Tests not done yet
 
@@ -38,7 +14,7 @@ Nothing left here. The seat test is finished, and the T1/T2/T3 material test was
 
 ## C. Needs the board (when it arrives)
 
-C1 to C3 use printed pieces on the real board (C3 uses the new SNAP-plate from A3). C4 is reading labels.
+C1 to C3 use printed pieces on the real board (C3 uses the SNAP-plate you already printed). C4 is reading labels.
 
 ### C1. Glass ring on the real screen
 
@@ -95,7 +71,7 @@ C1 to C3 use printed pieces on the real board (C3 uses the new SNAP-plate from A
 
 | Piece | Where it is | Note |
 |---|---|---|
-| **SNAP-plate** | from test A3 | reuse it |
+| **SNAP-plate** | already printed | reuse it |
 
 **Print settings:** Nothing to print.
 
@@ -244,7 +220,6 @@ Calipers, in mm, one decimal. D1 to D2 and D5 need the battery, D3, D4 and D7 th
 
 | Test | Answer | Changes in cad/params.py |
 |---|---|---|
-| A3 | plate | `loose -> PLATE_CLEAR -0.025 (now 0.20); tight -> +0.025` |
 | C1 | glass | `rattles -> GLASS_CLEAR -0.10; tight -> +0.10; won't go -> +0.20` |
 | C1 | lip / border / gap | `LIP_OVERLAP; BEZEL_WALL; LIP_GAP with D4` |
 | C2 | line-up / home | `USB_Y; USB_WINDOW, USB_WINDOW_R` |
