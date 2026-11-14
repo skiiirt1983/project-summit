@@ -61,7 +61,7 @@ RecipesPanel::RecipesPanel(RecipeStore &store, ImageSource image_source)
     manifest_.name = "Recipes";
     manifest_.version = "0.1.0";
     manifest_.sizes = kSizeFull;
-    manifest_.subscriptions = {"storage/sd_present", "input/double_tap", "timers/list", "recipes/library_rev"};
+    manifest_.subscriptions = {"storage/sd_present", "input/double_tap", "timers/list", "recipes/library_rev", "ui/open_screen"};
     // Glance chips: running timers (never dropped) and "Cooking now" while a recipe is
     // open on another page. Tapping either comes back here.
     GlanceChipDef timers;
@@ -95,6 +95,7 @@ void RecipesPanel::show(PanelContext &ctx, const PanelView &view)
     ctx.set_state("recipes/cooking_chip", std::string());  // this page is showing
     library_changed(ctx.state("recipes/library_rev"));  // deleted while this page was hidden?
     dirty_ = false;
+    take_open_request(ctx.state("ui/open_request"));  // the shell brought us here for a recipe
     render();
 }
 
@@ -142,9 +143,23 @@ void RecipesPanel::on_event(PanelContext &, const std::string &topic, const Valu
         library_changed(v);
     } else if (topic == "storage/sd_present") {
         dirty_ = true;  // card inserted or removed
+    } else if (topic == "ui/open_screen") {
+        take_open_request(v);  // "recipes/open/<id>" from a tapped "New recipe" toast
     } else if (topic == "input/double_tap" && (view_ == View::Card || view_ == View::Book)) {
         act(kNext, 0);  // double-tap the case: next step / next page
     }
+}
+
+// "recipes/open/<id>" (a tapped "New recipe" toast). Opens that recipe if it exists; anything else is ignored.
+void RecipesPanel::take_open_request(const Value &v)
+{
+    static const std::string kPrefix = "recipes/open/";
+    const std::string *s = std::get_if<std::string>(&v);
+    if (!s || s->compare(0, kPrefix.size(), kPrefix) != 0) return;
+    const std::string id = s->substr(kPrefix.size());
+    if (ctx_) ctx_->set_state("ui/open_request", std::string());  // consumed
+    if (id == open_id_ || !valid_recipe_id(id)) return;
+    open_recipe(id);  // false if it is gone: stay where we are
 }
 
 void RecipesPanel::sync_flags()

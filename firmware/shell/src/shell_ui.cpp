@@ -103,7 +103,7 @@ Shell::Shell(Deps deps, ApplyOrientation apply) : d_(deps), apply_(std::move(app
 
 Shell::~Shell()
 {
-    for (auto id : {toast_sub_, critical_sub_, order_sub_, open_sub_})
+    for (auto id : {toast_sub_, critical_sub_, link_sub_, order_sub_, open_sub_})
         if (id) d_.bus.unsubscribe(id);
     for (auto id : module_subs_) d_.bus.unsubscribe(id);
 }
@@ -171,6 +171,7 @@ bool Shell::start(uint32_t now_ms, std::string *error)
     toast_sub_ = d_.bus.subscribe(topics::kToast, [this](const std::string &, const Value &v) { on_toast(v, false); });
     critical_sub_ = d_.bus.subscribe(topics::kToastCritical,
                                      [this](const std::string &, const Value &v) { on_toast(v, true); });
+    link_sub_ = d_.bus.subscribe(topics::kToastLink, [this](const std::string &, const Value &v) { on_toast_link(v); });
     open_sub_ = d_.bus.subscribe(topics::kOpenScreen, [this](const std::string &, const Value &v) {
         const std::string *s = std::get_if<std::string>(&v);
         if (s && *s == "settings/updates") {
@@ -202,6 +203,7 @@ void Shell::build_strip()
     // Gestures go to the first ancestor that doesn't bubble them: stop here.
     lv_obj_remove_flag(strip_, LV_OBJ_FLAG_GESTURE_BUBBLE);
     lv_obj_add_event_cb(strip_, strip_gesture_cb, LV_EVENT_GESTURE, this);
+    lv_obj_add_event_cb(strip_, strip_click_cb, LV_EVENT_CLICKED, this);
     lv_obj_add_event_cb(strip_, strip_long_press_cb, LV_EVENT_LONG_PRESSED, this);
 
     row_ = plain(strip_);
@@ -539,7 +541,39 @@ void Shell::update_hide_reasons()
 void Shell::on_toast(const Value &v, bool critical)
 {
     const std::string *s = std::get_if<std::string>(&v);
-    if (s && !s->empty()) toasts_.push({*s, "", critical, 0}, now_);
+    if (s && !s->empty()) toasts_.push({*s, "", critical, 0, ""}, now_);
+}
+
+// "<screen id>\n<text>": a toast that opens a screen when tapped. Never opens it by itself:
+// someone may be cooking (D-012 follow-up).
+void Shell::on_toast_link(const Value &v)
+{
+    const std::string *s = std::get_if<std::string>(&v);
+    if (!s) return;
+    const size_t nl = s->find('\n');
+    if (nl == std::string::npos || nl == 0 || nl + 1 >= s->size()) return;
+    toasts_.push({s->substr(nl + 1), "", false, 0, s->substr(0, nl)}, now_);
+}
+
+// A tapped link toast: put the screen's panel on show (first path segment = panel id), hand the
+// request to it through state (it may be hidden and miss the event) and publish the event too.
+void Shell::open_target(const std::string &screen)
+{
+    d_.state.set("ui/open_request", screen);
+    go_to_panel(screen.substr(0, screen.find('/')));
+    d_.bus.publish(topics::kOpenScreen, screen);
+}
+
+void Shell::strip_click_cb(lv_event_t *e)
+{
+    auto *self = static_cast<Shell *>(lv_event_get_user_data(e));
+    lv_indev_t *indev = lv_indev_active();
+    if (indev && lv_indev_get_gesture_dir(indev) != LV_DIR_NONE) return;  // a swipe, not a tap
+    if (self->toast_on_ && !self->toast_action_.empty()) {
+        const std::string action = self->toast_action_;
+        self->toast_action_.clear();  // one tap, one open
+        self->open_target(action);
+    }
 }
 
 void Shell::tick(uint32_t now_ms)
@@ -568,6 +602,7 @@ void Shell::tick(uint32_t now_ms)
         toast_on_ = t != nullptr;
         toast_critical_ = t && t->critical;
         toast_text_ = t ? t->text : std::string();
+        toast_action_ = t ? t->action : std::string();
         if (t) {
             lv_label_set_text(toast_label_, t->text.c_str());
             lv_obj_remove_flag(toast_label_, LV_OBJ_FLAG_HIDDEN);
@@ -684,7 +719,7 @@ void Shell::toggle_rotation_lock()
     d_.settings.set("ui/rotation_lock", lock);
     rotation_.set_lock(lock);
     d_.state.set(topics::kRotationLocked, lock != "off");
-    toasts_.push({lock == "off" ? "Rotation unlocked" : "Rotation locked", "", false, 0}, now_);
+    toasts_.push({lock == "off" ? "Rotation unlocked" : "Rotation locked", "", false, 0, ""}, now_);
 }
 
 bool Shell::settings_notice_shown() const { return !lv_obj_has_flag(notice_row_, LV_OBJ_FLAG_HIDDEN); }
@@ -706,7 +741,7 @@ void Shell::refresh_settings_notice()
     }
     lv_label_set_text(notice_label_, text.c_str());
     lv_obj_remove_flag(notice_row_, LV_OBJ_FLAG_HIDDEN);
-    toasts_.push({text, "", true, 0}, now_);  // the notice and its reset live in quick settings
+    toasts_.push({text, "", true, 0, ""}, now_);  // the notice and its reset live in quick settings
 }
 
 void Shell::request_settings_reset()
@@ -721,9 +756,9 @@ void Shell::request_settings_reset()
     lv_label_set_text(reset_label_, "Reset settings");
     if (d_.settings.reset() == ResetResult::Ok) {
         d_.state.set(topics::kSettingsNotice, std::string());
-        toasts_.push({"Settings reset. Old settings kept for export.", "", false, 0}, now_);
+        toasts_.push({"Settings reset. Old settings kept for export.", "", false, 0, ""}, now_);
     } else {
-        toasts_.push({"Reset failed: old settings could not be saved", "", true, 0}, now_);
+        toasts_.push({"Reset failed: old settings could not be saved", "", true, 0, ""}, now_);
     }
 }
 

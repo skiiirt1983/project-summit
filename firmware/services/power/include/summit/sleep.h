@@ -22,6 +22,7 @@ enum class SleepBlocker {
     KeepAwake,       // a recipe is open with the screen-on rule (ui/keep_awake)
     Updating,        // an update is running
     Charging,        // on USB power and "stay on when charging" is on
+    FaceDownUsb,     // face-down on USB power: screen off and muted, but no deep sleep (Wi-Fi and data stay fresh)
     Ringing,         // a timer or alarm is ringing
     DueSoon,         // a timer or alarm is due within the wake margin
     Disabled,        // idle timeout set to 0 (never) and not face-down
@@ -49,6 +50,10 @@ enum class WakeFor { Nothing, Timer, Alarm };
 struct SleepDecision {
     SleepBlocker blocker = SleepBlocker::Active;
     bool sleep() const { return blocker == SleepBlocker::None; }
+    // Face-down for kFaceDownSleepMs (D-012 / face-down DND): chimes muted, alarms and timers still ring.
+    bool dnd = false;
+    // Screen off: DND, except while something rings. Independent of sleeping (on USB it never sleeps face-down).
+    bool screen_off = false;
     int64_t wake_in_ms = -1;         // RTC timer wake; -1 = no timed wake (motion / button only)
     WakeFor wake_for = WakeFor::Nothing;
 };

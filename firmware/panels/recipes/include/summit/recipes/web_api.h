@@ -9,6 +9,7 @@
 //   POST /api/recipes/import-url           {"url"}: the device fetches the page and saves its schema.org Recipe
 // Nothing here deletes a recipe. Pure logic over RecipeStore / Storage; host-tested.
 #pragma once
+#include "summit/event_bus.h"
 #include "summit/recipes/jsonld.h"
 #include "summit/recipes/store.h"
 #include "summit/storage.h"
@@ -25,6 +26,8 @@ public:
     RecipeWebApi(RecipeStore &store, Storage &storage) : store_(store), storage_(storage) {}
     // Enables import-url. The fetcher does the network I/O (device: HTTPS client).
     void set_fetcher(PageFetcher *fetcher) { fetcher_ = fetcher; }
+    // Optional: after a URL import the device shows a "New recipe: <title>" toast that opens it when tapped.
+    void set_bus(EventBus *bus) { bus_ = bus; }
     static constexpr size_t kMaxPageBytes = 2 * 1024 * 1024;
 
     bool handle(const web::Request &req, web::Response &out) override;
@@ -45,6 +48,7 @@ private:
     RecipeStore &store_;
     Storage &storage_;
     PageFetcher *fetcher_ = nullptr;
+    EventBus *bus_ = nullptr;
 };
 
 }  // namespace summit::recipes

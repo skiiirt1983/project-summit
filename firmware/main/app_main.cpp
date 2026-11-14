@@ -64,6 +64,7 @@ extern "C" void app_main(void)
     static summit::recipes::RecipeWebApi recipe_api(recipe_store, sd);
     static summit::recipes::HttpsPageFetcher page_fetcher;  // untested on hardware
     recipe_api.set_fetcher(&page_fetcher);
+    recipe_api.set_bus(&bus);
     registry.add(std::make_unique<summit::recipes::RecipesPanel>(recipe_store));
 
     // Modules ship in the firmware but start uninstalled (ARCHITECTURE.md "Modules").

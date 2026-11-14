@@ -6,9 +6,14 @@ Each entry: the question, the choice made, why. Newest first. Say if any should 
 
 ## D-012 — Sleep
 
+**Decided (Paul, 2026-11-14):**
+
+- **Face-down on USB: DND, no deep sleep.** The screen turns off and sounds are muted (alarms and timers still ring, and the screen comes on for them), but the device never deep-sleeps, so Wi-Fi and data stay fresh. Applies on USB power whatever "stay on when charging" says, so that setting no longer affects face-down. On battery nothing changes: face-down for 30 s deep-sleeps. Built as sleep blocker `face_down_usb` plus state `power/dnd` and `power/screen_off`; the display and audio drivers that act on them are hardware work (HARDWARE_TODO.md).
+- **URL import: web UI highlight, device toast, never a jump.** The web UI highlights the new recipe (as built). The device shows "New recipe: <title>" and opens it only when the toast is tapped. Built as `notify/toast_link` (toast with a screen to open) and `ui/open_request`; the device screen never changes by itself. Replaces the D-011 wording "open the new recipe straight away", see the entry below.
+
 - **Ringing blocks sleep.** Not in D-012's list, added: the device does not sleep while a timer or alarm is ringing.
 - **Blockers beat face-down.** Choice: an update, an open recipe, ringing, or "stay on when charging" keep the device awake even face-down.
-- **"Stay on when charging" also applies face-down.** D-012 lists it only under idle; say if face-down on USB should still sleep.
+- ~~**"Stay on when charging" also applies face-down.**~~ **Answered (2026-11-14):** face-down on USB gives screen off + mute, never deep sleep. See above.
 - **Open recipe limit.** Choice: the screen-on rule holds for 30 minutes without a touch (the limit already in ARCHITECTURE.md for `ui/keep_awake`), then normal sleep rules apply.
 - **Something due within the wake margin** (5 s): the device stays awake for it instead of sleeping.
 - **Idle timeout 0 = never** sleep when idle (face-down still sleeps). Settings: `power/idle_sleep_min` (default 5), `power/stay_on_charging` (default on); both additive, no schema bump.
@@ -27,7 +32,7 @@ Each entry: the question, the choice made, why. Newest first. Say if any should 
 - **Library thumbnails on the device.** Choice: a tile shows `thumb.jpg` (the 320 px picture of page 1 made at PDF import) as a band across the top, cropped to fill. Recipes without one (typed, or imported from a website) show text only. Why not `photo.jpg` for website recipes: it is the full-size photo (up to 2 MB) and the device does not resize images, so a library of them would be slow to draw. If you want pictures for website recipes, the browser could make a thumbnail at import time.
 - ~~Keep timers across a restart?~~ **Answered by D-011 / D-012:** memory only until the RTC is proven (HARDWARE_TODO); across deep sleep they are kept (D-012).
 - **Update guard for timers (D-011).** Choice: a ringing timer counts as running too, and the guard also applies to firmware uploaded from the web UI (same pre-flight).
-- **"Open the new recipe straight away" after a URL import (D-011).** Read as the web UI, since that is where Edit is: the new recipe's row is highlighted and scrolled into view, with the message ending "Tap Edit to fix anything." The device screen does not jump to the recipe (someone may be cooking). Say if you meant the device.
+- **"Open the new recipe straight away" after a URL import (D-011).** Read as the web UI, since that is where Edit is: the new recipe's row is highlighted and scrolled into view, with the message ending "Tap Edit to fix anything." The device screen does not jump to the recipe (someone may be cooking). ~~Say if you meant the device.~~ **Answered (2026-11-14):** web UI highlight stays; the device gets only a "New recipe: <title>" toast that opens the recipe when tapped, never a jump. See D-012 above.
 - **URL imports** are still saved directly; fix them afterwards with Edit. No separate pre-save edit screen.
 
 ## R7 — Import from a website

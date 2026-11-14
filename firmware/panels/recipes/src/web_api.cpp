@@ -218,6 +218,8 @@ Response RecipeWebApi::import_url(const std::string &body)
         std::vector<IndexEntry> index;
         if (photo) store_.rebuild_index(index);
     }
+    // Device: a short toast, never a jump of the screen (someone may be cooking). Tap opens the recipe.
+    if (bus_) bus_->publish("notify/toast_link", "recipes/open/" + id + "\nNew recipe: " + w.recipe.title);
     JsonWriter w2;
     w2.begin_object().key("ok").value(true).key("id").value(id).key("title").value(w.recipe.title);
     w2.key("ingredients").value(static_cast<int64_t>(w.recipe.ingredients.size()));

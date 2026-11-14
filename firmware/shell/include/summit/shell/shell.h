@@ -31,6 +31,7 @@ const lv_font_t *font_for(int16_t px);
 namespace topics {
 constexpr const char *kOrientation = "sensor/orientation";  // "landscape" | "portrait"
 constexpr const char *kToast = "notify/toast";              // event: toast text
+constexpr const char *kToastLink = "notify/toast_link";  // event: "<screen id>\n<text>"; tapping the toast opens that screen
 constexpr const char *kToastCritical = "notify/toast_critical";  // event: shown at once, even full-screen
 constexpr const char *kOpenScreen = "ui/open_screen";       // event (shell -> screens): e.g. "settings/updates"
 constexpr const char *kFullscreen = "ui/fullscreen";        // bool: LyricFlash visuals
@@ -125,6 +126,9 @@ private:
     void refresh_settings_notice();
     void update_hide_reasons();
     void on_toast(const Value &v, bool critical);
+    void on_toast_link(const Value &v);
+    void open_target(const std::string &screen);
+    static void strip_click_cb(lv_event_t *e);
     void rebuild_pages();
     void on_modules_changed();
     void on_input(lv_event_t *e);
@@ -145,9 +149,10 @@ private:
     ToastQueue toasts_;
     bool toast_on_ = false;        // copied from the queue each tick (no pointers into it)
     bool toast_critical_ = false;
-    std::string toast_text_;
+    std::string toast_text_, toast_action_;
     EventBus::SubscriptionId toast_sub_ = 0;
     EventBus::SubscriptionId critical_sub_ = 0;
+    EventBus::SubscriptionId link_sub_ = 0;
     EventBus::SubscriptionId order_sub_ = 0;
     EventBus::SubscriptionId open_sub_ = 0;
     std::unique_ptr<UpdatesScreen> updates_;

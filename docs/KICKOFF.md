@@ -26,7 +26,7 @@ Updated after every merge so a new session can continue (D-009).
 **All planned Recipe reader steps (R1–R7) are built for the simulator.** What is left, in suggested order:
 
 1. Nothing is waiting on Paul: D-010 answered the open items (R1-R3 defaults accepted). Defaults for R4-R7 are in `docs/OPEN_QUESTIONS.md` for review when convenient.
-2. No-hardware work is done. D-011 and D-012 are applied; the sleep defaults chosen are in `docs/OPEN_QUESTIONS.md` ("D-012 — Sleep") for review.
+2. No-hardware work is done. D-011 and D-012 are applied; Paul's answers of 2026-11-14 are applied too (face-down on USB = screen off + mute, no deep sleep; URL import = web UI highlight + tappable "New recipe" device toast, never a jump). Remaining sleep defaults are in `docs/OPEN_QUESTIONS.md` ("D-012 — Sleep") for review.
 3. Phase 1 on the board: everything in `docs/HARDWARE_TODO.md` (display/touch BSP and UI loop first; then SD card, Wi-Fi, JPEG decoder, double-tap, audio, deep sleep and the INT1 pin check).
 
 How to work here: branch `recipes/stepN-...` from `main`, `bash tests/run_tests.sh`, build the simulator (`firmware/sim/README.md`), run `summit_sim --selftest`, `node tests/web/e2e.mjs` and `node tests/web/e2e_recipes.mjs`, open a PR, merge when CI is green.

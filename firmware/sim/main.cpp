@@ -1180,6 +1180,7 @@ int run_web(int port)
     recipes::RecipeWebApi recipe_api(*app.recipe_store, *app.sd);
     SimFetcher fetcher;
     recipe_api.set_fetcher(&fetcher);
+    recipe_api.set_bus(&app.bus);
     api.add_extension(&recipe_api);
     sim::HttpSim http(api, SUMMIT_WEB_ROOT, app.sd.get());
     if (!http.listen(port)) {

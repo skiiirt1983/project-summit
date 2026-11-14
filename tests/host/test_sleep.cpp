@@ -333,6 +333,54 @@ TEST(service_wake_by_motion_and_bad_blob)
     CHECK(z.str("power/wake_cause") == "button");
 }
 
+TEST(face_down_on_usb_is_dnd_without_deep_sleep)
+{
+    // Pure rules: face-down on USB, "stay on" off (so charging alone would not block): never sleeps.
+    SleepInput in = idle_on_battery();
+    in.on_usb_power = true;
+    in.stay_on_when_charging = false;
+    in.last_activity_ms = in.now_ms;
+    in.face_down = true;
+    in.face_down_since_ms = in.now_ms - 29999;
+    SleepDecision d = decide_sleep(in);
+    CHECK(d.blocker == SleepBlocker::FaceDownUsb && !d.dnd && !d.screen_off);
+    in.face_down_since_ms = 0;  // long enough: screen off and muted, still awake
+    d = decide_sleep(in);
+    CHECK(d.blocker == SleepBlocker::FaceDownUsb && d.dnd && d.screen_off && !d.sleep());
+    CHECK(std::string(sleep_blocker_name(d.blocker)) == "face_down_usb");
+    in.ringing = true;  // alarms and timers still ring, and the screen comes on for them
+    d = decide_sleep(in);
+    CHECK(d.blocker == SleepBlocker::Ringing && d.dnd && !d.screen_off);
+    in.ringing = false;
+    in.face_down = false;  // turned back over: normal rules (stay-on off, idle: may sleep)
+    in.last_activity_ms = 0;
+    d = decide_sleep(in);
+    CHECK(d.sleep() && !d.dnd && !d.screen_off);
+    // On battery, face-down still sleeps after 30 s and is DND too.
+    in = idle_on_battery();
+    in.last_activity_ms = in.now_ms;
+    in.face_down = true;
+    in.face_down_since_ms = 0;
+    d = decide_sleep(in);
+    CHECK(d.sleep() && d.dnd && d.screen_off);
+
+    Rig r;  // service: state topics follow the rules, and nothing sleeps for 2 hours face-down on USB
+    r.state.set("power/usb_power", true);
+    r.settings.set("power/stay_on_charging", false);
+    r.run(1000);
+    r.bus.publish("input/activity", true);
+    r.state.set("sensor/face_down", true);
+    r.run(29000);
+    CHECK(std::get<bool>(r.state.get("power/dnd")) == false && std::get<bool>(r.state.get("power/screen_off")) == false);
+    r.run(2000);
+    CHECK(std::get<bool>(r.state.get("power/dnd")) && std::get<bool>(r.state.get("power/screen_off")));
+    r.run(120 * kMin);
+    CHECK(r.port.entered == 0 && r.str("power/sleep_blocker") == "face_down_usb");
+    r.state.set("sensor/face_down", false);  // pick it up: screen back on, DND off
+    r.run(2000);
+    CHECK(std::get<bool>(r.state.get("power/dnd")) == false && std::get<bool>(r.state.get("power/screen_off")) == false);
+}
+
 int main()
 {
     RUN(idle_and_face_down_enter_sleep);
@@ -343,6 +391,7 @@ int main()
     RUN(wake_plan);
     RUN(service_sleeps_when_idle_and_wakes_for_a_timer);
     RUN(service_blockers_and_settings);
+    RUN(face_down_on_usb_is_dnd_without_deep_sleep);
     RUN(service_wake_by_motion_and_bad_blob);
     return report("sleep scheduler");
 }

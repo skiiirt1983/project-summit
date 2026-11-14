@@ -34,6 +34,8 @@ PowerService::PowerService(EventBus &bus, StateStore &state, Settings &settings,
     }));
     state_.set(kWakeCause, std::string(wake_cause_name(WakeCause::PowerOn)));
     state_.set(kSleepBlocker, std::string(sleep_blocker_name(SleepBlocker::Active)));
+    state_.set(kDnd, false);
+    state_.set(kScreenOff, false);
 }
 
 PowerService::~PowerService()
@@ -53,6 +55,8 @@ void PowerService::on_wake(WakeCause cause, const uint8_t *blob, size_t size, ui
     if (cause != WakeCause::PowerOn && decode_snapshot(blob, size, snap)) timers_.restore(snap.timers, slept_ms, now_ms);
     state_.set(kWakeCause, std::string(wake_cause_name(cause)));
     state_.set(kSleepBlocker, std::string(sleep_blocker_name(SleepBlocker::Active)));
+    state_.set(kDnd, false);
+    state_.set(kScreenOff, false);
 }
 
 SleepInput PowerService::input(uint64_t now_ms) const
@@ -90,6 +94,8 @@ void PowerService::tick(uint64_t now_ms)
     const SleepInput in = input(now_ms);
     const SleepDecision d = decide_sleep(in);
     state_.set(kSleepBlocker, std::string(sleep_blocker_name(d.blocker)));
+    state_.set(kDnd, d.dnd);
+    state_.set(kScreenOff, d.screen_off);
     if (!d.sleep()) return;
     SleepSnapshot snap;
     snap.timers = timers_.timers().save(now_ms);
