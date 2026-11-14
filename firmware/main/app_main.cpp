@@ -7,6 +7,7 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 
+#include "board_pins.h"
 #include "hardware_id.h"
 #include "nvs_settings_storage.h"
 #include "summit/event_bus.h"

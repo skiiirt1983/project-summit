@@ -95,12 +95,12 @@ Three bought parts plus printed parts: the board does compute, display, audio, W
 | GND | GND | |
 | SCL | GPIO8 (I2C SCL) | Shared bus, 400 kHz |
 | SDA | GPIO7 (I2C SDA) | Shared bus |
-| INT1 | GPIO21 (proposed) | 4D orientation, double-tap, wake — routed to one pin |
-| INT2 | GPIO22 (optional) | Spare for sleep-state change |
+| INT1 | GPIO4 (proposed, D-012) | 4D orientation, double-tap, wake — routed to one pin. Must be an LP GPIO (0–15) to wake the chip from deep sleep |
+| INT2 | GPIO5 (optional) | Spare for sleep-state change |
 | CS | Tie to VDD_IO | Forces I2C mode |
 | SA0 | Set after bus scan | Picks 0x18 or 0x19 |
 
-GPIO21/22 come from the header's net list in the schematic; confirm against the silkscreen before soldering.
+GPIO4/5 come from the header's net list in the schematic. Before wiring, confirm them against the ESP32-P4 datasheet's LP GPIO list and the board silkscreen; if they are not usable, pick another free GPIO in 0–15 (GPIO21/22, the earlier proposal, cannot wake the chip). The code constants are in `firmware/main/board_pins.h`.
 
 ### I2C address map
 
@@ -557,6 +557,18 @@ Code: `firmware/panels/recipes` (`recipe.h`, `quantity.h`, `step_time.h`), host-
 - **Scaling:** quantity × (wanted servings ÷ recipe servings). Non-metric quantities show as fractions (halves, thirds, quarters, eighths when within 0.02, e.g. `1 1/2 cup`); metric units (g, kg, mg, ml, cl, dl, l) show decimals (`375 ml`, `1.25 kg`).
 - **Step times:** found in the step text for tap-to-start timers: `60 minutes`, `25–30 minutes` (range → lower bound), `10 to 12 min`, `1 hour 30 minutes`, `1 1/2 hours`, `30-minute`, `45 sec`. Numbers without a time unit (350 degrees, 3 eggs) are ignored.
 - **Index** `/recipes/index.json`: `{format: 1, recipes: [{id, title, tags, has_card, has_pages, has_photo, pages, cooked}]}`, recently cooked first, then by title. If it is missing or corrupt it is rebuilt from the folders; folders with a bad name or unreadable `recipe.json` are skipped and reported.
+
+## Sleep (D-012)
+
+On battery the device sleeps whenever nothing needs it (screen off, Wi-Fi off, ESP32-P4 deep sleep) and wakes itself in time for timers and alarms. The rules are pure code in `firmware/services/power/` (`summit/sleep.h`), host-tested in `tests/host/test_sleep.cpp`; the deep-sleep call sits behind `SleepPort` and is untested until Phase 1.
+
+- **Enter sleep:** no touch for the idle timeout (setting, default 5 min; 0 = never), or face-down for 30 s.
+- **Never while:** a recipe is open with the screen-on rule (`ui/keep_awake`), an update runs, a timer or alarm is ringing, or on USB power with "stay on when charging" on (setting, default on). These hold face-down too.
+- **Before sleeping:** running timers (name, length, time left) and the next alarm are written to RTC memory as one small blob (magic number + CRC-32, at most 1 KB; a damaged blob is ignored). The RTC timer is set for the earliest due item minus the wake margin (default 5 s, to be measured on the board). If something is due within the margin the device stays awake for it.
+- **Wake sources:** RTC timer (timer/alarm due), LIS2DW12 INT1 (pick-up / double-tap), power button. The cause is published as `power/wake_cause`.
+- **After wake, fast path:** timer/alarm wake → screen + audio and ring before Wi-Fi starts. Pick-up / button wake → the clock at once, Wi-Fi and data refresh in the background. Panels show the last data with its age rather than a blank page.
+- **Timers across sleep:** restored with the time asleep taken off; one that ended during sleep rings at once. Across a full power loss they are still lost until the external RTC is proven (D-011).
+- **Wi-Fi while asleep:** none. A periodic refresh wake is a possible later option, off by default.
 
 ## "Oh nice" features
 

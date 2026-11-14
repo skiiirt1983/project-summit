@@ -83,6 +83,41 @@ std::vector<KitchenTimer> Timers::tick(uint64_t now_ms)
     return fired;
 }
 
+std::vector<SavedTimer> Timers::save(uint64_t now_ms) const
+{
+    std::vector<SavedTimer> out;
+    for (const KitchenTimer &t : timers_) {
+        if (t.ringing) continue;
+        out.push_back({t.name, t.total_s, t.end_ms > now_ms ? t.end_ms - now_ms : 0});
+    }
+    return out;
+}
+
+void Timers::restore(const std::vector<SavedTimer> &saved, uint64_t slept_ms, uint64_t now_ms)
+{
+    timers_.clear();
+    for (const SavedTimer &s : saved) {
+        if (timers_.size() >= kMax || s.total_s < 1 || s.total_s > kMaxSeconds) continue;
+        KitchenTimer t;
+        t.id = next_id_++;
+        t.name = s.name.empty() ? "Timer" : s.name;
+        t.total_s = s.total_s;
+        t.end_ms = now_ms + (s.remaining_ms > slept_ms ? s.remaining_ms - slept_ms : 0);
+        timers_.push_back(t);
+    }
+}
+
+int64_t Timers::next_due_ms(uint64_t now_ms) const
+{
+    int64_t best = -1;
+    for (const KitchenTimer &t : timers_) {
+        if (t.ringing) continue;
+        const int64_t left = t.end_ms > now_ms ? static_cast<int64_t>(t.end_ms - now_ms) : 0;
+        if (best < 0 || left < best) best = left;
+    }
+    return best;
+}
+
 bool Timers::ringing() const
 {
     return std::any_of(timers_.begin(), timers_.end(), [](const KitchenTimer &t) { return t.ringing; });
@@ -152,6 +187,13 @@ void TimerService::tick(uint64_t now_ms)
         // Critical: shown at once, even in full-screen modes; the audio service rings on timers/ringing.
         bus_.publish("notify/toast_critical", "Timer done: " + t.name);
     }
+    publish(now_ms);
+}
+
+void TimerService::restore(const std::vector<SavedTimer> &saved, uint64_t slept_ms, uint64_t now_ms)
+{
+    now_ms_ = now_ms;
+    timers_.restore(saved, slept_ms, now_ms);
     publish(now_ms);
 }
 
