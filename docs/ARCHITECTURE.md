@@ -448,6 +448,9 @@ One panel per page, horizontal swipe. Home is always the first page; the order o
 
 ### Glance strip
 
+Motion for the pager, the sheet and the system screens is described in "Motion and controls" below.
+
+
 - Thin bar on the top edge of every panel, both orientations. Height = one size token (~6% of the short side, ~44 px). Panels get the content area below it and never draw under it.
 - Contents, left to right: time · next calendar event (title + countdown) · weather now (icon + temp) · printer progress (only while printing) · right side system icons: Wi-Fi, update available, rotation lock, battery % / charging.
 - Each item is a "glance chip" fed by a state-store topic. Panels can register a chip in their manifest, so new panels add chips without shell changes. A chip with no data is hidden.
@@ -456,6 +459,39 @@ One panel per page, horizontal swipe. Home is always the first page; the order o
 - System chip taps: time → Home; update → Settings → Updates; rotation lock → turns the lock off; Wi-Fi and battery → quick-settings sheet.
 - Notifications (print done, update available, etc.) briefly expand the strip as a toast, then collapse. Toasts wait while the strip is hidden, except critical ones (alarm, low battery), which show immediately even in full-screen. Duplicates merge into one; queued toasts expire after 10 min.
 - Hidden during: LyricFlash full-screen visuals, ringing alarm, night/ambient clock, update progress (tap reveals it for 3 s).
+
+### Motion and controls
+
+Designed 2026-11-16 at Paul's request; built for the simulator, **not yet seen on the panel** (frame rate and touch feel are Phase 1 items in HARDWARE_TODO.md). The aim is a phone-like feel: everything on screen answers the finger at once and moves the same way everywhere.
+
+**Rules**
+
+1. **The finger is in charge.** A dragged page sits under the finger, 1:1. Letting go continues from where it is at the finger's speed; nothing restarts or jumps.
+2. **Something always answers within 80 ms.** Every button and chip shrinks a little and lightens the moment it is touched, then relaxes.
+3. **Arrive soft, leave quick.** Things coming in decelerate into place; things going out take about a quarter less time and speed up as they go.
+4. **Move, don't fade.** Screens and sheets travel from where they live (the sheet from the strip, settings pages from the right), so it is clear where to send them back. Only cheap properties are animated (position and background opacity), never whole-screen opacity or scaling, so the software renderer can keep up.
+5. **One set of numbers.** All durations and curves are tokens in `summit/shell/motion.h` (pure, host-tested); the LVGL helpers are in `summit/shell/ui_motion.h`. Panels use the helpers instead of writing their own animations.
+
+**Tokens**
+
+| Token | Value | Used for |
+| --- | --- | --- |
+| Press / release | 80 ms / 200 ms | Buttons and chips: shrink by `space_s / 4` a side and lighten 20% |
+| Page settle | up to 320 ms, at least 140 ms | Page swipe and snap-back; a flick is shorter (2 × distance left ÷ finger speed) |
+| Sheet in / out | 300 ms / 220 ms | Quick settings drops from behind the strip while the page dims; goes back up |
+| Screen in / out | 320 ms / 240 ms | Updates and Modules are pushed in from the right and pulled back out |
+| Page dots | hold 1.2 s, fade 0.3 s | Which page of how many; shown while swiping and just after |
+| Enter curve | cubic-bezier(0.05, 0.7, 0.1, 1) | Anything arriving |
+| Exit curve | cubic-bezier(0.3, 0, 0.8, 0.15) | Anything leaving |
+| Standard curve | cubic-bezier(0.2, 0, 0, 1) | Moves that start and end on screen (dimming) |
+
+**Behaviour**
+
+- **Page swipe:** both pages travel together, edge to edge. Only one panel holds LVGL objects at a time, so the outgoing page leaves as a picture of itself (LVGL snapshot, about 1.7 MB in RGB565, freed when the move ends). If there is no memory for the picture the new page still slides in alone.
+- **Ends of the page list:** dragging past the first or last page stretches like a rubber band (about half the finger's travel at first, then less) and springs back.
+- **Chip taps and "go to panel"** use the same page move, in the direction of the target page.
+- **Buttons:** one primary action per screen in the accent colour; other actions on the chip colour; destructive actions in red text and never the first button of a dialog. Touch targets are at least one size token high.
+- **Not yet built** (next motion steps): recipe step change and library → recipe as moves, dialogs rising from the bottom, toast slide, rotation morph with cards sliding to their new places.
 
 ## Modules and Recipe reader
 

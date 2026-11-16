@@ -1,10 +1,12 @@
 #include "summit/recipes/panel.h"
 
 #include <cstdio>
+#include <algorithm>
 #include <cstdlib>
 
 #include "summit/recipes/module.h"
 #include "summit/shell/shell.h"
+#include "summit/shell/ui_motion.h"
 
 namespace summit::recipes {
 
@@ -224,6 +226,7 @@ lv_obj_t *RecipesPanel::button(lv_obj_t *parent, const std::string &text, int ac
     lv_obj_t *b = lv_button_create(parent);
     lv_obj_set_style_bg_color(b, lv_color_hex(primary ? kAccent : kChip), 0);
     lv_obj_set_style_shadow_width(b, 0, 0);
+    shell::ui_motion::press_feedback(b, std::max<int32_t>(1, t.space_s / 4));
     lv_obj_set_style_radius(b, t.radius, 0);
     lv_obj_set_style_pad_hor(b, t.space_m, 0);
     lv_obj_set_style_pad_ver(b, t.space_s, 0);

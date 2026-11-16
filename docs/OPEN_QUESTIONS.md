@@ -4,6 +4,17 @@ Each entry: the question, the choice made, why. Newest first. Say if any should 
 
 **D-010 (2026-11-13): Paul accepted all R1-R3 defaults below and the SD wiring guesses (still to be checked on the board, see HARDWARE_TODO.md).**
 
+## Motion and controls (2026-11-16)
+
+Paul asked for the front-end feel to be designed (buttons, phone-like transitions). The design is in ARCHITECTURE.md "Motion and controls". Choices made, say if any should change:
+
+- **Timings and curves** (press 80 ms, page up to 320 ms, sheet 300 / 220 ms, screens 320 / 240 ms) are starting values chosen on the simulator; they should be tuned by hand on the panel.
+- **Outgoing page as a picture.** Keeps the "one panel holds LVGL objects" rule, at the cost of about 1.7 MB for a third of a second. Alternative if it is slow on the board: let two panels be shown during a swipe (a change to the panel contract, so it needs a decision).
+- **Updates and Modules come in from the right**, like a phone's settings pages, instead of appearing at once. Their close button is unchanged; swipe-right-to-go-back is not built.
+- **Page dots** at the bottom of the page while swiping and for 1.2 s after. They overlay the page; panels do not reserve space for them.
+- **No whole-screen fades or scaling**, to protect the frame rate. The existing rotation fade is unchanged.
+- **Self-test waits** went from 300 to 400 ms after a page change, because the page move is now up to 320 ms.
+
 ## D-012 — Sleep
 
 **Decided (Paul, 2026-11-14):**

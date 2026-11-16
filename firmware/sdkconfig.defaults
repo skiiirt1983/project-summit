@@ -28,3 +28,4 @@ CONFIG_LV_FONT_DEFAULT_MONTSERRAT_20=y
 
 # Recipes panel: QR code to the web UI for PDF conversion.
 CONFIG_LV_USE_QRCODE=y
+CONFIG_LV_USE_SNAPSHOT=y

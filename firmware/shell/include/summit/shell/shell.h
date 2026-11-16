@@ -97,6 +97,9 @@ public:
     lv_obj_t *reset_button() const { return reset_btn_; }
     std::vector<std::string> visible_chips() const;
     const Pager &pager() const { return *pager_; }
+    // Motion (simulator self-test): the outgoing page's picture is still sliding out / the page dots are showing.
+    bool page_transition_running() const { return ghost_ != nullptr; }
+    bool page_dots_visible() const { return dots_on_; }
     const RotationController &rotation() const { return rotation_; }
     UpdatesScreen &updates() { return *updates_; }
     ModulesScreen *modules_screen() { return modules_.get(); }
@@ -127,6 +130,8 @@ private:
     void update_hide_reasons();
     void on_toast(const Value &v, bool critical);
     void on_toast_link(const Value &v);
+    void drop_ghost();
+    void show_dots();
     void open_target(const std::string &screen);
     static void strip_click_cb(lv_event_t *e);
     void rebuild_pages();
@@ -165,6 +170,12 @@ private:
     lv_obj_t *screen_ = nullptr;
     lv_obj_t *content_ = nullptr;
     lv_obj_t *page_ = nullptr;
+    lv_obj_t *ghost_ = nullptr;          // picture of the outgoing page during a swipe
+    lv_draw_buf_t *ghost_buf_ = nullptr;
+    uint32_t ghost_until_ = 0;
+    lv_obj_t *dots_ = nullptr;           // page dots
+    uint32_t dots_shown_ms_ = 0;
+    bool dots_on_ = false;
     lv_obj_t *strip_ = nullptr;
     lv_obj_t *row_ = nullptr;
     lv_obj_t *spacer_ = nullptr;

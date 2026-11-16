@@ -49,7 +49,7 @@ add_executable(summit_sim
     ${FW}/panels/recipes/src/step_time.cpp ${FW}/panels/recipes/src/store.cpp
     ${FW}/panels/recipes/src/cook.cpp ${FW}/panels/recipes/src/panel.cpp ${FW}/panels/recipes/src/web_api.cpp ${FW}/panels/recipes/src/jsonld.cpp
     ${FW}/shell/src/layout.cpp ${FW}/shell/src/glance.cpp ${FW}/shell/src/strip_state.cpp
-    ${FW}/shell/src/rotation.cpp ${FW}/shell/src/pager.cpp ${FW}/shell/src/shell_ui.cpp
+    ${FW}/shell/src/rotation.cpp ${FW}/shell/src/pager.cpp ${FW}/shell/src/motion.cpp ${FW}/shell/src/ui_motion.cpp ${FW}/shell/src/shell_ui.cpp
     ${FW}/shell/src/updates_screen.cpp ${FW}/shell/src/modules_screen.cpp
     ${FW}/services/update/src/version.cpp ${FW}/services/update/src/catalog.cpp
     ${FW}/services/update/src/preflight.cpp ${FW}/services/update/src/image_check.cpp

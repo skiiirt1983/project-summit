@@ -314,7 +314,7 @@ void selftest(App &app)
     // Tap a chip -> its panel.
     lv_point_t p = chip_center(app, "weather");
     tap(app, p.x, p.y);
-    run_ms(app, 300);
+    run_ms(app, 400);
     EXPECT(current_panel(app) == "weather", "tap weather chip -> %s", current_panel(app).c_str());
     check_panel_inside_content(app, "weather landscape");
     EXPECT(lv_obj_get_child_count(app.shell->page()) == 1, "only the current panel holds LVGL objects");
@@ -324,19 +324,54 @@ void selftest(App &app)
     press(app, 900, 400);
     move_to(app, 300, 410, 10);
     release(app);
-    run_ms(app, 300);
+    run_ms(app, 400);
     EXPECT(current_panel(app) == "news", "swipe left -> %s", current_panel(app).c_str());
     press(app, 300, 400);
     move_to(app, 900, 400, 10);
     release(app);
-    run_ms(app, 300);
+    run_ms(app, 400);
     EXPECT(current_panel(app) == "weather", "swipe right -> %s", current_panel(app).c_str());
+    // Motion: both pages travel together (the outgoing one as a picture), then the picture is dropped.
+    {
+        const int32_t w = lv_obj_get_width(app.shell->page());
+        press(app, 900, 400);
+        move_to(app, 500, 405, 8);
+        const int32_t dragged = lv_obj_get_x(app.shell->page());
+        EXPECT(dragged < -200 && dragged > -w, "the page follows the finger (x=%d)", (int)dragged);
+        EXPECT(app.shell->page_dots_visible(), "page dots show while swiping");
+        release(app);
+        run_ms(app, 60);
+        const int32_t mid = lv_obj_get_x(app.shell->page());
+        EXPECT(current_panel(app) == "news" && app.shell->page_transition_running() && mid > 0 && mid < w + dragged,
+               "mid-swipe: new page continues from the finger, old page still on screen (x=%d)", (int)mid);
+        shot("40-landscape-swipe-mid");
+        run_ms(app, 400);
+        EXPECT(!app.shell->page_transition_running() && lv_obj_get_x(app.shell->page()) == 0, "swipe settles, picture dropped");
+        run_ms(app, 1700);
+        EXPECT(!app.shell->page_dots_visible(), "page dots fade after a moment");
+        press(app, 300, 400);  // back to weather
+        move_to(app, 900, 400, 10);
+        release(app);
+        run_ms(app, 400);
+        // Past the last / first page the page resists: go to the first page and pull right.
+        app.shell->go_to_panel(shell::kHomePanel, false);
+        run_ms(app, 50);
+        press(app, 300, 400);
+        move_to(app, 900, 400, 10);
+        const int32_t over = lv_obj_get_x(app.shell->page());
+        EXPECT(over > 100 && over < 330, "rubber band at the first page (finger 600 px, page %d px)", (int)over);
+        release(app);
+        run_ms(app, 400);
+        EXPECT(current_panel(app) == shell::kHomePanel && lv_obj_get_x(app.shell->page()) == 0, "and it springs back");
+        app.shell->go_to_panel("weather", false);
+        run_ms(app, 50);
+    }
     press(app, 700, 400);  // short drag snaps back
     move_to(app, 650, 400, 4);
     g_hw.point = {650, 400};
     run_ms(app, 200);
     release(app);
-    run_ms(app, 300);
+    run_ms(app, 400);
     EXPECT(current_panel(app) == "weather" && lv_obj_get_x(app.shell->page()) == 0, "short drag snaps back");
 
     // Swipe down from the strip -> quick settings; tap backdrop -> closed.
@@ -345,10 +380,28 @@ void selftest(App &app)
     press(app, on_chip.x, on_chip.y);
     move_to(app, on_chip.x, 300, 6);
     release(app);
-    run_ms(app, 300);
+    run_ms(app, 400);
     EXPECT(app.shell->quick_settings_open(), "swipe down from strip opens quick settings");
     EXPECT(current_panel(app) == "weather", "swipe starting on a chip is not a tap (%s)", current_panel(app).c_str());
     shot("03-landscape-quick-settings");
+    {
+        // Motion: the sheet drops from behind the strip and goes back up; it is hidden only once it has left.
+        lv_obj_t *sheet = app.shell->quick_settings();
+        app.shell->close_quick_settings();
+        run_ms(app, 80);
+        EXPECT(!app.shell->quick_settings_open() && !lv_obj_has_flag(sheet, LV_OBJ_FLAG_HIDDEN) &&
+                   lv_obj_get_style_translate_y(sheet, LV_PART_MAIN) < 0,
+               "closing sheet is still sliding up");
+        run_ms(app, 300);
+        EXPECT(lv_obj_has_flag(sheet, LV_OBJ_FLAG_HIDDEN), "sheet hidden after it left");
+        app.shell->open_quick_settings();
+        run_ms(app, 70);
+        const int32_t ty = lv_obj_get_style_translate_y(sheet, LV_PART_MAIN);
+        EXPECT(ty < 0 && ty > -lv_obj_get_height(sheet), "opening sheet is on its way down (%d)", (int)ty);
+        shot("41-landscape-quick-settings-mid");
+        run_ms(app, 400);
+        EXPECT(lv_obj_get_style_translate_y(sheet, LV_PART_MAIN) == 0, "sheet at rest");
+    }
     {
         // Swipe up on the sheet closes it; reopen for the tap-outside check.
         lv_area_t sh;
@@ -358,7 +411,7 @@ void selftest(App &app)
         release(app);
         EXPECT(!app.shell->quick_settings_open(), "swipe up closes quick settings");
         app.shell->open_quick_settings();
-        run_ms(app, 300);
+        run_ms(app, 400);
     }
     tap(app, 640, g_hw.h() - 20);
     EXPECT(!app.shell->quick_settings_open(), "tap outside closes quick settings");
@@ -438,7 +491,7 @@ void selftest(App &app)
                                  [&](const std::string &, const Value &v) { opened = std::get<std::string>(v); });
     lv_point_t c = chip_center(app, "time");
     tap(app, c.x, c.y);
-    run_ms(app, 300);
+    run_ms(app, 400);
     EXPECT(current_panel(app) == "home_clock", "tap time -> Home (%s)", current_panel(app).c_str());
     c = chip_center(app, "update");
     tap(app, c.x, c.y);
@@ -450,7 +503,7 @@ void selftest(App &app)
     for (const char *id : {"wifi", "battery"}) {
         c = chip_center(app, id);
         tap(app, c.x, c.y);
-        run_ms(app, 300);
+        run_ms(app, 400);
         EXPECT(app.shell->quick_settings_open(), "tap %s -> quick settings", id);
         app.shell->close_quick_settings();
     }
@@ -460,7 +513,7 @@ void selftest(App &app)
     run_ms(app, 100);
     EXPECT(app.shell->toast_showing(), "settings notice raises a toast");
     app.shell->open_quick_settings();
-    run_ms(app, 300);
+    run_ms(app, 400);
     EXPECT(app.shell->settings_notice_shown(), "notice row in quick settings");
     shot("03b-landscape-settings-notice");
     app.settings->set("display/brightness", int64_t{30});
@@ -524,7 +577,7 @@ void selftest(App &app)
         app.state.set("power/usb_power", true);
         // D-011: a running recipe timer blocks the install too.
         app.bus.publish("timers/start", std::string("600|Eggs"));
-        run_ms(app, 300);
+        run_ms(app, 400);
         click(up.install_button());
         run_ms(app, 100);
         EXPECT(stage() == "failed" && up.status_text().find("Finish or cancel your timers first") != std::string::npos,
@@ -532,7 +585,7 @@ void selftest(App &app)
         EXPECT(app.timers->timers().all().size() == 1, "timer exists");
         if (!app.timers->timers().all().empty())
             app.bus.publish("timers/cancel", int64_t{app.timers->timers().all()[0].id});
-        run_ms(app, 300);
+        run_ms(app, 400);
 
         // Install: full-screen progress, strip hidden, then ready to restart.
         click(up.install_button());
@@ -608,8 +661,9 @@ void selftest(App &app)
         };
         EXPECT(!has_page("recipes"), "uninstalled module has no page");
         app.shell->open_quick_settings();
-        run_ms(app, 300);
+        run_ms(app, 400);
         click(app.shell->modules_button());
+        run_ms(app, 400);  // the screen is pushed in from the right: wait until it is at rest
         EXPECT(ms.is_open() && !app.shell->quick_settings_open(), "Modules opens from quick settings");
         EXPECT(ms.action_text("recipes") == "Install" && ms.status_text("recipes") == "Needs a microSD card with 200 MB free",
                "module listed with requirements (%s)", ms.status_text("recipes").c_str());
@@ -879,14 +933,14 @@ void selftest(App &app)
         app.state.set("power/usb_power", true);
         app.settings->set("power/idle_sleep_min", int64_t{5});
         app.auto_wake = true;
-        run_ms(app, 300);
+        run_ms(app, 400);
         for (int i = 0; i < 100 && app.shell->toast_showing(); ++i) run_ms(app, 200);
     }
 
     // --- Rotate to portrait 720x1280 (400 ms debounce, then re-layout) ---
     app.shell->go_to_panel("home_clock", false);
     app.state.set("sensor/orientation", std::string("portrait"));
-    run_ms(app, 300);
+    run_ms(app, 400);
     EXPECT(g_hw.w() == 1280, "no rotation before 400 ms");
     run_ms(app, 200);
     EXPECT(g_hw.w() == 720 && g_hw.h() == 1280, "rotated after debounce");

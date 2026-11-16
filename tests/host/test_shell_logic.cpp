@@ -9,6 +9,7 @@
 #include "summit/shell/layout.h"
 #include "summit/shell/pager.h"
 #include "summit/shell/rotation.h"
+#include "summit/shell/motion.h"
 #include "summit/shell/strip_state.h"
 
 using namespace summit;
@@ -256,6 +257,36 @@ TEST(link_toast_keeps_its_action)
     CHECK(q.current(20 + ToastQueue::kShowMs, true)->action.empty());  // plain toasts open nothing
 }
 
+TEST(motion_rubber_band_settle_and_dots)
+{
+    using namespace summit::shell::motion;
+    // Rubber band: follows the finger at about half speed at first, flattens, keeps the sign, never passes the finger.
+    CHECK(rubber_band(0, 1280) == 0 && rubber_band(100, 0) == 0);
+    CHECK(rubber_band(100, 1280) > 40 && rubber_band(100, 1280) < 60);
+    CHECK(rubber_band(-100, 1280) == -rubber_band(100, 1280));
+    int last = 0;
+    for (int x = 50; x <= 1280; x += 50) {
+        const int r = rubber_band(x, 1280);
+        CHECK(r > last && r < x);
+        last = r;
+    }
+    CHECK(rubber_band(1280, 1280) < 1280 / 2);
+    // Settle time: the full time from rest, shorter for a flick, never under the minimum or over the base.
+    CHECK(settle_ms(1280, 0.0f) == kPageMs);
+    CHECK(settle_ms(1000, 0.2f) == kPageMs);           // slow drag: 2 * 1000 / 0.2 is far over the base
+    CHECK(settle_ms(400, 4.0f) == 200);                // flick: 2 * 400 / 4
+    CHECK(settle_ms(-400, -4.0f) == 200);              // direction does not matter
+    CHECK(settle_ms(50, 8.0f) == kMinSettleMs);
+    CHECK(settle_ms(0, 0.0f) == kMinSettleMs);
+    CHECK(settle_ms(900, 3.0f, 240) == 240);           // a caller's shorter base is the ceiling
+    // Dots: fully shown for the hold time, then a linear fade to nothing.
+    CHECK(dots_opacity(0) == 255 && dots_opacity(kDotsHoldMs) == 255);
+    CHECK(dots_opacity(kDotsHoldMs + kDotsFadeMs / 2) > 100 && dots_opacity(kDotsHoldMs + kDotsFadeMs / 2) < 150);
+    CHECK(dots_opacity(kDotsHoldMs + kDotsFadeMs) == 0 && dots_opacity(60000) == 0);
+    // Things leave faster than they arrive; a press reacts faster than it relaxes.
+    CHECK(kSheetOutMs < kSheetInMs && kScreenOutMs < kScreenInMs && kPressMs < kReleaseMs);
+}
+
 int main()
 {
     RUN(tokens_are_6_percent_of_short_side_and_orientation_independent);
@@ -268,6 +299,7 @@ int main()
     RUN(toasts_wait_while_hidden_and_expire_after_10_min);
     RUN(critical_toasts_show_immediately_even_when_hidden);
     RUN(link_toast_keeps_its_action);
+    RUN(motion_rubber_band_settle_and_dots);
     RUN(page_order_home_first_then_setting_then_rest);
     RUN(rotation_debounces_400ms);
     RUN(rotation_lock_pins_and_long_press_toggles);

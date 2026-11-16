@@ -1,6 +1,7 @@
 #include "summit/shell/updates_screen.h"
 
 #include "summit/shell/shell.h"
+#include "summit/shell/ui_motion.h"
 #include "theme.h"
 
 namespace summit::shell {
@@ -39,6 +40,7 @@ lv_obj_t *button(lv_obj_t *parent, const char *text, bool primary)
     lv_obj_t *l = lv_label_create(b);
     lv_label_set_text(l, text);
     lv_obj_set_style_text_color(l, lv_color_hex(primary ? kBg : kText), 0);
+    ui_motion::press_feedback(b);
     return b;
 }
 
@@ -198,16 +200,18 @@ void UpdatesScreen::apply_layout(const Layout &l)
 
 void UpdatesScreen::open()
 {
+    const bool was_open = open_;
     open_ = true;
-    show(root_, true);
     lv_obj_move_foreground(root_);
+    if (!was_open) ui_motion::push_in(root_, lv_obj_get_width(root_));  // in from the right, like a phone's settings
+    else show(root_, true);
     tick();
 }
 
 void UpdatesScreen::close()
 {
     open_ = false;
-    show(root_, false);
+    ui_motion::pull_out(root_, lv_obj_get_width(root_));
     show(confirm_, false);
 }
 

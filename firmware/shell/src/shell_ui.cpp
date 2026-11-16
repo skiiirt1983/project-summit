@@ -2,6 +2,7 @@
 #include <cstdlib>
 
 #include "summit/shell/shell.h"
+#include "summit/shell/ui_motion.h"
 #include "theme.h"
 
 namespace summit::shell {
@@ -10,7 +11,7 @@ namespace {
 
 using namespace theme;
 constexpr uint32_t kBackdropOpa = LV_OPA_50;
-constexpr uint32_t kSlideMs = 250;
+constexpr uint32_t kSlideMs = motion::kPageMs;
 
 lv_obj_t *plain(lv_obj_t *parent)
 {
@@ -18,18 +19,6 @@ lv_obj_t *plain(lv_obj_t *parent)
     lv_obj_remove_style_all(o);
     lv_obj_remove_flag(o, LV_OBJ_FLAG_SCROLLABLE);
     return o;
-}
-
-void anim_x(lv_obj_t *obj, int32_t from, int32_t to, uint32_t ms)
-{
-    lv_anim_t a;
-    lv_anim_init(&a);
-    lv_anim_set_var(&a, obj);
-    lv_anim_set_values(&a, from, to);
-    lv_anim_set_duration(&a, ms);
-    lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
-    lv_anim_set_exec_cb(&a, [](void *o, int32_t v) { lv_obj_set_x(static_cast<lv_obj_t *>(o), v); });
-    lv_anim_start(&a);
 }
 
 void anim_opa(lv_obj_t *obj, uint32_t ms)
@@ -106,6 +95,7 @@ Shell::~Shell()
     for (auto id : {toast_sub_, critical_sub_, link_sub_, order_sub_, open_sub_})
         if (id) d_.bus.unsubscribe(id);
     for (auto id : module_subs_) d_.bus.unsubscribe(id);
+    drop_ghost();
 }
 
 void Shell::rebuild_pages()
@@ -149,6 +139,14 @@ bool Shell::start(uint32_t now_ms, std::string *error)
     lv_obj_remove_flag(screen_, LV_OBJ_FLAG_SCROLLABLE);
     content_ = plain(screen_);
     page_ = plain(content_);
+    // Opaque, so the picture taken of an outgoing page (show_current) has the page colour, not black.
+    lv_obj_set_style_bg_color(page_, lv_color_hex(kBg), 0);
+    lv_obj_set_style_bg_opa(page_, LV_OPA_COVER, 0);
+    dots_ = plain(lv_layer_top());
+    lv_obj_set_flex_flow(dots_, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(dots_, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_remove_flag(dots_, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(dots_, LV_OBJ_FLAG_HIDDEN);
     updates_ = std::make_unique<UpdatesScreen>(d_.bus, d_.state, d_.settings);
     updates_->build(screen_);  // above the page, below the strip (top layer)
     if (d_.modules) {
@@ -228,6 +226,7 @@ void Shell::build_strip()
         lv_obj_add_flag(c.obj, LV_OBJ_FLAG_EVENT_BUBBLE);
         lv_obj_set_user_data(c.obj, reinterpret_cast<void *>(static_cast<uintptr_t>(i)));
         lv_obj_add_event_cb(c.obj, chip_clicked_cb, LV_EVENT_SHORT_CLICKED, this);
+        ui_motion::press_feedback(c.obj, ui_motion::press_travel());
         c.icon = lv_label_create(c.obj);
         c.text = lv_label_create(c.obj);
         lv_obj_set_style_text_color(c.icon, lv_color_hex(kText), 0);
@@ -300,6 +299,7 @@ void Shell::build_quick_settings()
             lv_label_set_text(l, text);
             lv_obj_set_style_text_color(l, lv_color_hex(kText), 0);
             lv_obj_add_event_cb(b, sheet_event_cb, LV_EVENT_CLICKED, this);
+            ui_motion::press_feedback(b, ui_motion::press_travel());
             return b;
         };
         if (d_.modules) modules_btn_ = make("Modules");
@@ -323,6 +323,7 @@ void Shell::build_quick_settings()
     lv_obj_set_style_bg_color(reset_btn_, lv_color_hex(kChipBg), 0);
     lv_obj_set_style_shadow_width(reset_btn_, 0, 0);
     lv_obj_add_event_cb(reset_btn_, sheet_event_cb, LV_EVENT_CLICKED, this);
+    ui_motion::press_feedback(reset_btn_, ui_motion::press_travel());
     lv_obj_add_flag(notice_row_, LV_OBJ_FLAG_HIDDEN);
     for (lv_obj_t *o : {brightness_, volume_}) {
         lv_obj_add_event_cb(o, sheet_event_cb, LV_EVENT_RELEASED, this);  // persist once, on release
@@ -426,6 +427,24 @@ void Shell::apply_layout(bool morph)
 void Shell::show_current(int slide_dir)
 {
     const std::string &id = pager_->current();
+    const int32_t w = layout_.content.w;
+    // Where the outgoing page is right now: under the finger after a drag, else at rest.
+    const int32_t start_x = slide_dir != 0 ? lv_obj_get_x(page_) : 0;
+    lv_anim_delete(page_, nullptr);
+    drop_ghost();
+#if LV_USE_SNAPSHOT
+    // Only one panel holds LVGL objects at a time, so the outgoing page leaves as a picture
+    // of itself. If there is no memory for the picture the new page still slides in.
+    if (slide_dir != 0 && lv_obj_get_child_count(page_) > 0) {
+        ghost_buf_ = lv_snapshot_take(page_, LV_COLOR_FORMAT_NATIVE);
+        if (ghost_buf_) {
+            ghost_ = lv_image_create(content_);
+            lv_image_set_src(ghost_, ghost_buf_);
+            lv_obj_set_pos(ghost_, start_x, 0);
+            lv_obj_move_background(ghost_);
+        }
+    }
+#endif
     // Every registered panel, not just the current pages: a module's panel may have
     // just been removed from the pages while it was showing.
     for (const std::string &other : d_.registry.ids()) {
@@ -442,12 +461,65 @@ void Shell::show_current(int slide_dir)
     v.tokens = layout_.tokens;
     d_.host.show(id, v);
     d_.state.set(topics::kCurrentPanel, id);
-    lv_anim_delete(page_, nullptr);
     if (slide_dir != 0) {
-        anim_x(page_, slide_dir * layout_.content.w, 0, kSlideMs);
+        // Both pages travel together, edge to edge, and a flick keeps the finger's speed.
+        const int32_t from = start_x + slide_dir * w;
+        const uint32_t ms = motion::settle_ms(from, velocity_, motion::kPageMs);
+        ui_motion::animate(page_, ui_motion::Prop::X, from, 0, ms, motion::kEnter);
+        if (ghost_) {
+            ui_motion::animate(ghost_, ui_motion::Prop::X, start_x, -slide_dir * w, ms, motion::kEnter);
+            ghost_until_ = lv_tick_get() + ms;
+        }
+        show_dots();
     } else {
         lv_obj_set_x(page_, 0);
     }
+    velocity_ = 0.0f;
+}
+
+// The picture of the outgoing page (see show_current).
+void Shell::drop_ghost()
+{
+    if (ghost_) {
+        lv_anim_delete(ghost_, nullptr);
+        lv_obj_delete(ghost_);
+        ghost_ = nullptr;
+    }
+    if (ghost_buf_) {
+        lv_draw_buf_destroy(ghost_buf_);
+        ghost_buf_ = nullptr;
+    }
+}
+
+// Page dots: which page of how many. Shown while swiping and for a moment after, then they fade.
+void Shell::show_dots()
+{
+    if (!pager_ || !dots_) return;
+    const uint32_t n = static_cast<uint32_t>(pager_->count());
+    const Tokens &t = layout_.tokens;
+    const int32_t d = std::max<int32_t>(4, t.space_s / 2);
+    if (lv_obj_get_child_count(dots_) != n) {
+        lv_obj_clean(dots_);
+        for (uint32_t i = 0; i < n; ++i) {
+            lv_obj_t *dot = plain(dots_);
+            lv_obj_set_style_radius(dot, LV_RADIUS_CIRCLE, 0);
+            lv_obj_set_style_bg_color(dot, lv_color_hex(kText), 0);
+        }
+    }
+    lv_obj_set_style_pad_column(dots_, d, 0);
+    for (uint32_t i = 0; i < n; ++i) {
+        lv_obj_t *dot = lv_obj_get_child(dots_, static_cast<int32_t>(i));
+        const bool on = i == pager_->index();
+        lv_obj_set_size(dot, on ? 2 * d : d, d);  // the current page is a short bar
+        lv_obj_set_style_bg_opa(dot, on ? LV_OPA_COVER : LV_OPA_40, 0);
+    }
+    lv_obj_set_size(dots_, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_align(dots_, LV_ALIGN_BOTTOM_MID, 0, -t.space_s);
+    lv_obj_remove_flag(dots_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_opa(dots_, LV_OPA_COVER, 0);
+    dots_shown_ms_ = lv_tick_get();
+    dots_on_ = n > 1;
+    if (!dots_on_) lv_obj_add_flag(dots_, LV_OBJ_FLAG_HIDDEN);
 }
 
 void Shell::refresh_chips(bool force_fit)
@@ -632,11 +704,23 @@ void Shell::tick(uint32_t now_ms)
         if (drag_horizontal_) {
             const bool edge = (dx < 0 && pager_->index() + 1 >= pager_->count()) ||
                               (dx > 0 && pager_->index() == 0);
-            lv_obj_set_x(page_, edge ? dx / 4 : dx);  // resist past the first/last page
+            // Past the first / last page the page follows the finger less and less.
+            lv_obj_set_x(page_, edge ? motion::rubber_band(dx, layout_.content.w) : dx);
+            if (!dots_on_ || lv_tick_elaps(dots_shown_ms_) > 200) show_dots();
             const uint32_t now = lv_tick_get();
             if (now != last_ms_) velocity_ = static_cast<float>(p.x - last_.x) / static_cast<float>(now - last_ms_);
             last_ = p;
             last_ms_ = now;
+        }
+    }
+
+    if (ghost_ && static_cast<int32_t>(lv_tick_get() - ghost_until_) >= 0) drop_ghost();
+    if (dots_on_) {
+        const uint8_t opa = motion::dots_opacity(lv_tick_elaps(dots_shown_ms_));
+        lv_obj_set_style_opa(dots_, opa, 0);  // a handful of small dots: cheap to fade
+        if (opa == 0) {
+            dots_on_ = false;
+            lv_obj_add_flag(dots_, LV_OBJ_FLAG_HIDDEN);
         }
     }
 
@@ -697,20 +781,20 @@ void Shell::open_quick_settings()
     if (sheet_open_) return;
     sheet_open_ = true;
     sync_quick_settings();
-    lv_obj_remove_flag(backdrop_, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_remove_flag(sheet_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(backdrop_);
     lv_obj_move_foreground(sheet_);
     lv_obj_move_foreground(strip_);
-    anim_opa(sheet_, kSlideMs);
+    // Drops out from behind the strip while the page dims.
+    lv_obj_remove_flag(sheet_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_update_layout(sheet_);
+    ui_motion::sheet_down(sheet_, backdrop_, lv_obj_get_height(sheet_), kBackdropOpa);
 }
 
 void Shell::close_quick_settings()
 {
     if (!sheet_open_) return;
     sheet_open_ = false;
-    lv_obj_add_flag(backdrop_, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(sheet_, LV_OBJ_FLAG_HIDDEN);
+    ui_motion::sheet_up(sheet_, backdrop_, lv_obj_get_height(sheet_), kBackdropOpa);
 }
 
 void Shell::toggle_rotation_lock()
@@ -871,7 +955,10 @@ void Shell::on_input(lv_event_t *e)
     if (dragging_ && drag_horizontal_) {
         int dir = Pager::swipe_direction(dx, layout_.content.w, velocity_);
         bool moved = (dir > 0 && next_page()) || (dir < 0 && prev_page());
-        if (!moved) anim_x(page_, lv_obj_get_x(page_), 0, kSlideMs);
+        if (!moved) {  // snap back
+            const int32_t x = lv_obj_get_x(page_);
+            ui_motion::animate(page_, ui_motion::Prop::X, x, 0, motion::settle_ms(x, velocity_), motion::kEnter);
+        }
     }
     dragging_ = false;
     drag_horizontal_ = false;
