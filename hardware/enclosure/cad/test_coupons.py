@@ -1,7 +1,7 @@
 """Test coupons, cut from the real model so they test the real fits.
 
 Run:  python test_coupons.py          -> the pieces still to print:
-     (nothing: all pieces that need no board are printed and finished)
+     ../coupons/coupons-buttons.3mf  BTN-body (TPU), BTN-frame + BTN-cup + 3 BTN-pin (PETG): the button strip
       python test_coupons.py --all    -> also rebuilds the pieces already issued (material slices,
      SEAT, END-bed, CAP-corner, GLASS-ring, MIC-plate, PORT-block). Only after a design change:
      the files in ../coupons/ are the ones Paul printed.
@@ -186,6 +186,31 @@ def snap_coupons():
             "SNAP-cover": lay_flat(raw["SNAP-cover"])}
 
 
+def button_raw():
+    """The strip of the case around the three buttons, as it sits together (module frame):
+    the TPU body down to the ridge, the frame wall, the module's top wall and the three pins."""
+    x0, x1 = parts.button_xs()[0] - 8.0, parts.button_xs()[-1] + 8.0
+    wide = x1 - x0
+    xc = (x0 + x1) / 2
+    body_box = Pos(xc, -52.0, -11.0) * Box(wide, 24.0, 26.0)                    # y -64 .. -40, z +2 .. -24
+    frame_box = Pos(xc, -41.5, -12.0) * Box(wide, 5.0, 24.0)
+    cup_box = Pos(xc, -38.0, -12.0) * Box(wide, 8.0, 24.0)
+    return {"BTN-body": body_local() & body_box, "BTN-frame": parts.frame() & frame_box,
+            "BTN-cup": parts.cup() & cup_box, "BTN-pins": parts.button_pins()}
+
+
+def button_coupons():
+    """Printable pieces. The body stands with module -x up, like the real body. The pins stand on their heads."""
+    raw = button_raw()
+    one_pin = [s for s in raw["BTN-pins"].solids()]
+    printable = {"BTN-body": lay_flat(Rot(0, 90, 0) * raw["BTN-body"]),
+                 "BTN-frame": lay_flat(Rot(-90, 0, 0) * raw["BTN-frame"]),
+                 "BTN-cup": lay_flat(raw["BTN-cup"], flip=True)}
+    for i, s in enumerate(sorted(one_pin, key=lambda q: q.center().X), 1):
+        printable[f"BTN-pin-{i}"] = lay_flat(Rot(90, 0, 0) * s)
+    return printable
+
+
 def glass_ring():
     """The front 6 mm of the bezel, all the way round: checks the glass fit and the lip."""
     ring = parts.cup() & (Pos(0, 0, -3) * Box(400, 400, 6))
@@ -271,8 +296,9 @@ if __name__ == "__main__":
     import sys
     seat, clip, snap, cap = seat_coupons(), clip_coupons(), snap_coupons(), cap_corner()
     # What Paul still has to print (see ../REMAINING-TESTS.md, group A).
-    # Cap and clip tests passed on the second print (BODY-corner, CLIP-frame, CLIP-bezel): nothing to reissue.
-    # Nothing to reissue: every fit test that does not need the board is finished.
+    # New (button access, 2026-11-16): the strip around the three buttons, to try the pins by hand.
+    write(button_coupons(), "coupons-buttons", lambda n: "#d8452f" if "pin" in n else (TPU if "body" in n else petg_colour(n)))
+    # Cap, clip, seat and back-cover tests are finished: nothing else to reissue.
     snap["SNAP-plate"]                                          # (SNAP-plate.stl in ../coupons/ is the printed 0.175 one)
     if "--all" in sys.argv:
         # Pieces already issued and unchanged. Rebuilding them is only needed after a design change;

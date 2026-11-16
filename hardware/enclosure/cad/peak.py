@@ -16,9 +16,9 @@ import parts
 OUT = Path(__file__).resolve().parent.parent / "out"
 
 COLOURS = {"body": "#8d8f8c", "cap": "#8d8f8c", "frame": "#3a3d40", "bezel": "#efe6d2", "plate": "#5b6470",
-           "cover": "#4a4f55", "pads": "#1f6f6b", "glass": "#0b0b0d", "view": "#1d2b3a",
+           "cover": "#4a4f55", "pins": "#d8452f", "pads": "#1f6f6b", "glass": "#0b0b0d", "view": "#1d2b3a",
            "display": "#1b3a2a", "battery": "#3b6ea8", "accelerometer": "#8a3fa0"}
-PRINTED = ("body", "cap", "frame", "bezel", "plate", "cover", "pads")
+PRINTED = ("body", "cap", "frame", "bezel", "plate", "cover", "pins", "pads")
 
 
 def _line_x(p0, d0, p1, d1):
@@ -260,6 +260,7 @@ def build():
         "bezel": loc * parts.cup(),
         "plate": loc * parts.plate(),
         "cover": loc * parts.cover(),
+        "pins": loc * parts.button_pins(),
         "pads": pads,
         "glass": loc * parts.glass(),
         "view": loc * parts.view(),

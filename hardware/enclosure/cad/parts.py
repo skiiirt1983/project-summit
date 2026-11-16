@@ -25,6 +25,43 @@ def _along_x(radius, length):
     return Rot(0, 90, 0) * Cylinder(radius, length)
 
 
+def teardrop(diameter, length, point=None):
+    """A round hole along y, centred on the origin and running from y = 0 towards -y by `length`.
+    With `point` = "-x" the hole gets a 45 degree peak on that side, so it prints without a ceiling
+    (the TPU body stands with module -x pointing up)."""
+    r = diameter / 2
+    hole = Pos(0, -length / 2, 0) * _along_y(r, length)
+    if point == "-x":
+        diamond = Rot(0, 45, 0) * Box(2 * r, length, 2 * r)
+        hole += Pos(0, -length / 2, 0) * (diamond & (Pos(-2 * r, 0, 0) * Box(4 * r, length + 2, 4 * r)))
+    return hole
+
+
+def button_xs():
+    return [p.board_xy(xb, 0)[0] for xb in p.BUTTONS_X]
+
+
+def button_tunnels(y_from, y_to, diameter, point=None):
+    """One tunnel per button from y_from to y_to (both negative, y_to further out)."""
+    out = None
+    for x in button_xs():
+        one = Pos(x, y_from, p.BTN_Z) * teardrop(diameter, abs(y_to - y_from), point)
+        out = one if out is None else out + one
+    return out
+
+
+def button_pins():
+    """The three PETG pusher pins at rest, in the module frame. Each is a Ø PIN_D shaft with a head."""
+    out = None
+    for x in button_xs():
+        shaft = Pos(x, p.BTN_TIP_Y - p.PIN_LEN / 2, p.BTN_Z) * _along_y(p.PIN_D / 2, p.PIN_LEN)
+        head_y = p.PIN_HEAD_REST_Y - p.PIN_HEAD_T / 2
+        head = Pos(x, head_y, p.BTN_Z) * _along_y(p.PIN_HEAD_D / 2, p.PIN_HEAD_T)
+        pin = shaft + head
+        out = pin if out is None else out + pin
+    return out
+
+
 def usb_tunnel(length, extra=0.0, size=None):
     """One plug-sized tunnel with rounded corners, running along x, centred on the origin."""
     wide, high = size or p.USB_WINDOW
@@ -67,9 +104,7 @@ def cup():
     part -= usb_windows(-p.MODULE_L / 2 - 1, -p.GLASS_L / 2 + 1)
     wall_y = -(p.MODULE_W / 2 + p.CAV1_W / 2) / 2                                  # middle of the upper wall
     reach = p.BEZEL_WALL + 3
-    for xb in p.BUTTONS_X:                                                         # paperclip holes
-        x, _ = p.board_xy(xb, 0)
-        part -= Pos(x, wall_y, -p.board_depth(p.BUTTON_H)) * _along_y(p.BUTTON_PIN_D / 2, reach)
+    part -= button_tunnels(-(p.CAV1_W / 2 - 0.5), -(p.MODULE_W / 2 + 1), p.BUTTON_HOLE_D)   # pin holes
     sd_x, _ = p.board_xy(sum(p.SD_X) / 2, 0)
     part -= Pos(sd_x, wall_y, -p.board_depth(p.SD_H)) * Box(p.SD_SLOT[0], reach, p.SD_SLOT[1])
     for side in (-1, 1):
@@ -146,6 +181,7 @@ def frame():
     for x, y in mic_exits():
         part -= Pos(x, y, floor_z - p.FRAME_FLOOR / 2) * Cylinder(p.MIC_CLEAR_D / 2, p.FRAME_FLOOR + 1)
     part -= usb_windows(-p.FRAME_L / 2 - 1, -p.MODULE_L / 2 + 1)
+    part -= button_tunnels(-(p.MODULE_W / 2), -(p.FRAME_W / 2 + 1), p.TUNNEL_D)        # pin guides
     tip = clip_z() + 3.0                                                           # free end, towards the front
     for side in (-1, 1):
         y_wall = side * (inner_w / 2 + p.FRAME_WALL / 2)
@@ -183,6 +219,9 @@ def body_cutter():
         span_y = frame_w - 2 * frame_r * (1 - math.sin(math.radians(45)))
         roof = Rot(0, -90, 0) * extrude(Rectangle(span_z, span_y), p.ROOF_H, taper=45)
         cut += Pos(-frame_l / 2 + 0.01, 0, -(p.LIP_D + p.POCKET_D) / 2) * roof
+    # Pin tunnels (teardrop: the body prints standing, module -x up) and the dimples on the ridge.
+    cut += button_tunnels(-(p.FRAME_W / 2 - 0.5), -99, p.TUNNEL_D, "-x")
+    cut += button_tunnels(p.PIN_FLOOR_Y, -99, p.CBORE_D, "-x")
     skin_z = -p.POCKET_D - p.BACK_SKIN / 2
     cut += Pos(0, 0, skin_z) * Cylinder(p.PUSH_HOLE_D / 2, p.BACK_SKIN + 2)
     for x, y in mic_exits():

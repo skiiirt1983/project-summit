@@ -170,16 +170,13 @@ keyhole or cleat slot; vent slots shaped as a short contour-line pattern (functi
 
 ### Access (from architecture doc)
 - [ ] UART USB-C reachable (flashing/recovery) — not just the charge port.
-- [ ] **Buttons: keep it simple, don't over-engineer.** (The LyricFlash S3 case lost a lot
-      of time to button actuators.) First find where BOOT/RESET/power actually sit on the
-      board, then pick the cheapest option that works:
-      1. Button already lands on an edge → plain cut-out, done.
-      2. Rarely used (BOOT/RESET; recovery is mostly via the web UI / USB flasher) →
-         pinhole for a paperclip, or "open the back to reach it".
-      3. Only a button used **day-to-day** justifies a printed actuator/flexure.
-      Propose the option per button and get Paul's OK before modelling any actuator.
-      Timebox: if a button solution needs more than one test coupon iteration, stop and
-      fall back to option 2.
+- [ ] **Buttons (2026-11-16): every onboard button must be pressable with the case shut.** The newest
+      Waveshare board needs a hard POWER press to turn back on, so POWER, BOOT and RESET each get a printed
+      pusher pin from the button to a dimple on the top ridge (see `decisions.md`, "Button access"). No
+      battery switch is fitted. All positions come from Waveshare's drawing, which the newest board
+      revision may not match: verify on the real board (REMAINING-TESTS C4, C5, D9) before printing the case.
+      (Earlier rule, kept for context: don't over-engineer actuators; the LyricFlash S3 case lost a lot of
+      time to them. The pins are plain rods with no printed spring.)
 - [ ] microSD slot reachable without opening the case (or documented as open-to-swap).
 - [ ] Power switch, if added, recessed so the base/wall doesn't press it.
 - [ ] Ports must stay usable in **both** landscape and portrait on the base

@@ -6,6 +6,7 @@ from pathlib import Path
 from build123d import Box, Pos
 
 import params as p
+import parts
 import peak
 
 here = Path(__file__).resolve().parent
@@ -57,3 +58,20 @@ peak.write_scene(peak.OUT, lip, "scene-lip.json", offsets={k: (0, 0, 0) for k in
     {"label": "Slice through the lip: body (grey) slopes at 45 degrees over the frame (dark); cream bezel on the left",
      "dir": [0, -1, 0], "ortho": True, "noground": True}])
 render("scene-lip.json", "peak-lip.png")
+
+# Button access: where the three pusher pins leave the case, and the path from a button to the ridge.
+from build123d import Pos as _Pos
+xs = parts.button_xs()
+exit_w = loc * _Pos(xs[1], p.BTN_EXIT_Y, p.BTN_Z)
+exit_pt = [exit_w.position.X, exit_w.position.Y, exit_w.position.Z]
+keep_half = _Pos(0, xs[1] - 300, 0) * Box(600, 600, 600)                        # world Y <= the middle button
+path = {k: built[k] & keep_half for k in ("body", "frame", "bezel", "cover", "plate", "pins", "display") if k in built}
+path = {k: v for k, v in path.items() if v.volume > 0}
+peak.write_scene(peak.OUT, built, "scene-buttons.json", hide=("battery", "accelerometer", "display"), views=[
+    {"label": "Landscape: three pins on the top ridge", "dir": [0.35, -0.9, 0.85], "target": exit_pt, "zoom": 2.4},
+    {"label": "Portrait: the ridge is the vertical back edge", "dir": [1.0, -0.2, 0.6], "portrait": True, "flip": True},
+])
+peak.write_scene(peak.OUT, path, "scene-button-path.json", offsets={k: (0, 0, 0) for k in path}, views=[
+    {"label": "Cut through the middle button: pin from the button to the ridge", "dir": [0, 1, 0], "ortho": True, "noground": True}])
+render("scene-buttons.json", "peak-buttons.png")
+render("scene-button-path.json", "peak-button-path.png")

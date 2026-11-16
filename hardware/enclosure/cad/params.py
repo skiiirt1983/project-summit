@@ -82,7 +82,20 @@ SNAP_LEN = 20.0            # back-cover snap ridge length
 SNAP_X = (-38.0, 38.0)     # two ridges per long side, near the ends. (They were one ridge in the middle,
                            # which the SEAT corner coupon did not contain, so its cover could not hold.)
 WIRE_NOTCH = (14.0, 6.0)   # PLACEHOLDER — battery + accelerometer wires through the plate
-BUTTON_PIN_D = 1.8         # paperclip hole over each button (default, Paul to confirm)
+# Button access (2026-11-16). Paul: the newest Waveshare board needs a hard POWER press to turn back on,
+# so every button (POWER, BOOT, RESET) must be pressable from outside with the case assembled. Each
+# button gets a printed pusher pin (PETG) running up the slope from the button, through the module's
+# top wall, the frame and the TPU, to a dimple on the apex ridge. No battery switch is fitted.
+# All values below are untested: COUPON: tune after test print (BTN) and on the real board.
+BUTTON_HOLE_D = 3.4        # hole in the module's top wall; wider than the tunnel, so a small error in where
+                           # the board sits cannot stop the pin reaching the button
+TUNNEL_D = 3.0             # guide tunnel through the frame wall and the TPU body (teardrop in the TPU)
+PIN_D = 2.6                # pusher pin shaft: 0.2 mm clear of the tunnel all round, so it slides freely
+PIN_HEAD_D = 6.0           # finger pad
+PIN_HEAD_T = 1.2
+CBORE_D = 6.5              # dimple in the ridge that the pin head sits in
+PIN_PROUD = 0.6            # at rest the head stands this far out of the ridge, so a fingernail can pull it
+PIN_OVERTRAVEL = 0.5       # how far past 'touching the button' the pin can be pushed before its head bottoms
 SD_SLOT = (18.5, 3.6)      # card slot window in the cup wall
 MIC_HOLE_D = 2.0           # measured (LyricFlash). MIC results: 1.8 printed clean, so 2.0 is safe; kept
 MIC_WALL = 1.6             # measured (LyricFlash): wall thickness at the hole (= COVER_FLOOR, nearly)
@@ -228,6 +241,15 @@ def derive():
     g["FRONT_T"] = POCKET_D + BACK_SKIN                            # front wall thickness
     g["BODY_WIDTH"] = MODULE_L + 2 * (SEAM + SIDE_MARGIN)
     g["BOARD_X0"] = -GLASS_L / 2 + BOARD_INSET_USB_END             # module x of the board's USB end
+    # Button pins: the channel runs up the slope at the button's depth and leaves through the apex
+    # arc (radius OUTER_R, starting FRONT_MARGIN above the seam).
+    g["BTN_Z"] = -(GLASS_RECESS + GLASS_TO_BOARD + BUTTON_H)         # depth of the button axis (negative)
+    g["BTN_TIP_Y"] = -(BOARD_W / 2 + 0.5)                            # where the button's actuator starts
+    g["ARC_START_Y"] = -(MODULE_W / 2 + SEAM + FRONT_MARGIN)         # where the apex arc leaves the front face
+    g["BTN_EXIT_Y"] = ARC_START_Y - (OUTER_R ** 2 - (OUTER_R + BTN_Z) ** 2) ** 0.5   # axis meets the ridge
+    g["PIN_HEAD_REST_Y"] = BTN_EXIT_Y - PIN_PROUD + PIN_HEAD_T       # head's inner face at rest
+    g["PIN_LEN"] = abs(PIN_HEAD_REST_Y) - abs(BTN_TIP_Y)             # shaft length, tip to head
+    g["PIN_FLOOR_Y"] = PIN_HEAD_REST_Y + PIN_OVERTRAVEL              # head bottoms here when pushed in
     g["LIP_RUN"] = (FRAME_L - MODULE_L) / 2 - SEAM + FRAME_FIT      # how far the lip overhangs the frame
     g["LIP_D"] = LIP_LAND + LIP_RUN                                # depth where the pocket reaches full width
     g["ROOF_FLAT"] = (POCKET_D - LIP_D) - 2 * ROOF_H               # flat strip left at the pocket's top end

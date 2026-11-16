@@ -33,7 +33,7 @@ component face.
 | What | x | y | Notes | Source | `params.py` |
 |---|---|---|---|---|---|
 | USB-C ×2 | −1.3 (tip 0.2 inside glass edge) | 23.26, 41.21 | on the short end; centre 1.2 above board | drawing | `USB_Y`, `USB_H` |
-| Buttons ×3 (side-push) | 72.76, 84.44, 96.12 | 65.0 (tip 2.6 inside glass edge) | centre 0.7 above board | drawing | `BUTTONS_X`, `BUTTON_H` |
+| Buttons ×3 (side-push) | 72.76, 84.44, 96.12 | 65.0 (tip 2.6 inside glass edge) | centre 0.7 above board. **The newest board revision may differ: measure (checklist D9)** | drawing | `BUTTONS_X`, `BUTTON_H` |
 | microSD slot | 51.1–67.2 | opens on the buttons edge | centre 0.6 above board | drawing (STEP) | `SD_X`, `SD_H` |
 | Mic 1 / Mic 2 | 14.55 | 2.37 / 62.17 | no hole in the board under them, so they face the back | drawing (STEP) | `MICS` |
 | 40-pin header | 54.55–105.85 | 1.12–7.72 | 5.2 tall; pokes through the carrier plate | drawing (STEP) | `HEADER_BOX` |
@@ -80,3 +80,11 @@ From `ref/lyricflash-enclosure/lyricflash_print_plates.3mf`: `top_shell.stl`, `b
 | Screen module (cream face) | 133.2 × 77.0, 31.1 deep |
 | Inner frame | 137.1 × 80.9 |
 | USB-C plug tunnel through body + frame + bezel wall | 14.2 long |
+
+## Button pins (CAD, 2026-11-16; all untested)
+
+| What | Value (mm) | `params.py` |
+|---|---|---|
+| Pin shaft / head | Ø2.6 / Ø6.0 x 1.2, length ~25.1 | `PIN_D`, `PIN_HEAD_D`, `PIN_HEAD_T`, `PIN_LEN` |
+| Guide tunnel (frame + TPU) / module hole / dimple | Ø3.0 / Ø3.4 / Ø6.5 | `TUNNEL_D`, `BUTTON_HOLE_D`, `CBORE_D` |
+| Axis | 9.55 behind the bezel face, up the slope, 25.7 from the button tip to the ridge | `BTN_Z`, `BTN_TIP_Y`, `BTN_EXIT_Y` |

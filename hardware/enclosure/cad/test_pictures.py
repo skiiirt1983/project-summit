@@ -91,6 +91,13 @@ if __name__ == "__main__":
                         ("SEAT-bezel", CREAM, seat["SEAT-bezel"])],
             {"SEAT-body": (0, 0, 0), "SEAT-frame": (0, 0, 34), "SEAT-bezel": (0, 0, 70)}, [-0.7, -1.0, 0.55])
 
+    btn = tc.button_raw()
+    pins = {"BTN-body (TPU)": ("#8d8f8c", btn["BTN-body"]), "BTN-frame": (FRAME, btn["BTN-frame"]),
+            "BTN-cup": (CREAM, btn["BTN-cup"]), "3 x BTN-pin": ("#d8452f", btn["BTN-pins"])}
+    picture("A4-buttons", [(k, c, s) for k, (c, s) in pins.items()],
+            {"BTN-body (TPU)": (0, 0, 0), "BTN-frame": (0, 34, 0), "BTN-cup": (0, 54, 0), "3 x BTN-pin": (0, -26, 0)},
+            [-0.6, -0.9, 0.7], flip=False)
+
     glass, board = screen_stand_in()
     ring = parts.cup() & (Pos(0, 0, -3) * tc.Box(400, 400, 6))
     picture("C1-glass", [("GLASS-ring", CREAM, ring), ("screen glass", GLASS, glass), ("the board behind it", BOARD, board)],

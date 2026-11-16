@@ -76,6 +76,27 @@ TESTS = [
                 "Press SNAP-cover in behind it, then turn it over and shake it."],
          questions=[("The plate on its step?", ["loose, slides about", "right: drops in, no binding", "tight", "won't go in"]),
                     ("Does the cover still snap and open as before?", ["yes", "no"])]),
+    dict(id="A4", title="Button pins on the bench (new)", pic="A4-buttons.png",
+         why="Paul's note: the newest board needs a hard press of its POWER button to switch back on, so every button "
+             "(POWER, BOOT, RESET) now has a pusher pin that reaches from the button, through the module wall, the frame and the "
+             "soft body, to a small dimple on the top ridge. This strip is the real case around the three buttons, so you can "
+             "check the fit and the feel before the board arrives. A picture of the whole path is renders/peak-button-path.png.",
+         pieces=[("BTN-body", "coupons/coupons-buttons.3mf (or BTN-body.stl)", "TPU for AMS, T1 settings. Prints standing up; supports off"),
+                 ("BTN-frame", "coupons/coupons-buttons.3mf", "PETG"),
+                 ("BTN-cup", "coupons/coupons-buttons.3mf", "PETG, front face down"),
+                 ("BTN-pin-1, -2, -3", "coupons/coupons-buttons.3mf", "PETG, standing on their heads")],
+         settings=PETG + " for the PETG pieces; " + TPU + " for BTN-body.",
+         steps=["Stack the strip in this order: BTN-cup (flat side towards the body), then BTN-frame, then BTN-body with its curved ridge at the far end. Line up the three pairs of holes.",
+                "Push a pin in from the ridge end, head last, until it is through all three layers. Do the same for the other two.",
+                "Press each pin with a fingertip, then with a pen tip. Let go and see where it ends up.",
+                "Hold the strip with the ridge pointing down and shake gently, then lay it on its side with the ridge to the left.",
+                "Pull a pin out again with a fingernail."],
+         questions=[("Do the pins slide through all three layers?", ["freely", "stiff but go", "stick", "won't go through"]),
+                    ("Does a pin move freely under a fingertip (no sticking, no scraping)?", ["yes", "a little stiff", "sticks"]),
+                    ("Is the head easy to find and press with a fingertip?", ["yes", "too small", "too sunk in", "too proud"]),
+                    ("When you tip it with the ridge down, do the pins fall out?", ["no", "one does", "all do"]),
+                    ("Can you pull a pin out again with a fingernail?", ["yes, easily", "yes, but hard", "no"]),
+                    ("Did the three pin holes in BTN-body print clean (round, not blocked)?", ["yes", "no"])]),
     dict(id="B1", title="Seat: body, frame and bezel corner", pic="B1-seat.png",
          why="This is one corner of the real case: the soft body, the stiff frame inside it, and the cream bezel. It checks "
              "how the three fit and how the thin line between cream and body looks. Your results document had ticks for this "
@@ -132,9 +153,25 @@ TESTS = [
          pieces=[], settings="Nothing to print.",
          steps=["Hold the board as in the picture: back towards you, USB-C ports on the left, buttons along the top."],
          questions=[("Buttons 1, 2, 3 (left to right): which is which?", ["1 = ___", "2 = ___", "3 = ___"]),
+                    ("Does the board have extra buttons or switches that the drawing does not show?", ["no", "yes: ___"]),
                     ("Which USB-C port is labelled UART?", ["A (upper)", "B (lower)"]),
                     ("Sockets X, Y, Z: which is BAT (battery) and which is SPK (speaker)?", ["BAT = ___", "SPK = ___"]),
                     ("Mics M1 and M2: is there a small hole on top of the metal can?", ["yes", "no, plain top"])]),
+    dict(id="C5", title="Buttons on the real board", pic="D-board.png",
+         why="The point of the whole pin design: every button must be pressable with the case shut. This checks the pins "
+             "really reach the real buttons, that they click, and that you can switch the board back on with a hard POWER press. "
+             "The newest board may differ from Waveshare's drawing, so this is the first test that uses real hardware.",
+         pieces=[("BTN-cup, BTN-pin-1, -2, -3", "from test A4", "reuse them")],
+         settings="Nothing to print.",
+         steps=["Lay the board on the table with the three buttons along the top edge, as in the picture (numbers 1, 2, 3).",
+                "Hold BTN-cup so its flat inner face is 3 mm from the board's top edge (use a 3 mm spacer), with the three holes centred over the three buttons.",
+                "Push each pin through the hole until it touches its button. Press, and feel for the click.",
+                "Switch the board off, then use the pin over POWER to switch it back on."],
+         questions=[("Do the three holes sit over the three buttons?", ["yes", "off by ___ mm sideways", "off by ___ mm up or down"]),
+                    ("Does each pin click its button?", ["all three", "only ___", "none"]),
+                    ("Does the pin leave the button properly when you let go (no stuck press)?", ["yes", "no"]),
+                    ("Can you switch the board back on by pressing POWER through its pin?", ["yes, short press", "yes, needs a hard press", "no"]),
+                    ("How hard do you have to press (BOOT or RESET)?", ["light", "firm", "very hard"])]),
     dict(id="D1", title="Battery thickness", pic="D-measure.png", needs="battery",
          why="The most important number. It sets how thick the front wall of the case is.",
          pieces=[], settings="",
@@ -176,6 +213,14 @@ TESTS = [
          pieces=[], settings="",
          steps=["Measure across the speaker and its total depth."],
          questions=[("Fit a speaker?", ["yes", "no"]), ("Diameter and depth", ["___ mm across", "___ mm deep"])]),
+    dict(id="D9", title="The buttons on the real board (the new revision may differ from the drawing)", pic="D-board.png", needs="board",
+         why="Waveshare's drawing may not match the newest board. These numbers decide where the three pin tunnels must go.",
+         pieces=[], settings="",
+         steps=["Board back towards you, as in the picture, buttons along the top. Measure from the USB-C end edge of the board to the centre of each button, then how far each button sticks out beyond the top edge, and how high its centre is above the board."],
+         questions=[("Distance from the USB-C end to button 1, 2, 3 (centres)", ["1: ___ mm", "2: ___ mm", "3: ___ mm"]),
+                    ("How far each button sticks out beyond the board's top edge", ["___ mm"]),
+                    ("Height of the button centre above the board", ["___ mm"]),
+                    ("Any extra button, or a button on a different edge? (drawing: three on the top edge)", ["no", "yes: ___"])]),
 ]
 
 # Finished with the second print (A1 cap, A2 clip, B1 seat): kept in the source for reference, not listed.
@@ -188,7 +233,12 @@ FOR_CLAUDE = [
     ("C1", "lip / border / gap", "LIP_OVERLAP; BEZEL_WALL; LIP_GAP with D4"),
     ("C2", "line-up / home", "USB_Y; USB_WINDOW, USB_WINDOW_R"),
     ("C3", "holes / flat / header", "STANDOFFS, SCREW_D; STANDOFF_H; HEADER_BOX, J5_BOX"),
+    ("A4", "pins", "stick/stiff -> TUNNEL_D +0.1 or PIN_D -0.1; too small/sunk/proud -> PIN_HEAD_D, PIN_PROUD, CBORE_D; fall out -> add a retaining lip in the dimple; hard to pull -> PIN_PROUD +0.4"),
+    ("A4", "holes clean", "no -> TUNNEL_D +0.2 (teardrop in the TPU body)"),
+    ("C5", "reach / click", "off sideways -> BUTTONS_X; up or down -> BUTTON_H; no click -> pin tip (BTN_TIP_Y) or BUTTON_HOLE_D; stuck press -> TUNNEL_D, PIN_D"),
+    ("C5", "hard press", "only if POWER needs more travel: PIN_OVERTRAVEL"),
     ("C4", "labels", "button access notes; cable guidance; WIRE_NOTCH; mic path (MIC_EXIT_Y, listening test)"),
+    ("D9", "buttons", "BUTTONS_X, BUTTON_H, BTN_TIP_Y (drives every pin, tunnel and dimple)"),
     ("D1", "T", "BATT_T (drives FRONT_T)"),
     ("D2", "L, W", "BATT_L, BATT_W"),
     ("D3", "H", "MODULE_DEPTH"),
@@ -315,10 +365,10 @@ def summary():
 INTRO = ("Only what is still open. Finished tests are not here (the record of those is COUPON-RESULTS.md). "
          "Tick a box or write in a blank. Never press on the screen glass.")
 GROUP_NOTES = {
-    "A": "Nothing left to print. The cap, clip, seat and back-cover tests are all finished.",
+    "A": "One new thing to print: the button strip (coupons/coupons-buttons.3mf). The cap, clip, seat and back-cover tests are all finished.",
     "B": "Nothing left here. The seat test is finished, and the T1/T2/T3 material test was answered long ago (TPU for AMS, T1, no firm zone, 13 mm legs right).",
-    "C": "C1 to C3 use printed pieces on the real board (C3 uses the SNAP-plate you already printed). C4 is reading labels.",
-    "D": "Calipers, in mm, one decimal. D1 to D2 and D5 need the battery, D3, D4 and D7 the board, D6 the accelerometer.",
+    "C": "C1 to C3 and C5 use printed pieces on the real board (C3 uses the SNAP-plate you already printed). C4 is reading labels. Newest Waveshare boards may differ from the drawing, so C4 and C5 matter most.",
+    "D": "Calipers, in mm, one decimal. D1 to D2 and D5 need the battery, D3, D4, D7 and D9 the board, D6 the accelerometer.",
 }
 
 

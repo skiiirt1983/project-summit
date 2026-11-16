@@ -83,6 +83,21 @@ inside the pocket.
 | Back cover finished: snap ridge 0.50, level, opens with a paperclip through the pull slot | Snap right, level, opens |
 | Carrier plate stays 0.175 mm per side. A change to 0.20 was made and reverted the same day | Paul: it was fine before the change. Tight is acceptable because the screws to the board hold the plate. No plate reprint |
 
+## Button access (2026-11-16, Paul's note about the newest Waveshare board)
+
+Paul: the latest Waveshare ESP32-S3 came with an updated PCB with unreleased changes, and it needs a hard press of the on-board POWER button to turn back on; the switches fitted earlier may not work as planned. So **all three buttons must be pressable from outside with the case assembled**, not only reachable after pulling the module out.
+
+| Decision | Why |
+|---|---|
+| Every button (POWER, BOOT, RESET) gets a printed PETG **pusher pin**: from the button, through a 3.4 mm hole in the module's top wall, a 3.0 mm guide tunnel in the frame and the TPU, to a 6.5 mm dimple on the top ridge. Pins are identical; the three heads sit 11.7 mm apart (the buttons' pitch) | Replaces the earlier 1.8 mm paperclip holes inside the module, which needed the module pulled out. The pin tip is fixed at the button; the pin returns on the button's own spring, no printed spring |
+| **No battery slide switch is fitted, and none should be added.** The POWER button is the only on/off | A switch in the battery line can leave the board unable to turn itself on, which is exactly the trouble with the new revision |
+| The pins stand 0.6 mm proud of the ridge so a fingernail can pull them, and bottom out 0.5 mm past the button's touch point | Easy removal; cannot over-press a button |
+| Pins block the module from sliding out while they are in: pull the three pins first, then push the module out through the finger hole (default, Paul to confirm) | Pin tips sit in the module's holes; a spring-loaded or shorter pin would need a more complex part |
+| Top ridge exit: in landscape the pins point up the slope and are pressed from above; in portrait the ridge is the vertical back edge and they are pressed from the side | Buttons are on the board's long edge, so the only exits are the ridge or the desk |
+| Teardrop-topped tunnels and dimples in the TPU body (peak pointing toward the port end, which is up when printing) | No ceilings in TPU |
+| **Everything about the buttons is from Waveshare's drawing, which the new revision may not match.** First check on the board: tests C4, C5 and D9. Button positions are `BUTTONS_X`, `BUTTON_H`, `BTN_TIP_Y`; every tunnel, hole and pin follows them | Paul: the new boards have caused a redesign before |
+| After C4 (which button is POWER): mark the POWER pin (default: a raised bar on its head) | Pins are identical until then |
+
 ## Fixed 2026-11-13
 - **Mic exit holes were blocked.** The mics sit 29.9 mm off the centre line, which is behind the solid corners of
   the triangle, so the holes in frame and body did not reach the hollow. The exit holes (cover, frame, body) are now
@@ -101,7 +116,7 @@ Paul asked for the full model to be built ahead without waiting. Each of these i
 | 8.2 | Screen module is a self-contained snap-fit unit (cream bezel with walls + carrier plate + back cover). It pushes into the inner frame from the front and is held by four printed spring clips. To remove it, push through the 22 mm finger hole inside the triangle | No magnets or screws to buy; nothing visible on the front | 4 magnet pairs (fallback if the clip coupon fails twice) |
 | 8.2 | Inner frame is held in the TPU body by the body's own 1.5 mm lip, which also hides the frame edge | Keeps one thin seam around the cream bezel | Glue; frame flange |
 | — | Board screws to a 2 mm carrier plate through its four M2.5 standoffs (4× M2.5×5 countersunk). The plate seats on a step in the bezel walls and is the divider between board and battery | LyricFlash pattern; nothing presses on the glass | Posts from the back cover |
-| — | Buttons: three 1.8 mm paperclip holes in the module's top wall, reached after pulling the module out. No actuators | Brief: cheapest option; power-off is rare | Holes through the body (20 mm long, not practical) |
+| — | (superseded 2026-11-16: see "Button access") Buttons: three 1.8 mm paperclip holes in the module's top wall, reached after pulling the module out | Brief: cheapest option; power-off is rare | — |
 | — | microSD: open-to-swap. Slot window in the module wall, reached after pulling the module out | Slot faces the thick top of the front wall | Slot through the body |
 | — | Mics: sound leaves through the back. Ø4 pass-through in plate, frame and body skin; the one Ø2.0 × 1.6 LyricFlash hole is in the back cover. Opens into the hollow, never covered in either orientation | Mics face the back and sit behind the battery | Side ports (20+ mm of body in the way) |
 | — | Battery sits against the end away from the ports; a 20.6 mm strip at the port end stays free for mics, accelerometer and wires | Keeps the mic path and the Wi-Fi antenna clear | — |
