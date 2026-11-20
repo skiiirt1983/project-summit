@@ -88,3 +88,18 @@ From `ref/lyricflash-enclosure/lyricflash_print_plates.3mf`: `top_shell.stl`, `b
 | Pin shaft / head | Ø2.6 / Ø6.0 x 1.2, length ~25.1 | `PIN_D`, `PIN_HEAD_D`, `PIN_HEAD_T`, `PIN_LEN` |
 | Guide tunnel (frame + TPU) / module hole / dimple | Ø3.0 / Ø3.4 / Ø6.5 | `TUNNEL_D`, `BUTTON_HOLE_D`, `CBORE_D` |
 | Axis | 9.55 behind the bezel face, up the slope, 25.7 from the button tip to the ridge | `BTN_Z`, `BTN_TIP_Y`, `BTN_EXIT_Y` |
+
+## Measured on the real (newer) board, 2026-11-20
+
+| What | Value (mm) | Source |
+|---|---|---|
+| Glass front to top of the 40-pin header | 11.6 | measured |
+| Glass front to top of a standoff | 11.8 | measured |
+| Glass outline | 126.93 x 70.71 | measured (matches the drawing) |
+| Buttons from the USB-C end (centres) | 74.54, 86.50, 98.05 (assumed from the board edge) | measured |
+| Buttons: stick-out past the top edge; centre height above the board | 0.75; 1.4 | measured |
+| Button order from the USB-C end | RESET, BOOT, POWER | read from the board |
+| UART USB-C port | the upper one (nearer the buttons) | read from the board |
+| Sockets | X = BAT (J2), Y = SPK (J5), Z = RTC (H3) | read from the board |
+| Speaker | 25.9 x 26.1 x 4.52, wires from the middle of the side | measured |
+| White adhesive on the glass edge | not measured yet (D10) | — |

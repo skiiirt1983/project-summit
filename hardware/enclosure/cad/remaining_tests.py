@@ -22,9 +22,9 @@ FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 BOX = "☐"
 
-TPU = "TPU for AMS, 2 walls, 10 % gyroid, 0.2 mm layers, supports off"
-PETG = "PETG, 4 walls, 15 % infill, 0.2 mm layers, supports off"
-PETG_FINE = "PETG (cream if you have it), 4 walls, 15 % infill, 0.12 mm layers, supports off"
+TPU = "TPU for AMS, 2 walls, 10 % gyroid, 0.2 mm layers, line width 0.42, supports off"
+PETG = "PETG, 4 walls, 15 % gyroid, 0.2 mm layers, line width 0.42 (all types), Classic walls, supports off"
+PETG_FINE = "PETG (cream if you have it), 4 walls, 15 % gyroid, 0.12 mm layers, line width 0.42 (all types), Classic walls, supports off"
 
 GROUPS = {
     "A": "Reprints (pieces changed by your last results)",
@@ -80,12 +80,12 @@ TESTS = [
          why="Paul's note: the newest board needs a hard press of its POWER button to switch back on, so every button "
              "(POWER, BOOT, RESET) now has a pusher pin that reaches from the button, through the module wall, the frame and the "
              "soft body, to a small dimple on the top ridge. This strip is the real case around the three buttons, so you can "
-             "check the fit and the feel before the board arrives. A picture of the whole path is renders/peak-button-path.png.",
-         pieces=[("BTN-body", "coupons/coupons-buttons.3mf (or BTN-body.stl)", "TPU for AMS, T1 settings. Prints standing up; supports off"),
-                 ("BTN-frame", "coupons/coupons-buttons.3mf", "PETG"),
-                 ("BTN-cup", "coupons/coupons-buttons.3mf", "PETG, front face down"),
-                 ("BTN-pin-1, -2, -3", "coupons/coupons-buttons.3mf", "PETG, standing on their heads")],
-         settings=PETG + " for the PETG pieces; " + TPU + " for BTN-body.",
+             "check the fit and the feel. A picture of the whole path is renders/peak-button-path.png.",
+         pieces=[("BTN-body", "coupons/coupons-buttons.3mf (or BTN-body.stl)", "TPU: printing now. Prints standing up"),
+                 ("BTN-frame", "coupons/petg-plate.3mf (or BTN-frame.stl)", "PETG"),
+                 ("BTN-cup", "coupons/petg-plate.3mf (or BTN-cup.stl)", "PETG, front face down, 0.12 mm layers"),
+                 ("BTN-pin-1, -2, -3", "coupons/petg-plate.3mf (or BTN-pin-N.stl)", "PETG, standing on their heads; walls 3, infill 100 %")],
+         settings="Per-piece settings are in the table at the top. These pieces keep the version you already have; they match the TPU strip that is printing.",
          steps=["Stack the strip in this order: BTN-cup (flat side towards the body), then BTN-frame, then BTN-body with its curved ridge at the far end. Line up the three pairs of holes.",
                 "Push a pin in from the ridge end, head last, until it is through all three layers. Do the same for the other two.",
                 "Press each pin with a fingertip, then with a pen tip. Let go and see where it ends up.",
@@ -97,6 +97,25 @@ TESTS = [
                     ("When you tip it with the ridge down, do the pins fall out?", ["no", "one does", "all do"]),
                     ("Can you pull a pin out again with a fingernail?", ["yes, easily", "yes, but hard", "no"]),
                     ("Did the three pin holes in BTN-body print clean (round, not blocked)?", ["yes", "no"])]),
+    dict(id="A5", title="Glass ring, second try", pic="A5-glass.png",
+         why="The first ring did not fit the real screen, and you saw white adhesive on the inside of the glass edge. This time "
+             "there are two rings: A is as designed (0.3 mm of room per side), B has 0.25 mm more room per side. Print them with the "
+             "settings in the table at the top: last time the line width was probably different, which changes how thick the "
+             "walls come out and how big the pocket is. If one fits, we know how much room the glass needs; if neither does, "
+             "we need the adhesive measurement (D10).",
+         pieces=[("GLASS-ring", "coupons/petg-plate.3mf (or GLASS-ring.stl)", "PETG, 0.12 mm layers, face down. Same file as before: reprint it with the correct line width"),
+                 ("GLASS-ring-B", "coupons/petg-plate.3mf (or GLASS-ring-B.stl)", "PETG, 0.12 mm layers, face down. New: bigger pocket")],
+         settings=PETG_FINE + ". Elephant foot compensation 0.15 mm. Prints face down.",
+         steps=["First measure the screen module with the white adhesive on it (test D10).",
+                "Lay a ring face down on a soft cloth. Lower the screen into it, glass down. Never press on the glass.",
+                "Do the same with the other ring.",
+                "Turn the one that fits over and look at the screen through the opening, switched on if you can."],
+         questions=[("Which ring does the screen drop into?", ["A only", "B only", "both", "neither"]),
+                    ("In the ring that fits, how much play is there?", ["rattles", "just right", "tight"]),
+                    ("Is the white adhesive visible or catching on the ring's wall?", ["no", "yes, on the ___ side(s)"]),
+                    ("Does the lip cover only the black border, not the picture?", ["yes", "covers the picture on the ___ side"]),
+                    ("Does the black border look even enough behind the cream?", ["yes", "no"]),
+                    ("With the board resting in the ring, is there a gap between lip and glass?", ["touching", "small gap", "large gap"])]),
     dict(id="B1", title="Seat: body, frame and bezel corner", pic="B1-seat.png",
          why="This is one corner of the real case: the soft body, the stiff frame inside it, and the cream bezel. It checks "
              "how the three fit and how the thin line between cream and body looks. Your results document had ticks for this "
@@ -163,11 +182,12 @@ TESTS = [
              "The newest board may differ from Waveshare's drawing, so this is the first test that uses real hardware.",
          pieces=[("BTN-cup, BTN-pin-1, -2, -3", "from test A4", "reuse them")],
          settings="Nothing to print.",
-         steps=["Lay the board on the table with the three buttons along the top edge, as in the picture (numbers 1, 2, 3).",
+         steps=["Lay the board on the table with the three buttons along the top edge, as in the picture. From the USB-C end: 1 = RESET, 2 = BOOT, 3 = POWER.",
                 "Hold BTN-cup so its flat inner face is 3 mm from the board's top edge (use a 3 mm spacer), with the three holes centred over the three buttons.",
                 "Push each pin through the hole until it touches its button. Press, and feel for the click.",
                 "Switch the board off, then use the pin over POWER to switch it back on."],
          questions=[("Do the three holes sit over the three buttons?", ["yes", "off by ___ mm sideways", "off by ___ mm up or down"]),
+                    ("How far did you have to slide BTN-cup sideways to centre the holes (the strip is printed at the old drawing positions; the real buttons are about 1.9 mm further from the USB-C end)?", ["not at all", "___ mm towards the USB-C end", "___ mm away from the USB-C end"]),
                     ("Does each pin click its button?", ["all three", "only ___", "none"]),
                     ("Does the pin leave the button properly when you let go (no stuck press)?", ["yes", "no"]),
                     ("Can you switch the board back on by pressing POWER through its pin?", ["yes, short press", "yes, needs a hard press", "no"]),
@@ -221,32 +241,34 @@ TESTS = [
                     ("How far each button sticks out beyond the board's top edge", ["___ mm"]),
                     ("Height of the button centre above the board", ["___ mm"]),
                     ("Any extra button, or a button on a different edge? (drawing: three on the top edge)", ["no", "yes: ___"])]),
+    dict(id="D10", title="The screen with its white adhesive", pic="D-measure.png", needs="board",
+         why="The first glass ring did not fit and you noticed white adhesive on the inside of the glass edge (top, right and bottom). "
+             "If it sticks out past the glass edge, the pocket has to be bigger.",
+         pieces=[], settings="",
+         steps=["With the screen glass up, measure the whole outline at the widest point, including any white adhesive: long side, then short side.",
+                "Then note how far the adhesive sticks out past the glass edge on each side, and how thick it is."],
+         questions=[("Outline with the adhesive: long side x short side", ["___ x ___ mm"]),
+                    ("Adhesive sticks out past the glass by", ["top ___ mm", "right ___ mm", "bottom ___ mm", "left ___ mm"]),
+                    ("Adhesive thickness", ["___ mm"])]),
 ]
 
-# Finished with the second print (A1 cap, A2 clip, B1 seat): kept in the source for reference, not listed.
-FINISHED = {"A1", "A2", "A3", "B1"}
+# Finished (kept in the source for reference, not listed): A1 cap, A2 clip, A3 back cover, B1 seat, and with the real
+# board (2026-11-20) C1 (replaced by A5), C2, C3, C4, D3, D4, D7, D8, D9.
+FINISHED = {"A1", "A2", "A3", "B1", "C1", "C2", "C3", "C4", "D3", "D4", "D7", "D8", "D9"}
 TESTS = [t for t in TESTS if t["id"] not in FINISHED]
 
 # For Claude: what each answer changes. Kept out of the questions on purpose.
 FOR_CLAUDE = [
-        ("C1", "glass", "rattles -> GLASS_CLEAR -0.10; tight -> +0.10; won't go -> +0.20"),
-    ("C1", "lip / border / gap", "LIP_OVERLAP; BEZEL_WALL; LIP_GAP with D4"),
-    ("C2", "line-up / home", "USB_Y; USB_WINDOW, USB_WINDOW_R"),
-    ("C3", "holes / flat / header", "STANDOFFS, SCREW_D; STANDOFF_H; HEADER_BOX, J5_BOX"),
+    ("A5", "rings", "A fits: GLASS_CLEAR stays; B only: GLASS_CLEAR +0.25 (and the real bezel pocket); neither: from D10; lip/border/gap: LIP_OVERLAP, BEZEL_WALL, LIP_GAP"),
+    ("D10", "adhesive", "GLASS_CLEAR (pocket must clear glass + adhesive); maybe a relief groove"),
     ("A4", "pins", "stick/stiff -> TUNNEL_D +0.1 or PIN_D -0.1; too small/sunk/proud -> PIN_HEAD_D, PIN_PROUD, CBORE_D; fall out -> add a retaining lip in the dimple; hard to pull -> PIN_PROUD +0.4"),
     ("A4", "holes clean", "no -> TUNNEL_D +0.2 (teardrop in the TPU body)"),
     ("C5", "reach / click", "off sideways -> BUTTONS_X; up or down -> BUTTON_H; no click -> pin tip (BTN_TIP_Y) or BUTTON_HOLE_D; stuck press -> TUNNEL_D, PIN_D"),
     ("C5", "hard press", "only if POWER needs more travel: PIN_OVERTRAVEL"),
-    ("C4", "labels", "button access notes; cable guidance; WIRE_NOTCH; mic path (MIC_EXIT_Y, listening test)"),
-    ("D9", "buttons", "BUTTONS_X, BUTTON_H, BTN_TIP_Y (drives every pin, tunnel and dimple)"),
     ("D1", "T", "BATT_T (drives FRONT_T)"),
     ("D2", "L, W", "BATT_L, BATT_W"),
-    ("D3", "H", "MODULE_DEPTH"),
-    ("D4", "S", "GLASS_TO_BOARD + STANDOFF_H (= 11.6), LIP_GAP"),
     ("D5", "wires", "battery orientation, WIRE_NOTCH"),
     ("D6", "accelerometer", "ACC_L, ACC_W, ACC_T, seat on the plate"),
-    ("D7", "glass", "GLASS_L, GLASS_W"),
-    ("D8", "speaker", "decisions.md 8.7; new geometry"),
 ]
 
 
@@ -362,18 +384,31 @@ def summary():
     return "Left to do: " + " · ".join(f"{g}. {GROUPS[g].split(' (')[0]}: {n}" for g, n in counts.items())
 
 
+PRINT_SETTINGS = [
+    ("Every PETG piece", "0.4 mm nozzle. 0.2 mm layers. Line width 0.42 mm for every line type (outer wall, inner wall, top/bottom, infill, first layer). "
+                         "Wall generator Classic. 4 walls, 5 top and 5 bottom layers, 15 % gyroid. Supports off, brim off. Elephant foot compensation 0.15 mm."),
+    ("GLASS-ring, GLASS-ring-B, BTN-cup", "As above, but 0.12 mm layers. Face down (already laid that way in the 3MF)."),
+    ("BTN-pin-1, -2, -3", "As above, but 0.12 mm layers, 3 walls, 100 % infill (they are only 2.6 mm thick). They stand on their heads."),
+    ("Every TPU for AMS piece (BTN-body)", "TPU for AMS profile speeds. 0.2 mm layers. Line width 0.42 mm. 2 walls, 10 % gyroid. Supports off. Elephant foot compensation 0.15 mm. Filament dried."),
+    ("Where the settings are", "Bambu Studio: Process, tab Quality, 'Line width'; tab Strength, 'Wall generator'. Set both before slicing. "
+                               "Classic keeps every wall exactly 0.42 mm; the other generator (Arachne) squeezes wall widths to fit thin features, "
+                               "which changes how a lip or a pocket comes out."),
+]
+
 INTRO = ("Only what is still open. Finished tests are not here (the record of those is COUPON-RESULTS.md). "
          "Tick a box or write in a blank. Never press on the screen glass.")
 GROUP_NOTES = {
-    "A": "One new thing to print: the button strip (coupons/coupons-buttons.3mf). The cap, clip, seat and back-cover tests are all finished.",
+    "A": "Two things to print: the PETG plate (coupons/petg-plate.3mf: the two glass rings and the PETG button pieces), and the TPU button strip that is printing now. Cap, clip, seat and back-cover tests are finished.",
     "B": "Nothing left here. The seat test is finished, and the T1/T2/T3 material test was answered long ago (TPU for AMS, T1, no firm zone, 13 mm legs right).",
-    "C": "C1 to C3 and C5 use printed pieces on the real board (C3 uses the SNAP-plate you already printed). C4 is reading labels. Newest Waveshare boards may differ from the drawing, so C4 and C5 matter most.",
-    "D": "Calipers, in mm, one decimal. D1 to D2 and D5 need the battery, D3, D4, D7 and D9 the board, D6 the accelerometer.",
+    "C": "Needs the printed button pieces from A4 and the real board. The plate, ports and labels are done.",
+    "D": "Calipers, in mm, one decimal. D1, D2 and D5 need the battery, D6 the accelerometer, D10 the screen you already have.",
 }
 
 
 def write_markdown():
-    out = ["# Remaining tests", "", f"**{summary()}**", "", INTRO, ""]
+    out = ["# Remaining tests", "", f"**{summary()}**", "", INTRO, "",
+           "## Print settings (use these for every remaining piece)", "", "| Piece | Settings |", "|---|---|"]
+    out += [f"| {a} | {b} |" for a, b in PRINT_SETTINGS] + [""]
     for g, name in GROUPS.items():
         out += [f"## {g}. {name}", "", GROUP_NOTES[g], ""]
         shown = set()
@@ -410,6 +445,14 @@ def write_docx():
     doc.add_heading("SLOPEFORM Home case: remaining tests", 0)
     doc.add_paragraph().add_run(summary()).bold = True
     doc.add_paragraph(INTRO)
+    doc.add_heading("Print settings (use these for every remaining piece)", 1)
+    table = doc.add_table(rows=1, cols=2)
+    table.style = "Light Grid Accent 1"
+    table.rows[0].cells[0].text, table.rows[0].cells[1].text = "Piece", "Settings"
+    for a_, b_ in PRINT_SETTINGS:
+        cells = table.add_row().cells
+        cells[0].text, cells[1].text = a_, b_
+    doc.add_paragraph()
     for g, name in GROUPS.items():
         if g != "A":
             doc.add_paragraph().add_run().add_break(WD_BREAK.PAGE)

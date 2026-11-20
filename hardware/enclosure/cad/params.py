@@ -21,16 +21,25 @@ VIEW_W = 62.28             # drawing
 BOARD_L = 118.5            # drawing
 BOARD_W = 64.5             # drawing
 BOARD_INSET_USB_END = 1.55   # drawing: board edge sits this far inside the glass edge
-GLASS_TO_BOARD = 7.6       # drawing (STEP): glass front -> board component face
+GLASS_TO_BOARD = 7.8       # measured: glass front -> top of a standoff is 11.8 (drawing said 11.6), so the extra 0.2
+                           # went here (drawing/STEP: 7.6)
 STANDOFF_H = 4.0           # drawing: M2.5 threaded standoffs above the board
 STANDOFFS = ((3.25, 3.75), (115.25, 3.75), (3.25, 60.75), (115.25, 60.75))  # drawing
-MODULE_DEPTH = 12.8        # drawing (STEP): glass front -> top of 40-pin header.
+MODULE_DEPTH = 11.6        # measured on the real board: glass front -> top of the 40-pin header (the STEP said 12.8,
+                           # the 2D drawing 11.6). Not used by the model: the standoffs (11.8) are taller than the header.
+                           # Old note:
                            # The 2D drawing says 11.6; the larger one is used.  # PLACEHOLDER — measure
 HEADER_BOX = (54.55, 1.12, 105.85, 7.72)   # drawing (STEP): 40-pin header, 5.2 tall
 J5_BOX = (26.31, 57.93, 32.07, 62.78)      # drawing (STEP): 2-pin socket, 4.3 tall
 MICS = ((14.55, 2.37), (14.55, 62.17))     # drawing (STEP): mic centres; they face the back
-BUTTONS_X = (72.76, 84.44, 96.12)          # drawing: three side-push buttons on the y = 64.5 edge
-BUTTON_H = 0.7             # drawing (STEP): button centre above the board
+BUTTONS_X = (74.68, 86.36, 98.04)          # measured on the real (newer) board, 2026-11-20: 74.54 / 86.5 / 98.05 from
+                                           # the USB-C end, so a mean shift of +1.9 from the drawing (72.76, 84.44, 96.12),
+                                           # with the drawing's 11.68 pitch. ASSUMES the numbers were taken from the board
+                                           # edge, not the connector tip: confirm in C5
+POWER_PIN = 2                              # index in BUTTONS_X of the POWER button (C4: 1 = RESET, 2 = BOOT, 3 = POWER)
+BUTTON_H = 1.4             # measured (newer board): button centre above the board (drawing: 0.7)
+BUTTON_STICKOUT = 0.75     # measured: how far the buttons stand out past the board's top edge (drawing: 0.5)
+POWER_BAR = (4.5, 1.2, 0.5)  # raised bar on the POWER pin's head so it can be found by touch: length along the ridge, width, height
 SD_X = (51.1, 67.2)        # drawing (STEP): microSD slot along the buttons edge
 SD_H = 0.6                 # drawing (STEP): slot centre above the board
 USB_Y = (23.26, 41.21)     # drawing: USB-C centres on the x = 0 end
@@ -244,7 +253,7 @@ def derive():
     # Button pins: the channel runs up the slope at the button's depth and leaves through the apex
     # arc (radius OUTER_R, starting FRONT_MARGIN above the seam).
     g["BTN_Z"] = -(GLASS_RECESS + GLASS_TO_BOARD + BUTTON_H)         # depth of the button axis (negative)
-    g["BTN_TIP_Y"] = -(BOARD_W / 2 + 0.5)                            # where the button's actuator starts
+    g["BTN_TIP_Y"] = -(BOARD_W / 2 + BUTTON_STICKOUT)                # where the button's actuator starts
     g["ARC_START_Y"] = -(MODULE_W / 2 + SEAM + FRONT_MARGIN)         # where the apex arc leaves the front face
     g["BTN_EXIT_Y"] = ARC_START_Y - (OUTER_R ** 2 - (OUTER_R + BTN_Z) ** 2) ** 0.5   # axis meets the ridge
     g["PIN_HEAD_REST_Y"] = BTN_EXIT_Y - PIN_PROUD + PIN_HEAD_T       # head's inner face at rest

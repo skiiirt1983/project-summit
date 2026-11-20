@@ -53,11 +53,15 @@ def button_tunnels(y_from, y_to, diameter, point=None):
 def button_pins():
     """The three PETG pusher pins at rest, in the module frame. Each is a Ø PIN_D shaft with a head."""
     out = None
-    for x in button_xs():
+    for i, x in enumerate(button_xs()):
         shaft = Pos(x, p.BTN_TIP_Y - p.PIN_LEN / 2, p.BTN_Z) * _along_y(p.PIN_D / 2, p.PIN_LEN)
         head_y = p.PIN_HEAD_REST_Y - p.PIN_HEAD_T / 2
         head = Pos(x, head_y, p.BTN_Z) * _along_y(p.PIN_HEAD_D / 2, p.PIN_HEAD_T)
         pin = shaft + head
+        if i == p.POWER_PIN:                                                       # the POWER pin has a bar on its head
+            bar = Pos(x, p.PIN_HEAD_REST_Y - p.PIN_HEAD_T - p.POWER_BAR[2] / 2, p.BTN_Z) * Box(
+                p.POWER_BAR[0], p.POWER_BAR[2], p.POWER_BAR[1])
+            pin = pin + bar
         out = pin if out is None else out + pin
     return out
 

@@ -100,8 +100,8 @@ if __name__ == "__main__":
 
     glass, board = screen_stand_in()
     ring = parts.cup() & (Pos(0, 0, -3) * tc.Box(400, 400, 6))
-    picture("C1-glass", [("GLASS-ring", CREAM, ring), ("screen glass", GLASS, glass), ("the board behind it", BOARD, board)],
-            {"GLASS-ring": (0, 0, 0), "screen glass": (0, 0, -30), "the board behind it": (0, 0, -30)},
+    picture("A5-glass", [("GLASS-ring (and B, slightly larger)", CREAM, ring), ("screen glass", GLASS, glass), ("the board behind it", BOARD, board)],
+            {"GLASS-ring (and B, slightly larger)": (0, 0, 0), "screen glass": (0, 0, -30), "the board behind it": (0, 0, -30)},
             [-0.6, -1.0, 0.75], flip=True)
 
     tunnel = p.SIDE_MARGIN + p.SEAM + p.BEZEL_WALL - p.GLASS_CLEAR

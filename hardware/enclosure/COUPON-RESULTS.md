@@ -91,6 +91,27 @@ Waiting on the board: C1 to C4. Calipers: D1 to D8.
 | Opening the cover | "yes". The form he used still had the old wording ("with a fingernail at the notch"; the notch is now a paperclip slot), so read as: it opens | `PULL_SLOT` kept. Real slot position untested |
 | Plate on its step | tight at 0.175, but Paul: "I thought it was ok before the change" | **`PLATE_CLEAR` stays 0.175.** I had loosened it to 0.20 and reverted: tight is fine because the screws to the board hold the plate. **Back cover finished, no reprint** |
 
+## Round 7: the real board arrives (no battery or accelerometer yet)
+
+| Test | Question | Paul's answer | Applied |
+|---|---|---|---|
+| Port block | Both tunnels line up with both ports | yes | `USB_Y` confirmed |
+| | Plug goes fully home through the +1 tunnel | yes, both ports. "+0 is too tight" | `USB_WINDOW` 13.5 x 8.0 confirmed. **Port test finished** |
+| Carrier plate | Screw holes over the standoffs; plate sits flat; header clears the cut-out | yes; yes; yes | `STANDOFFS`, `SCREW_D`, `PLATE_CLEAR = 0.175` confirmed. **Plate test finished** |
+| Labels | Buttons 1, 2, 3 from the USB-C end | **1 = RESET, 2 = BOOT, 3 = POWER** | `POWER_PIN = 2`: the POWER pin gets a raised bar on its head |
+| | Extra buttons or switches | "yes: camera" (the 15-pin camera connector in the drawing; not a button) | no change, camera is a later add-on |
+| | UART USB-C port | **A, the upper one** (the one nearer the buttons) | note only |
+| | Sockets X, Y, Z | **X = BAT (J2), Y = SPK (J5), Z = RTC (H3)** | wire notch placement waits for the battery |
+| | Mic holes on top of the metal can | yes | confirms the mics listen out of the back |
+| Glass ring | Does the glass drop in | **won't go.** Paul also sees white sticker-like adhesive on the inside of the glass edge, on the top, right (opposite the USB end) and bottom sides, and thinks the ring was printed with a different line width | Reprint with the standard line width, plus a larger ring B (+0.25 per side). Adhesive to be measured (D10). Retest A5 |
+| Measurements | D3 header depth | 11.6 | `MODULE_DEPTH = 11.6` (documentation only) |
+| | D4 standoff depth | 11.8 | `GLASS_TO_BOARD` 7.6 -> **7.8** (standoff top = 11.8) |
+| | D7 glass | 126.93 x 70.71 | matches the drawing; no change |
+| | D9 buttons | from the USB-C end: 74.54, 86.50, 98.05; stick out 0.75; centre height 1.4; no extra buttons | `BUTTONS_X` (74.68, 86.36, 98.04: a +1.9 shift with the drawing's pitch), `BUTTON_STICKOUT = 0.75`, `BUTTON_H = 1.4`. **Assumes the distances were taken from the board edge, not the connector tip**; C5 checks it |
+| | D8 speaker | wanted: 25.9 x 26.1 x 4.52 mm, wires from the middle of the side | **open decision, see `decisions.md`** |
+
+Still to do: A4 (button strip, the TPU part is printing), A5 (glass rings), C5 (buttons on the board), D1, D2, D5, D6 (battery, accelerometer), D10 (adhesive).
+
 ## Cross-check: every test this form ever asked
 
 | Test | Questions | Status |

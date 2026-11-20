@@ -98,6 +98,26 @@ Paul: the latest Waveshare ESP32-S3 came with an updated PCB with unreleased cha
 | **Everything about the buttons is from Waveshare's drawing, which the new revision may not match.** First check on the board: tests C4, C5 and D9. Button positions are `BUTTONS_X`, `BUTTON_H`, `BTN_TIP_Y`; every tunnel, hole and pin follows them | Paul: the new boards have caused a redesign before |
 | After C4 (which button is POWER): mark the POWER pin (default: a raised bar on its head) | Pins are identical until then |
 
+## The real (newer) board, 2026-11-20
+
+| Decision | Why |
+|---|---|
+| Button pins follow the measured buttons: +1.9 mm along the board (the three pins move with it), centre height 1.4, stick-out 0.75. The printed A4 strip keeps the old drawing positions, so C5 asks how far to slide it | Measured on the real board. The distances may have been taken from the connector tip, not the board edge; C5 will show it |
+| POWER (button 3, nearest the far end) gets a pin with a raised bar on its head; RESET and BOOT stay plain | Paul: POWER needs a hard press; find it by touch |
+| Glass-to-standoff depth 11.8 (7.8 + 4.0). Module depth to the header 11.6 | Measured: the standoffs are taller than the header, so nothing pokes into the plate |
+| Glass ring: reprint at the standard line width (0.42, Classic walls), plus ring B with 0.25 mm more room per side | First ring did not fit; Paul recalls a different line width and sees white adhesive on the glass edge |
+| UART port is the upper one; BAT = J2 (bottom edge), SPK = J5 (top edge), RTC = H3 | Read from the board |
+
+### OPEN: speaker (Paul wants one, was "not fitted")
+Paul measured 25.9 x 26.1 x 4.52 mm, two wires from the middle of the side. Its socket (J5, SPK) is at the top edge near the port end. Where it can go depends on the battery, which has not arrived:
+
+| Option | What it takes |
+|---|---|
+| **1. In the free strip at the port end, firing out of the back into the hollow** (recommended) | The strip is 20.6 mm wide; the speaker needs about 27. So the battery can be at most about 98 mm long (the placeholder is 105). Fits if the real battery is shorter |
+| 2. In the hollow behind the module | Hangs off the back cover inside the triangle, in front of the mic exits; changes the look of the hollow |
+| 3. No speaker | Alarms and chimes stay silent |
+Decide when D2 (battery length) is known. Nothing is modelled yet.
+
 ## Fixed 2026-11-13
 - **Mic exit holes were blocked.** The mics sit 29.9 mm off the centre line, which is behind the solid corners of
   the triangle, so the holes in frame and body did not reach the hollow. The exit holes (cover, frame, body) are now
@@ -121,7 +141,7 @@ Paul asked for the full model to be built ahead without waiting. Each of these i
 | — | Mics: sound leaves through the back. Ø4 pass-through in plate, frame and body skin; the one Ø2.0 × 1.6 LyricFlash hole is in the back cover. Opens into the hollow, never covered in either orientation | Mics face the back and sit behind the battery | Side ports (20+ mm of body in the way) |
 | — | Battery sits against the end away from the ports; a 20.6 mm strip at the port end stays free for mics, accelerometer and wires | Keeps the mic path and the Wi-Fi antenna clear | — |
 | — | Accelerometer: on the carrier plate in that free strip, long side across the module. Seat not detailed until the board is measured | Rigid, square to the screen | On the back cover |
-| 8.7 | Speaker: not fitted, no room reserved | No space left in the front wall with a 13 mm battery | Mount in the hollow, firing down |
+| 8.7 | (open: see "The real board") Speaker wanted, 25.9 x 26.1 x 4.52 | — | — |
 | 8.8 | Wall mount: none | Not needed for the Peak | Keyhole in the back leg |
 | 8.9 | Branding: none | Brief: no logos on the front | Small wordmark on the back leg |
 | 8.6 | Colours: grey stone-look body, cream bezel, teal pads | As in the target picture | — |

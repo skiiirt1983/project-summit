@@ -1,7 +1,7 @@
 """Test coupons, cut from the real model so they test the real fits.
 
 Run:  python test_coupons.py          -> the pieces still to print:
-     ../coupons/coupons-buttons.3mf  BTN-body (TPU), BTN-frame + BTN-cup + 3 BTN-pin (PETG): the button strip
+     ../coupons/petg-plate.3mf       PETG: GLASS-ring, GLASS-ring-B, BTN-frame, BTN-cup, 3 x BTN-pin
       python test_coupons.py --all    -> also rebuilds the pieces already issued (material slices,
      SEAT, END-bed, CAP-corner, GLASS-ring, MIC-plate, PORT-block). Only after a design change:
      the files in ../coupons/ are the ones Paul printed.
@@ -211,9 +211,17 @@ def button_coupons():
     return printable
 
 
-def glass_ring():
-    """The front 6 mm of the bezel, all the way round: checks the glass fit and the lip."""
-    ring = parts.cup() & (Pos(0, 0, -3) * Box(400, 400, 6))
+def glass_ring(extra=0.0):
+    """The front 6 mm of the bezel, all the way round: checks the glass fit and the lip.
+    `extra` makes the glass pocket larger per side (ring B), to see how much room the real screen needs."""
+    was = p.GLASS_CLEAR
+    p.GLASS_CLEAR = was + extra
+    p.derive()
+    try:
+        ring = parts.cup() & (Pos(0, 0, -3) * Box(400, 400, 6))
+    finally:
+        p.GLASS_CLEAR = was
+        p.derive()
     return lay_flat(ring, flip=True)                         # prints face down, like the real bezel
 
 
@@ -251,6 +259,24 @@ def port_block():
     return block
 
 
+def combine(names, stem, gap=6.0, max_width=250.0):
+    """Put already-built STLs from ../coupons/ onto one plate and write ../coupons/<stem>.3mf with named objects."""
+    import trimesh
+    scene = trimesh.Scene()
+    x = y = row_h = 0.0
+    for name in names:
+        mesh = trimesh.load(str(OUT / f"{name}.stl"))
+        size = mesh.extents
+        if x > 0 and x + size[0] > max_width:
+            x, y, row_h = 0.0, y + row_h + gap, 0.0
+        mesh.apply_translation([x - mesh.bounds[0][0], y - mesh.bounds[0][1], -mesh.bounds[0][2]])
+        scene.add_geometry(mesh, geom_name=name, node_name=name)
+        x += size[0] + gap
+        row_h = max(row_h, size[1])
+    scene.export(str(OUT / f"{stem}.3mf"))
+    print(f"{stem}: {len(names)} objects, plate depth {y + row_h:.0f} mm")
+
+
 def arrange(named, gap=6.0, max_width=240.0):
     """Lay parts out in rows on the bed."""
     placed, x, y, row_h = {}, 0.0, 0.0, 0.0
@@ -285,6 +311,7 @@ def write(named, stem, colours, gap=6.0):
           "all valid" if all(q.is_valid for q in placed.values()) else "INVALID PART")
 
 
+GLASS_RING_B_EXTRA = 0.25       # ring B: glass pocket this much larger per side (0.55 instead of 0.30)
 TPU, PETG = "#8d8f8c", "#6a7078"
 
 
@@ -296,8 +323,13 @@ if __name__ == "__main__":
     import sys
     seat, clip, snap, cap = seat_coupons(), clip_coupons(), snap_coupons(), cap_corner()
     # What Paul still has to print (see ../REMAINING-TESTS.md, group A).
-    # New (button access, 2026-11-16): the strip around the three buttons, to try the pins by hand.
-    write(button_coupons(), "coupons-buttons", lambda n: "#d8452f" if "pin" in n else (TPU if "body" in n else petg_colour(n)))
+    # The button strip (BTN-*) is frozen at the version Paul printed (drawing positions, before the real
+    # board was measured): its STLs in ../coupons/ are not rebuilt here. See git history before changing.
+    # Glass rings for the second try (the first did not fit the real screen): A as designed, B larger.
+    ring_a, ring_b = glass_ring(), glass_ring(extra=GLASS_RING_B_EXTRA)
+    for name, shape in (("GLASS-ring", ring_a), ("GLASS-ring-B", ring_b)):
+        export_stl(shape, str(OUT / f"{name}.stl"), tolerance=0.02, angular_tolerance=0.1)
+    combine(["GLASS-ring", "GLASS-ring-B", "BTN-frame", "BTN-cup", "BTN-pin-1", "BTN-pin-2", "BTN-pin-3"], "petg-plate")
     # Cap, clip, seat and back-cover tests are finished: nothing else to reissue.
     snap["SNAP-plate"]                                          # (SNAP-plate.stl in ../coupons/ is the printed 0.175 one)
     if "--all" in sys.argv:
