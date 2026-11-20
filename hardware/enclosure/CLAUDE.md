@@ -70,8 +70,8 @@ x 108.3 tall; front wall 34.9 mm, driven by a **placeholder 13 mm battery**.
 
 Official STEP and drawing: github.com/waveshareteam/ESP32-P4-WIFI6-Touch-LCD-5 (`hardware/mechanical`, commit a334bad).
 Glass 126.9 x 70.7 (measured 126.93 x 70.71); board 118.5 x 64.5; USB-C x2 on one short end (the **upper** port is
-UART); three side-push buttons on one long edge, **measured 1.9 mm further from the USB-C end than the drawing says**,
-centre 1.4 above the board, 0.75 proud; sockets X = BAT (J2), Y = SPK (J5), Z = RTC (H3); microSD slot on the buttons
+UART); three side-push buttons on one long edge,
+centre 1.4 above the board, 0.75 proud; **button positions match the drawing to within 0.7 mm** (measured from the connector tip, which sticks out 1.32); sockets X = BAT (J2), Y = SPK (J5), Z = RTC (H3); microSD slot on the buttons
 edge; the 15-pin camera connector exists but is unused. Glass front to standoff top 11.8, to header top 11.6.
 **The newest board revision differs from Waveshare's files; trust measurements over the drawing.**
 
@@ -84,7 +84,6 @@ still a placeholder). Placeholders also live in `ACC_*`, `BATT_*`.
 ## 6. Known risks
 
 - The POWER pin's grip band (Ø3.2 in a Ø3.0 TPU tunnel) must hold the pin in place without holding the button down.
-- The POWER button position along the board is the midpoint of two possible readings (+1.26 mm); one answer in C5 settles it.
 - Mic path is ~20 mm through the free strip and a cavity: needs a listening test on the real board before the design is frozen.
 - The pull slot position beside the battery is untested (the coupon has a test slot).
 - Nothing has been printed as a whole case: first full-body print is still ahead.

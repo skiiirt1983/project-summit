@@ -128,7 +128,7 @@ Still to do: A4 (button strip, the TPU part is printing), A5 (glass rings), C5 (
 | | Pin returns when you let go | yes (Paul's note: "too loose?", consistent with the pins falling out) | grip band, see above; retest |
 | | Switch the board back on through POWER | yes | **works** |
 | | How hard BOOT and RESET need pressing | very easy, like POWER | no change: `PIN_OVERTRAVEL` stays 0.5 |
-| | Measured the button distances from where | not answered | `BUTTONS_X` set to the midpoint of the two readings (+1.26): a pin hits its button either way |
+| | Measured the button distances from where | **the outer face of the USB-C connector** (told later) | `BUTTONS_X` = 73.22 / 85.18 / 96.73 from the board edge (measured minus the 1.32 connector overhang): the drawing was right to within 0.7 mm |
 
 New pieces to print: `coupons/buttons-tpu.3mf` (BTN-body, bigger dimples) and `coupons/buttons-petg.3mf` (3 pins). BTN-frame and BTN-cup stay as printed.
 

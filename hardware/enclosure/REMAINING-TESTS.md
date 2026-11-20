@@ -80,7 +80,6 @@ Needs the new pins from A4 and the real board. The plate, ports, labels and the 
 | Does the pin come back when you let go (POWER not held down)? | ☐ yes  ☐ no, it stays down |
 | Can you switch the board back on through the pin? | ☐ yes, short press  ☐ yes, needs a hard press  ☐ no |
 | Does a paperclip click BOOT and RESET through the first two holes? | ☐ both  ☐ only ___  ☐ neither |
-| When you measured the button distances "from the USB-C end", from where exactly? | ☐ the board's own edge (the green board)  ☐ the tip of the USB-C connector, which sticks out  ☐ not sure |
 
 ## D. Measurements (calipers)
 
@@ -153,7 +152,6 @@ Calipers, in mm, one decimal. D1, D2 and D5 need the battery, D6 the acceleromet
 | A4 | POWER groove | `no -> POWER_BAR deeper or longer` |
 | A4 | dimples clean | `no -> TUNNEL_D +0.2 / CBORE_D +0.2 (teardrop in the TPU body)` |
 | C5 | click / return / hard press | `no click -> BTN_TIP_Y or BUTTON_HOLE_D; stuck -> PIN_RIB_D -0.2 (the grip band holds the pin down); POWER no -> PIN_OVERTRAVEL` |
-| C5 | measured from | `connector tip -> BUTTONS_X shift +0.6 (now +1.26, the midpoint); board edge -> +1.9` |
 | D1 | T | `BATT_T (drives FRONT_T)` |
 | D2 | L, W | `BATT_L, BATT_W; decides the speaker (decisions.md)` |
 | D5 | wires | `battery orientation, WIRE_NOTCH` |

@@ -32,11 +32,9 @@ MODULE_DEPTH = 11.6        # measured on the real board: glass front -> top of t
 HEADER_BOX = (54.55, 1.12, 105.85, 7.72)   # drawing (STEP): 40-pin header, 5.2 tall
 J5_BOX = (26.31, 57.93, 32.07, 62.78)      # drawing (STEP): 2-pin socket, 4.3 tall
 MICS = ((14.55, 2.37), (14.55, 62.17))     # drawing (STEP): mic centres; they face the back
-BUTTONS_X = (74.02, 85.70, 97.38)          # measured on the real (newer) board, 2026-11-20: 74.54 / 86.5 / 98.05 from
-                                           # the USB-C end, so a mean shift of +1.9 from the drawing (72.76, 84.44, 96.12),
-                                           # with the drawing's 11.68 pitch. Whether they were taken from the board edge (+1.9) or from the
-                                           # connector tip (+0.6) is not known, so the value used is the midpoint, +1.26: a pin
-                                           # still hits its button either way. C5 (holes line up over the buttons): yes
+BUTTONS_X = (73.22, 85.18, 96.73)          # measured on the real board (2026-11-20) from the outer face of the USB-C
+                                           # connector (74.54 / 86.50 / 98.05), minus the 1.32 mm it sticks out past the board edge.
+                                           # So the drawing (72.76, 84.44, 96.12) was right to within 0.5 to 0.7 mm
 POWER_PIN = 2                              # index in BUTTONS_X of the POWER button (C4: 1 = RESET, 2 = BOOT, 3 = POWER)
 BUTTON_H = 1.4             # measured (newer board): button centre above the board (drawing: 0.7)
 BUTTON_STICKOUT = 0.75     # measured: how far the buttons stand out past the board's top edge (drawing: 0.5)

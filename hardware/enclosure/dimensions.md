@@ -96,7 +96,7 @@ From `ref/lyricflash-enclosure/lyricflash_print_plates.3mf`: `top_shell.stl`, `b
 | Glass front to top of the 40-pin header | 11.6 | measured |
 | Glass front to top of a standoff | 11.8 | measured |
 | Glass outline | 126.93 x 70.71 | measured (matches the drawing) |
-| Buttons from the USB-C end (centres) | 74.54, 86.50, 98.05 (assumed from the board edge) | measured |
+| Buttons from the USB-C connector's outer face (centres) | 74.54, 86.50, 98.05; = 73.22, 85.18, 96.73 from the board edge | measured |
 | Buttons: stick-out past the top edge; centre height above the board | 0.75; 1.4 | measured |
 | Button order from the USB-C end | RESET, BOOT, POWER | read from the board |
 | UART USB-C port | the upper one (nearer the buttons) | read from the board |
