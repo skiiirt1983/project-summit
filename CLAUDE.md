@@ -32,13 +32,15 @@ Private alpha repo `project-summit`; public release at 1.0 as `slopeform-home`. 
 - Small steps. Stop after each step and show what changed.
 - Host-side tests for all pure logic (as LyricFlash does in `tests/`).
 - Paul prefers concise, direct updates.
+- **Keep this file current.** Whenever anything changes (status, a decision, a rule, an open item), update this `CLAUDE.md`
+  in the same commit, and `hardware/enclosure/CLAUDE.md` for anything about the case. Both are the handoff for the next session.
 
 ## Enclosure
 Case design brief: `hardware/enclosure/ENCLOSURE.md` (single source of truth for the case). Update it first, then the CAD.
 **Starting a case session? Read `hardware/enclosure/CLAUDE.md` first**: it holds the current status, the decisions, how Paul
 likes to work, what went wrong before, and a starter prompt.
 
-## Project status (2026-11-20)
+## Project status (2026-11-20; update on every change)
 - **Firmware:** Phase 0 steps 1 to 6 are merged to `main` (monorepo and partition table, CI, framework, LVGL simulator
   and shell, update engine with rollback, web UI). Phase 1 (real hardware: demo flash, I2C scan, rotation spike) needs
   the board; Paul now has the board but not yet the battery or accelerometer.
@@ -46,4 +48,6 @@ likes to work, what went wrong before, and a starter prompt.
   `hardware/enclosure/CLAUDE.md`.
 - Paul keeps decisions in the Claude design doc (see rule 10 above) and answers questions best with pictures and
   A/B/C choices.
+- **For Paul's design doc (firmware ideas, not built):** RESET as a programmed short press of the POWER button (2026-11-20).
+  The case only exposes POWER; BOOT and RESET are paperclip holes inside the module.
 

@@ -170,13 +170,12 @@ keyhole or cleat slot; vent slots shaped as a short contour-line pattern (functi
 
 ### Access (from architecture doc)
 - [ ] UART USB-C reachable (flashing/recovery) — not just the charge port.
-- [ ] **Buttons (2026-11-16): every onboard button must be pressable with the case shut.** The newest
-      Waveshare board needs a hard POWER press to turn back on, so POWER, BOOT and RESET each get a printed
-      pusher pin from the button to a dimple on the top ridge (see `decisions.md`, "Button access"). No
-      battery switch is fitted. All positions come from Waveshare's drawing, which the newest board
-      revision may not match: verify on the real board (REMAINING-TESTS C4, C5, D9) before printing the case.
-      (Earlier rule, kept for context: don't over-engineer actuators; the LyricFlash S3 case lost a lot of
-      time to them. The pins are plain rods with no printed spring.)
+- [ ] **Buttons (updated 2026-11-20): only POWER goes to the outside.** The newest Waveshare board needs a hard POWER
+      press to turn back on, so POWER has a printed pusher pin from the button to a dimple on the top ridge (see
+      `decisions.md`, "Button access" and "Button scope"). BOOT and RESET are small paperclip holes in the PETG screen
+      module, reached with the module pulled out; RESET is meant to become a programmed short press of POWER. No battery
+      switch is fitted. Positions come from measurements of the real board (REMAINING-TESTS C5 checks the pin on it).
+      (Earlier rule, kept for context: don't over-engineer actuators; the LyricFlash S3 case lost a lot of time to them.)
 - [ ] microSD slot reachable without opening the case (or documented as open-to-swap).
 - [ ] Power switch, if added, recessed so the base/wall doesn't press it.
 - [ ] Ports must stay usable in **both** landscape and portrait on the base

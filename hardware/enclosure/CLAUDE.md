@@ -1,5 +1,9 @@
 # CLAUDE.md: SLOPEFORM Home enclosure ("the Peak")
 
+> **KEEP THIS FILE CURRENT. Whenever anything about the enclosure changes (a decision, a parameter, a test result, a
+> measurement, the status, an open item, a file or a command), update this file in the same commit. Update the root
+> `CLAUDE.md` project status too if the overall status changes. A stale CLAUDE.md misleads the next session.**
+
 Handoff for a new Claude Code session working on the case. Read this first, then
 `ENCLOSURE.md` (the design brief), `decisions.md` (dated log, open items) and `REMAINING-TESTS.md`
 (what Paul still has to print or measure). Status below is as of 2026-11-20 (branch
@@ -14,8 +18,8 @@ Handoff for a new Claude Code session working on the case. Read this first, then
 - **Nothing has been printed as a full case yet.** Everything so far was tested on small coupons (pieces of the real
   parts) that Paul prints and fills in a form for. Passed: material, body ends, cap push-fit, clips, seat, back cover,
   port block, carrier plate, glass ring, first button test on the real board.
-- **Open right now:** A4 button pins retest (new TPU strip + 3 pins), C5 (pins on the board again, to confirm the grip
-  band does not hold a button down), battery and accelerometer measurements (D1, D2, D5, D6; not arrived), and the
+- **Open right now:** A4 pin retest (new TPU strip, printing now, any one of its three tunnels; one pin), C5 (POWER pin on the
+  board again to confirm the grip band does not hold the button down, and a paperclip through the BOOT/RESET holes), battery and accelerometer measurements (D1, D2, D5, D6; not arrived), and the
   **speaker** decision (needs the battery length). See section 7.
 
 ## 2. How to work with Paul (read this; it saved a lot of rework)
@@ -48,11 +52,11 @@ Handoff for a new Claude Code session working on the case. Read this first, then
 | Shape | One hollow rounded triangle, front 60°, back 60°, legs 13 mm, outer corners R16, **no sharp edges anywhere**: near full round on every outside edge, inside and out. Only the screen opening is crisp |
 | Orientation | Landscape on the bottom; **portrait stands on the end away from the USB-C ports**. Ports face the right end seen from the front |
 | Material | **TPU for AMS only** (Paul owns it; no other spools, no stone PLA). Whole body at "T1": 2 walls, 10 % gyroid. No firm zone. Inner frame, bezel, plate, cover and pins are PETG |
-| Parts | main body (TPU) + **port-end cap** (TPU, 19.55 mm, six pegs, no glue) + inner **frame** (PETG, slides in from the open end) + **screen module** (cream bezel with walls, carrier plate, back cover; all PETG) + three **button pins** + TPU **pads** |
+| Parts | main body (TPU) + **port-end cap** (TPU, 19.55 mm, six pegs, no glue) + inner **frame** (PETG, slides in from the open end) + **screen module** (cream bezel with walls, carrier plate, back cover; all PETG) + one **POWER pin** + TPU **pads** |
 | Cap | Carries both USB-C openings. A 0.6 mm V-groove at the seam, mirrored at the other end so both look intended |
 | Module | Snap-fit: four clips hold it in the frame; plate screws to the board's four M2.5 standoffs; back cover snaps in (two ridges per long side) and opens with a bent paperclip through a pull slot in its floor (next to the battery) |
 | Bezel | Copied from LyricFlash: glass sits 1.25 mm below the face behind a 1.0 mm lip (overlap 1.35, gap 0.25). Visible cream 4.75 mm |
-| **Buttons** | **All three (RESET, BOOT, POWER from the USB-C end) are pressable with the case shut**: a printed pusher pin per button runs up the slope through the module wall, the frame and the TPU to a dimple on the top ridge. POWER's head has a groove. **No battery switch is fitted** (the newest board needs a hard POWER press to turn back on; a battery switch can leave it unable to) |
+| **Buttons** | **Only POWER goes to the outside** (buttons from the USB-C end: RESET, BOOT, POWER): a printed pusher pin runs up the slope through the module wall, the frame and the TPU to a dimple on the top ridge. **BOOT and RESET are 1.8 mm paperclip holes in the PETG module**, reached after pulling the module out; Paul plans RESET as a programmed short press of POWER (a firmware item, see 7). **No battery switch is fitted** (the newest board needs a hard POWER press to turn back on; a battery switch can leave it unable to) |
 | Mics | Face the back; sound leaves through the cover into the hollow (exit holes moved to 11 mm off the centre line, where the hollow is). Hole Ø2.0 as LyricFlash |
 | Printing | Body stands on its portrait end, **no supports, no flat ceilings in TPU** (45° undersides on every lip; teardrop tops on horizontal holes); bed edges are a 45° chamfer blended into the round; elephant-foot compensation; seam on an inside corner; fine layers over rounds |
 | Open decision | **Speaker** (see 7) |
@@ -79,8 +83,8 @@ still a placeholder). Placeholders also live in `ACC_*`, `BATT_*`.
 
 ## 6. Known risks
 
-- The pins' grip band (Ø3.2 in a Ø3.0 TPU tunnel) must hold a pin in place without holding a button down.
-- The button position along the board is the midpoint of two possible readings (+1.26 mm); one answer in C5 settles it.
+- The POWER pin's grip band (Ø3.2 in a Ø3.0 TPU tunnel) must hold the pin in place without holding the button down.
+- The POWER button position along the board is the midpoint of two possible readings (+1.26 mm); one answer in C5 settles it.
 - Mic path is ~20 mm through the free strip and a cavity: needs a listening test on the real board before the design is frozen.
 - The pull slot position beside the battery is untested (the coupon has a test slot).
 - Nothing has been printed as a whole case: first full-body print is still ahead.
@@ -90,7 +94,8 @@ still a placeholder). Placeholders also live in `ACC_*`, `BATT_*`.
 1. **Speaker** (25.9 x 26.1 x 4.52 mm, wires from the middle of a side). Recommended: in the free strip at the port end,
    firing out of the back into the hollow. The strip is 20.6 mm wide and needs about 27, so the battery must be at most
    about 98 mm long. Decide when D2 is known.
-2. Defaults awaiting Paul's OK (all logged as *default, Paul to confirm*): the paperclip pull slot, the pin grip band, mic
+2. **Firmware (for Paul's design doc, not built):** RESET as a programmed short press of POWER.
+3. Defaults awaiting Paul's OK (all logged as *default, Paul to confirm*): the paperclip pull slot, the pin grip band, mic
    exit positions, battery strip layout, no wall mount, no branding, colours (grey body, cream bezel, teal pads).
 
 ## 8. Things that went wrong (do not repeat)
@@ -128,9 +133,10 @@ python remaining_tests.py # REMAINING-TESTS.md + .docx
 Headless rendering uses three.js in Chromium (no GPU in the cloud container). `ref/lyricflash-enclosure/` holds the
 LyricFlash print plates 3MF the bezel and mic holes were measured from.
 
-## 10. Start a new session with this
+## 10. Start a new session with this (and keep this file current)
 
 > Read `hardware/enclosure/CLAUDE.md`, `ENCLOSURE.md`, `decisions.md` and `REMAINING-TESTS.md`, check out
 > `claude/vigilant-keller-12zcdw`, and summarize in 3 bullets where things stand. I will give you my test results next.
 > Apply them one test at a time, update `params.py`, `decisions.md` and `COUPON-RESULTS.md`, regenerate
-> `REMAINING-TESTS.docx`, show me renders, and send me any new files directly.
+> `REMAINING-TESTS.docx`, show me renders, and send me any new files directly. Update `hardware/enclosure/CLAUDE.md` in the
+> same commit as every change.

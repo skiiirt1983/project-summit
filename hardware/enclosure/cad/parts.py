@@ -37,32 +37,32 @@ def teardrop(diameter, length, point=None):
     return hole
 
 
-def button_xs():
-    return [p.board_xy(xb, 0)[0] for xb in p.BUTTONS_X]
+def button_xs(indices=None):
+    xs = [p.board_xy(xb, 0)[0] for xb in p.BUTTONS_X]
+    return xs if indices is None else [xs[i] for i in indices]
 
 
-def button_tunnels(y_from, y_to, diameter, point=None):
-    """One tunnel per button from y_from to y_to (both negative, y_to further out)."""
+def button_tunnels(y_from, y_to, diameter, point=None, indices=None):
+    """One tunnel per button (all three unless `indices` is given) from y_from to y_to (both negative,
+    y_to further out)."""
     out = None
-    for x in button_xs():
+    for x in button_xs(indices):
         one = Pos(x, y_from, p.BTN_Z) * teardrop(diameter, abs(y_to - y_from), point)
         out = one if out is None else out + one
     return out
 
 
 def button_pins():
-    """The three PETG pusher pins at rest, in the module frame. Each is a Ø PIN_D shaft with a head."""
+    """The PETG pusher pins at rest (only the buttons in PIN_BUTTONS get one), in the module frame.
+    Each is a shaft with a head and a grip band."""
     out = None
-    for i, x in enumerate(button_xs()):
+    for i in p.PIN_BUTTONS:
+        x = button_xs()[i]
         shaft = Pos(x, p.BTN_TIP_Y - p.PIN_LEN / 2, p.BTN_Z) * _along_y(p.PIN_D / 2, p.PIN_LEN)
         head_y = p.PIN_HEAD_REST_Y - p.PIN_HEAD_T / 2
         head = Pos(x, head_y, p.BTN_Z) * _along_y(p.PIN_HEAD_D / 2, p.PIN_HEAD_T)
         rib = Pos(x, p.PIN_RIB_Y, p.BTN_Z) * _along_y(p.PIN_RIB_D / 2, p.PIN_RIB_W)
         pin = shaft + head + rib
-        if i == p.POWER_PIN:                                                       # POWER pin: a groove across its head
-            groove = Pos(x, p.PIN_HEAD_REST_Y - p.PIN_HEAD_T + p.POWER_BAR[2] / 2 - 0.01, p.BTN_Z) * Box(
-                p.POWER_BAR[0], p.POWER_BAR[2] + 0.02, p.POWER_BAR[1])
-            pin = pin - groove
         out = pin if out is None else out + pin
     return out
 
@@ -109,7 +109,10 @@ def cup():
     part -= usb_windows(-p.MODULE_L / 2 - 1, -p.GLASS_L / 2 + 1)
     wall_y = -(p.MODULE_W / 2 + p.CAV1_W / 2) / 2                                  # middle of the upper wall
     reach = p.BEZEL_WALL + 3
-    part -= button_tunnels(-(p.CAV1_W / 2 - 0.5), -(p.MODULE_W / 2 + 1), p.BUTTON_HOLE_D)   # pin holes
+    others = [i for i in range(len(p.BUTTONS_X)) if i not in p.PIN_BUTTONS]
+    part -= button_tunnels(-(p.CAV1_W / 2 - 0.5), -(p.MODULE_W / 2 + 1), p.BUTTON_HOLE_D, indices=list(p.PIN_BUTTONS))
+    if others:                                                                      # BOOT and RESET: paperclip holes only
+        part -= button_tunnels(-(p.CAV1_W / 2 - 0.5), -(p.MODULE_W / 2 + 1), p.BUTTON_PIN_D, indices=others)
     sd_x, _ = p.board_xy(sum(p.SD_X) / 2, 0)
     part -= Pos(sd_x, wall_y, -p.board_depth(p.SD_H)) * Box(p.SD_SLOT[0], reach, p.SD_SLOT[1])
     for side in (-1, 1):
@@ -186,7 +189,7 @@ def frame():
     for x, y in mic_exits():
         part -= Pos(x, y, floor_z - p.FRAME_FLOOR / 2) * Cylinder(p.MIC_CLEAR_D / 2, p.FRAME_FLOOR + 1)
     part -= usb_windows(-p.FRAME_L / 2 - 1, -p.MODULE_L / 2 + 1)
-    part -= button_tunnels(-(p.MODULE_W / 2), -(p.FRAME_W / 2 + 1), p.TUNNEL_D)        # pin guides
+    part -= button_tunnels(-(p.MODULE_W / 2), -(p.FRAME_W / 2 + 1), p.TUNNEL_D, indices=list(p.PIN_BUTTONS))   # pin guides
     tip = clip_z() + 3.0                                                           # free end, towards the front
     for side in (-1, 1):
         y_wall = side * (inner_w / 2 + p.FRAME_WALL / 2)
@@ -225,8 +228,8 @@ def body_cutter():
         roof = Rot(0, -90, 0) * extrude(Rectangle(span_z, span_y), p.ROOF_H, taper=45)
         cut += Pos(-frame_l / 2 + 0.01, 0, -(p.LIP_D + p.POCKET_D) / 2) * roof
     # Pin tunnels (teardrop: the body prints standing, module -x up) and the dimples on the ridge.
-    cut += button_tunnels(-(p.FRAME_W / 2 - 0.5), -99, p.TUNNEL_D, "-x")
-    cut += button_tunnels(p.PIN_FLOOR_Y, -99, p.CBORE_D, "-x")
+    cut += button_tunnels(-(p.FRAME_W / 2 - 0.5), -99, p.TUNNEL_D, "-x", indices=list(p.PIN_BUTTONS))
+    cut += button_tunnels(p.PIN_FLOOR_Y, -99, p.CBORE_D, "-x", indices=list(p.PIN_BUTTONS))
     skin_z = -p.POCKET_D - p.BACK_SKIN / 2
     cut += Pos(0, 0, skin_z) * Cylinder(p.PUSH_HOLE_D / 2, p.BACK_SKIN + 2)
     for x, y in mic_exits():

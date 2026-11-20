@@ -20,12 +20,12 @@ Two things to print: the TPU strip (coupons/buttons-tpu.3mf) and the three pins 
 
 ![A4](tests/A4-buttons.png)
 
-**What you're testing and why:** Last time the pins slid freely and the holes printed clean, but the heads were too small and too sunk in, and the pins fell out when the strip was tipped. Now: bigger heads that stand out more, a thin grip band on each pin that the soft body holds lightly (so they stay put but can still be pulled out), and a groove across the POWER head so you can find it by touch. Two pieces change: the TPU strip (its dimples are bigger) and the three pins. BTN-frame and BTN-cup stay as printed.
+**What you're testing and why:** Last time the pins slid freely and the holes printed clean, but the heads were too small and too sunk in, and the pins fell out when the strip was tipped. Now: bigger heads that stand out more, a thin grip band on each pin that the soft body holds lightly (so they stay put but can still be pulled out), and a groove across the POWER head so you can find it by touch. Two pieces change: the TPU strip (its dimples are bigger) and the pins. BTN-frame and BTN-cup stay as printed. Update: only POWER gets a pin to the outside now (BOOT and RESET become small paperclip holes inside the module), so you only need to try ONE pin. The strip has three identical tunnels; use any one.
 
 | Piece | Where it is | Note |
 |---|---|---|
 | **BTN-body** | coupons/buttons-tpu.3mf (or BTN-body.stl) | TPU, new: bigger dimples. Prints standing up |
-| **BTN-pin-1, -2, -3** | coupons/buttons-petg.3mf (or BTN-pin-N.stl) | PETG, new. Stand on their heads |
+| **BTN-pin-1, -2, -3** | coupons/buttons-petg.3mf (or BTN-pin-N.stl) | PETG, new. Stand on their heads. One is enough now; the others are spares |
 | **BTN-frame, BTN-cup** | already printed | reuse them |
 
 **Print settings:** BTN-body: TPU for AMS settings from the table. Pins: 0.12 mm layers, 3 walls, 100 % infill. Everything with line width 0.42, Classic walls.
@@ -33,18 +33,17 @@ Two things to print: the TPU strip (coupons/buttons-tpu.3mf) and the three pins 
 **What to do:**
 
 1. Stack the strip: BTN-cup (flat side towards the body), then BTN-frame, then the new BTN-body with its curved ridge at the far end. Line up the three pairs of holes.
-2. Push a pin in from the ridge end until it is through all three layers. Do the same for the other two. Notice how hard it is to push in.
-3. Press each pin with a fingertip, then let go.
+2. Push a pin in from the ridge end until it is through all three layers (any one of the three holes). Notice how hard it is to push in.
+3. Press the pin with a fingertip, then let go.
 4. Hold the strip with the ridge pointing down and shake gently, then lay it on its side.
-5. Pull a pin out again with a fingernail.
+5. Pull the pin out again with a fingernail.
 
 | Question | Answer |
 |---|---|
-| Is each pin easy to push in and press? | ☐ yes  ☐ a little stiff  ☐ too stiff, it sticks |
+| Is the pin easy to push in and press? | ☐ yes  ☐ a little stiff  ☐ too stiff, it sticks |
 | Is the head easy to find and press with a fingertip? | ☐ yes  ☐ too small  ☐ too sunk in  ☐ too proud |
-| Do the pins stay in when you tip the strip with the ridge down? | ☐ yes, all stay  ☐ one falls out  ☐ all fall out |
+| Does the pin stay in when you tip the strip with the ridge down? | ☐ yes  ☐ it falls out |
 | Can you pull a pin out again with a fingernail? | ☐ yes, easily  ☐ yes, but hard  ☐ no |
-| Can you tell the POWER pin (BTN-pin-3, grooved head) by touch? | ☐ yes  ☐ no |
 | Did the three dimples in BTN-body print clean (round, not blocked)? | ☐ yes  ☐ no |
 
 ## B. Tests not done yet
@@ -55,29 +54,32 @@ Nothing left here. The seat test is finished, and the T1/T2/T3 material test was
 
 Needs the new pins from A4 and the real board. The plate, ports, labels and the first button test are done.
 
-### C5. Buttons on the board, with the new pins
+### C5. POWER pin, BOOT and RESET on the board
 
 ![C5](tests/D-board.png)
 
-**What you're testing and why:** The first board test passed (the holes line up, every pin clicks, you can switch the board back on through POWER). The pins now have a grip band, so this just checks they still return when you let go and do not hold a button down.
+**What you're testing and why:** Only POWER goes to the outside of the case now (your call: RESET can be a programmed short press of POWER, and you have never needed BOOT). BOOT and RESET stay as small paperclip holes in the screen module. This checks the new POWER pin still returns when you let go, and that a paperclip reaches BOOT and RESET through the first two holes of BTN-cup (the holes in that piece are bigger than the real ones, which is fine for this check).
 
 | Piece | Where it is | Note |
 |---|---|---|
-| **BTN-cup, the new BTN-pin-1, -2, -3** | from test A4 | reuse them |
+| **BTN-cup, one new BTN-pin** | from test A4 | reuse them |
 
 **Print settings:** Nothing to print.
 
 **What to do:**
 
-1. Do the same as before: BTN-cup about 3 mm from the buttons with the middle hole over BOOT, a pin through each hole until it touches its button.
-2. Press each pin, let go, and look and listen: does the board react once per press, and only while you press?
-3. Switch the board off, then use the POWER pin to switch it back on.
+1. Lay the board on the table with the buttons along the top edge, as in the picture. From the USB-C end: 1 = RESET, 2 = BOOT, 3 = POWER.
+2. Hold BTN-cup about 3 mm from the buttons with the right-hand hole over POWER. Push the pin through it until it touches the button.
+3. Press, let go. Does the board react once per press, and only while you press?
+4. Switch the board off, then use the pin to switch it back on.
+5. Slide BTN-cup to the left so the other two holes are over BOOT and RESET. Push a straightened paperclip through each and feel for the click.
 
 | Question | Answer |
 |---|---|
-| Does each pin still click its button? | ☐ all three  ☐ only ___  ☐ none |
-| Does each pin come back when you let go (no button held down)? | ☐ yes  ☐ no, ___ stays down |
-| Can you still switch the board back on through the POWER pin? | ☐ yes, short press  ☐ yes, needs a hard press  ☐ no |
+| Does the pin click POWER? | ☐ yes  ☐ no |
+| Does the pin come back when you let go (POWER not held down)? | ☐ yes  ☐ no, it stays down |
+| Can you switch the board back on through the pin? | ☐ yes, short press  ☐ yes, needs a hard press  ☐ no |
+| Does a paperclip click BOOT and RESET through the first two holes? | ☐ both  ☐ only ___  ☐ neither |
 | When you measured the button distances "from the USB-C end", from where exactly? | ☐ the board's own edge (the green board)  ☐ the tip of the USB-C connector, which sticks out  ☐ not sure |
 
 ## D. Measurements (calipers)

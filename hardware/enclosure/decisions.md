@@ -128,6 +128,18 @@ Decide when D2 (battery length) is known. Nothing is modelled yet.
 | BOOT and RESET need no extra travel | Paul: very easy to press, like POWER |
 | **Risk: the grip band could hold a button down.** Retested in C5 with the board | Friction vs the button's own return spring |
 
+## Button scope (2026-11-20): only POWER goes to the outside
+
+Paul: he only needs the POWER button reachable. RESET can be a programmed short press of POWER, and he has never needed BOOT on his round S3. He suggested holes in the PETG module for a pin, but a pin to the surface only for POWER.
+
+| Decision | Why |
+|---|---|
+| **POWER keeps its pin to the top ridge. BOOT and RESET lose their pins and tunnels**: they are 1.8 mm paperclip holes in the PETG screen module's top wall, reached after the POWER pin is pulled and the module is pushed out. `PIN_BUTTONS = (2,)` | Paul. The frame and the TPU body no longer have tunnels for them: simpler, nothing to print, nothing to leak |
+| Firmware request (for Paul's design doc, rule 10 in the root CLAUDE.md): **RESET as a programmed short press of POWER** | Paul's idea. Not decided or built in firmware |
+| The POWER pin's groove is dropped | It was only there to tell the three pins apart |
+| The A4 button strip being printed has three identical tunnels (printed before this change). Test with any one pin. Nothing is reissued | Paul is already printing it |
+| Still valid: no battery switch; the pin blocks the module from sliding out until it is pulled | See "Button access" above |
+
 ## Fixed 2026-11-13
 - **Mic exit holes were blocked.** The mics sit 29.9 mm off the centre line, which is behind the solid corners of
   the triangle, so the holes in frame and body did not reach the hollow. The exit holes (cover, frame, body) are now

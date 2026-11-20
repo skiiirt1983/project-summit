@@ -191,7 +191,7 @@ class frozen_v1:
     """Temporarily put back the numbers the printed button strip was made with (drawing button positions,
     old glass pocket and bezel), so a reissued BTN-body or BTN-pin still stacks with the BTN-frame and
     BTN-cup Paul already printed. Pin and dimple sizes are NOT frozen: those are what is being changed."""
-    OLD = dict(BUTTONS_X=(72.76, 84.44, 96.12), BUTTON_H=0.7, BUTTON_STICKOUT=0.5, GLASS_TO_BOARD=7.6,
+    OLD = dict(PIN_BUTTONS=(0, 1, 2), BUTTONS_X=(72.76, 84.44, 96.12), BUTTON_H=0.7, BUTTON_STICKOUT=0.5, GLASS_TO_BOARD=7.6,
                GLASS_CLEAR=0.30, BEZEL_WALL=3.15, BEZEL_R=8.25)
 
     def __enter__(self):

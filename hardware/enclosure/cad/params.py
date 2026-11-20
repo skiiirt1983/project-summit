@@ -40,8 +40,9 @@ BUTTONS_X = (74.02, 85.70, 97.38)          # measured on the real (newer) board,
 POWER_PIN = 2                              # index in BUTTONS_X of the POWER button (C4: 1 = RESET, 2 = BOOT, 3 = POWER)
 BUTTON_H = 1.4             # measured (newer board): button centre above the board (drawing: 0.7)
 BUTTON_STICKOUT = 0.75     # measured: how far the buttons stand out past the board's top edge (drawing: 0.5)
-POWER_BAR = (6.0, 1.5, 0.5)  # groove across the POWER pin's head so it can be found by touch (a raised bar would be an overhang
-                             # when the pin prints standing on its head): length along the ridge, width, depth
+PIN_BUTTONS = (2,)           # which buttons get a pin to the outside. Paul, 2026-11-20: only POWER. BOOT and RESET are small
+                           # paperclip holes in the screen module (BUTTON_PIN_D), reached with the module pulled out.
+                           # (0, 1, 2) is what the printed A4 test strip has
 SD_X = (51.1, 67.2)        # drawing (STEP): microSD slot along the buttons edge
 SD_H = 0.6                 # drawing (STEP): slot centre above the board
 USB_Y = (23.26, 41.21)     # drawing: USB-C centres on the x = 0 end
@@ -99,7 +100,8 @@ WIRE_NOTCH = (14.0, 6.0)   # PLACEHOLDER — battery + accelerometer wires throu
 # button gets a printed pusher pin (PETG) running up the slope from the button, through the module's
 # top wall, the frame and the TPU, to a dimple on the apex ridge. No battery switch is fitted.
 # All values below are untested: COUPON: tune after test print (BTN) and on the real board.
-BUTTON_HOLE_D = 3.4        # hole in the module's top wall; wider than the tunnel, so a small error in where
+BUTTON_PIN_D = 1.8         # paperclip hole over BOOT and RESET (no pin, no tunnel through the frame or body)
+BUTTON_HOLE_D = 3.4        # hole in the module's top wall for a button that has a pin; wider than the tunnel, so a small error in where
                            # the board sits cannot stop the pin reaching the button
 TUNNEL_D = 3.0             # guide tunnel through the frame wall and the TPU body (teardrop in the TPU)
 PIN_D = 2.6                # pusher pin shaft: 0.2 mm clear of the tunnel all round, so it slides freely
