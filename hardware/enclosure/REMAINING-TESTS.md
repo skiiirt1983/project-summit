@@ -90,7 +90,7 @@ Needs the printed button pieces from A4 and the real board. The plate, ports and
 
 ![C5](tests/D-board.png)
 
-**What you're testing and why:** The point of the whole pin design: every button must be pressable with the case shut. This checks the pins really reach the real buttons, that they click, and that you can switch the board back on with a hard POWER press. The newest board may differ from Waveshare's drawing, so this is the first test that uses real hardware.
+**What you're testing and why:** The point of the pin design: every button must be pressable with the case shut. This checks the pins really reach the real buttons, that they click, and that you can switch the board back on with a hard POWER press. BTN-cup is the piece of the screen module's top wall with the three holes; the pins go through those holes.
 
 | Piece | Where it is | Note |
 |---|---|---|
@@ -101,18 +101,19 @@ Needs the printed button pieces from A4 and the real board. The plate, ports and
 **What to do:**
 
 1. Lay the board on the table with the three buttons along the top edge, as in the picture. From the USB-C end: 1 = RESET, 2 = BOOT, 3 = POWER.
-2. Hold BTN-cup so its flat inner face is 3 mm from the board's top edge (use a 3 mm spacer), with the three holes centred over the three buttons.
-3. Push each pin through the hole until it touches its button. Press, and feel for the click.
-4. Switch the board off, then use the pin over POWER to switch it back on.
+2. Hold BTN-cup flat against the board's top edge side, so its flat inner face is about 3 mm from the buttons (a 3 mm spacer helps), and slide it until the middle hole is directly over BOOT. Look down from above.
+3. Look at the other two holes: are they over RESET and POWER?
+4. Push a pin through each hole until it touches its button. Press, and feel for the click.
+5. Switch the board off, then use the pin over POWER to switch it back on.
 
 | Question | Answer |
 |---|---|
-| Do the three holes sit over the three buttons? | ☐ yes  ☐ off by ___ mm sideways  ☐ off by ___ mm up or down |
-| How far did you have to slide BTN-cup sideways to centre the holes (the strip is printed at the old drawing positions; the real buttons are about 1.9 mm further from the USB-C end)? | ☐ not at all  ☐ ___ mm towards the USB-C end  ☐ ___ mm away from the USB-C end |
+| With the middle hole over BOOT, are the other two holes over RESET and POWER? | ☐ yes, both  ☐ RESET is off by ___ mm  ☐ POWER is off by ___ mm  ☐ both off |
 | Does each pin click its button? | ☐ all three  ☐ only ___  ☐ none |
 | Does the pin leave the button properly when you let go (no stuck press)? | ☐ yes  ☐ no |
 | Can you switch the board back on by pressing POWER through its pin? | ☐ yes, short press  ☐ yes, needs a hard press  ☐ no |
 | How hard do you have to press (BOOT or RESET)? | ☐ light  ☐ firm  ☐ very hard |
+| When you measured the button distances "from the USB-C end", from where exactly? | ☐ the board's own edge (the green board)  ☐ the tip of the USB-C connector, which sticks out  ☐ not sure |
 
 ## D. Measurements (calipers)
 
@@ -181,7 +182,7 @@ Calipers, in mm, one decimal. D1, D2 and D5 need the battery, D6 the acceleromet
 | A5 | rings | `A fits: GLASS_CLEAR stays (it was the print); B only: GLASS_CLEAR +0.25 (and the real bezel pocket); neither: where it catches, glass corner radius; lip/border/gap: LIP_OVERLAP, BEZEL_WALL, LIP_GAP` |
 | A4 | pins | `stick/stiff -> TUNNEL_D +0.1 or PIN_D -0.1; too small/sunk/proud -> PIN_HEAD_D, PIN_PROUD, CBORE_D; fall out -> add a retaining lip in the dimple; hard to pull -> PIN_PROUD +0.4` |
 | A4 | holes clean | `no -> TUNNEL_D +0.2 (teardrop in the TPU body)` |
-| C5 | reach / click | `off sideways -> BUTTONS_X; up or down -> BUTTON_H; no click -> pin tip (BTN_TIP_Y) or BUTTON_HOLE_D; stuck press -> TUNNEL_D, PIN_D` |
+| C5 | reach / click | `other holes off -> the button pitch (BUTTONS_X spacing); no click -> pin tip (BTN_TIP_Y) or BUTTON_HOLE_D; stuck press -> TUNNEL_D, PIN_D. Measured from the connector tip -> BUTTONS_X shift +0.6, not +1.9` |
 | C5 | hard press | `only if POWER needs more travel: PIN_OVERTRAVEL` |
 | D1 | T | `BATT_T (drives FRONT_T)` |
 | D2 | L, W | `BATT_L, BATT_W` |
