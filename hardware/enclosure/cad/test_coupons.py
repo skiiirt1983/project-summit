@@ -193,7 +193,8 @@ def button_raw():
     wide = x1 - x0
     xc = (x0 + x1) / 2
     body_box = Pos(xc, -52.0, -11.0) * Box(wide, 24.0, 26.0)                    # y -64 .. -40, z +2 .. -24
-    frame_box = Pos(xc, -41.5, -12.0) * Box(wide, 5.0, 24.0)
+    frame_box = Pos(xc, -41.5, -9.5) * Box(wide, 5.0, 19.0)                    # z 0 .. -19: stops above the clip finger, which
+                                                                                # would otherwise leave a loose fragment
     cup_box = Pos(xc, -38.0, -12.0) * Box(wide, 8.0, 24.0)
     return {"BTN-body": body_local() & body_box, "BTN-frame": parts.frame() & frame_box,
             "BTN-cup": parts.cup() & cup_box, "BTN-pins": parts.button_pins()}
