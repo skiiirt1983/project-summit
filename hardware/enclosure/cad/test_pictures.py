@@ -35,7 +35,12 @@ def render(name, pieces, view):
     return Image.open(folder / "view.png").convert("RGB")
 
 
+ACTIVE = {"A4-buttons"}          # pictures for tests still open; finished tests are not redrawn
+
+
 def picture(name, pieces, apart, direction, flip=False, zoom=1.0):
+    if name not in ACTIVE:
+        return
     """Left: pieces apart (each moved by its `apart` offset). Right: put together. Legend below."""
     turn = Rot(180, 0, 0) if flip else Pos(0, 0, 0)
     together = [(lab, col, turn * shp) for lab, col, shp in pieces]
@@ -91,7 +96,8 @@ if __name__ == "__main__":
                         ("SEAT-bezel", CREAM, seat["SEAT-bezel"])],
             {"SEAT-body": (0, 0, 0), "SEAT-frame": (0, 0, 34), "SEAT-bezel": (0, 0, 70)}, [-0.7, -1.0, 0.55])
 
-    btn = tc.button_raw()
+    with tc.frozen_v1():                                         # same positions as the printed strip
+        btn = tc.button_raw()
     pins = {"BTN-body (TPU)": ("#8d8f8c", btn["BTN-body"]), "BTN-frame": (FRAME, btn["BTN-frame"]),
             "BTN-cup": (CREAM, btn["BTN-cup"]), "3 x BTN-pin": ("#d8452f", btn["BTN-pins"])}
     picture("A4-buttons", [(k, c, s) for k, (c, s) in pins.items()],

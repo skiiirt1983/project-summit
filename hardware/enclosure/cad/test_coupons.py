@@ -1,7 +1,8 @@
 """Test coupons, cut from the real model so they test the real fits.
 
 Run:  python test_coupons.py          -> the pieces still to print:
-     ../coupons/petg-plate.3mf       PETG: GLASS-ring, GLASS-ring-B, BTN-frame, BTN-cup, 3 x BTN-pin
+     ../coupons/buttons-tpu.3mf      TPU: BTN-body (reissued)
+     ../coupons/buttons-petg.3mf     PETG: 3 x BTN-pin (reissued)
       python test_coupons.py --all    -> also rebuilds the pieces already issued (material slices,
      SEAT, END-bed, CAP-corner, GLASS-ring, MIC-plate, PORT-block). Only after a design change:
      the files in ../coupons/ are the ones Paul printed.
@@ -186,6 +187,25 @@ def snap_coupons():
             "SNAP-cover": lay_flat(raw["SNAP-cover"])}
 
 
+class frozen_v1:
+    """Temporarily put back the numbers the printed button strip was made with (drawing button positions,
+    old glass pocket and bezel), so a reissued BTN-body or BTN-pin still stacks with the BTN-frame and
+    BTN-cup Paul already printed. Pin and dimple sizes are NOT frozen: those are what is being changed."""
+    OLD = dict(BUTTONS_X=(72.76, 84.44, 96.12), BUTTON_H=0.7, BUTTON_STICKOUT=0.5, GLASS_TO_BOARD=7.6,
+               GLASS_CLEAR=0.30, BEZEL_WALL=3.15, BEZEL_R=8.25)
+
+    def __enter__(self):
+        self.saved = {k: getattr(p, k) for k in self.OLD}
+        for k, v in self.OLD.items():
+            setattr(p, k, v)
+        p.derive()
+
+    def __exit__(self, *exc):
+        for k, v in self.saved.items():
+            setattr(p, k, v)
+        p.derive()
+
+
 def button_raw():
     """The strip of the case around the three buttons, as it sits together (module frame):
     the TPU body down to the ridge, the frame wall, the module's top wall and the three pins."""
@@ -324,13 +344,17 @@ if __name__ == "__main__":
     import sys
     seat, clip, snap, cap = seat_coupons(), clip_coupons(), snap_coupons(), cap_corner()
     # What Paul still has to print (see ../REMAINING-TESTS.md, group A).
-    # The button strip (BTN-*) is frozen at the version Paul printed (drawing positions, before the real
-    # board was measured): its STLs in ../coupons/ are not rebuilt here. See git history before changing.
+    # The button strip: BTN-frame and BTN-cup are as printed (their STLs are not rebuilt). BTN-body and the
+    # pins are reissued (A4 retest: bigger heads, higher heads, a grip band on the pins), at the printed positions.
+    with frozen_v1():
+        for name, shape in button_coupons().items():
+            if name == "BTN-body" or "pin" in name:
+                export_stl(shape, str(OUT / f"{name}.stl"), tolerance=0.02, angular_tolerance=0.1)
+    combine(["BTN-body"], "buttons-tpu")
+    combine(["BTN-pin-1", "BTN-pin-2", "BTN-pin-3"], "buttons-petg")
     # Glass rings for the second try (the first did not fit the real screen): A as designed, B larger.
-    ring_a, ring_b = glass_ring(), glass_ring(extra=GLASS_RING_B_EXTRA)
-    for name, shape in (("GLASS-ring", ring_a), ("GLASS-ring-B", ring_b)):
-        export_stl(shape, str(OUT / f"{name}.stl"), tolerance=0.02, angular_tolerance=0.1)
-    combine(["GLASS-ring", "GLASS-ring-B", "BTN-frame", "BTN-cup", "BTN-pin-1", "BTN-pin-2", "BTN-pin-3"], "petg-plate")
+    # (Glass rings: finished. Ring B, 0.55 mm per side, fit; the rings are not rebuilt here: with the real
+    # pocket now at 0.55, rebuilding them would give different shapes from the ones Paul printed.)
     # Cap, clip, seat and back-cover tests are finished: nothing else to reissue.
     snap["SNAP-plate"]                                          # (SNAP-plate.stl in ../coupons/ is the printed 0.175 one)
     if "--all" in sys.argv:

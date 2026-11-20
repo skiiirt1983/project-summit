@@ -103,3 +103,13 @@ From `ref/lyricflash-enclosure/lyricflash_print_plates.3mf`: `top_shell.stl`, `b
 | Sockets | X = BAT (J2), Y = SPK (J5), Z = RTC (H3) | read from the board |
 | Speaker | 25.9 x 26.1 x 4.52, wires from the middle of the side | measured |
 | White adhesive | on the back of the glass, facing the board; not interfering | Paul |
+
+## After round 8 (2026-11-20)
+
+| What | Value (mm) | Source |
+|---|---|---|
+| Glass pocket clearance per side | 0.55 (ring B fit; 0.30 did not) | measured on a printed ring |
+| Cream bezel: wall / visible width / corner radius | 3.40 / 4.75 / 8.50 | derived from the above |
+| Pin head / dimple / standing out | Ø8.0 / Ø8.6 / 1.2 | A4 |
+| Pin grip band | Ø3.2 x 1.5, mid-way through the TPU | A4 (untested) |
+| Body, as modelled | 120.1 deep x 136.5 wide x 108.3 tall (the 4.5 -> 4.75 bezel and 0.55 pocket made it 0.5 wider) | CAD |

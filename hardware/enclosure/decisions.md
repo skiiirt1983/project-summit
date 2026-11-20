@@ -118,6 +118,16 @@ Paul measured 25.9 x 26.1 x 4.52 mm, two wires from the middle of the side. Its 
 | 3. No speaker | Alarms and chimes stay silent |
 Decide when D2 (battery length) is known. Nothing is modelled yet.
 
+## Decided from results round 8 (2026-11-20)
+
+| Decision | Why |
+|---|---|
+| Glass pocket 0.55 mm per side (was 0.30); cream bezel wall 3.40 (was 3.15), visible cream 4.75 | Ring B fit "just right", A did not (after printing with the right settings the pocket still needs this room). The bezel grew by the same amount so the cup walls, clip grooves and every tested clearance are unchanged |
+| Button pins: heads Ø8, standing 1.2 mm out, a 3.2 mm grip band mid-way, a groove across the POWER head (instead of a raised bar: a bar would be an overhang when printing) | A4: heads too small and sunk in; pins fell out |
+| Button positions: midpoint (+1.26 mm) of the two possible readings | Paul did not say whether he measured from the board edge or the connector tip; either way the pin hits the button |
+| BOOT and RESET need no extra travel | Paul: very easy to press, like POWER |
+| **Risk: the grip band could hold a button down.** Retested in C5 with the board | Friction vs the button's own return spring |
+
 ## Fixed 2026-11-13
 - **Mic exit holes were blocked.** The mics sit 29.9 mm off the centre line, which is behind the solid corners of
   the triangle, so the holes in frame and body did not reach the hollow. The exit holes (cover, frame, body) are now

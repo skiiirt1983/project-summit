@@ -32,14 +32,16 @@ MODULE_DEPTH = 11.6        # measured on the real board: glass front -> top of t
 HEADER_BOX = (54.55, 1.12, 105.85, 7.72)   # drawing (STEP): 40-pin header, 5.2 tall
 J5_BOX = (26.31, 57.93, 32.07, 62.78)      # drawing (STEP): 2-pin socket, 4.3 tall
 MICS = ((14.55, 2.37), (14.55, 62.17))     # drawing (STEP): mic centres; they face the back
-BUTTONS_X = (74.68, 86.36, 98.04)          # measured on the real (newer) board, 2026-11-20: 74.54 / 86.5 / 98.05 from
+BUTTONS_X = (74.02, 85.70, 97.38)          # measured on the real (newer) board, 2026-11-20: 74.54 / 86.5 / 98.05 from
                                            # the USB-C end, so a mean shift of +1.9 from the drawing (72.76, 84.44, 96.12),
-                                           # with the drawing's 11.68 pitch. ASSUMES the numbers were taken from the board
-                                           # edge, not the connector tip: confirm in C5
+                                           # with the drawing's 11.68 pitch. Whether they were taken from the board edge (+1.9) or from the
+                                           # connector tip (+0.6) is not known, so the value used is the midpoint, +1.26: a pin
+                                           # still hits its button either way. C5 (holes line up over the buttons): yes
 POWER_PIN = 2                              # index in BUTTONS_X of the POWER button (C4: 1 = RESET, 2 = BOOT, 3 = POWER)
 BUTTON_H = 1.4             # measured (newer board): button centre above the board (drawing: 0.7)
 BUTTON_STICKOUT = 0.75     # measured: how far the buttons stand out past the board's top edge (drawing: 0.5)
-POWER_BAR = (4.5, 1.2, 0.5)  # raised bar on the POWER pin's head so it can be found by touch: length along the ridge, width, height
+POWER_BAR = (6.0, 1.5, 0.5)  # groove across the POWER pin's head so it can be found by touch (a raised bar would be an overhang
+                             # when the pin prints standing on its head): length along the ridge, width, depth
 SD_X = (51.1, 67.2)        # drawing (STEP): microSD slot along the buttons edge
 SD_H = 0.6                 # drawing (STEP): slot centre above the board
 USB_Y = (23.26, 41.21)     # drawing: USB-C centres on the x = 0 end
@@ -65,10 +67,11 @@ LIP_T = 1.0                # measured (LyricFlash): thickness of the lip over th
 LIP_OVERLAP = 1.35         # measured (LyricFlash): how far the lip covers the glass edge
 LIP_GAP = 0.25             # measured (LyricFlash)  # COUPON: tune after test print (GLASS RING)
 GLASS_RECESS = LIP_T + LIP_GAP   # screen depth below the bezel face
-BEZEL_WALL = 3.15          # cream wall outside the glass edge. Visible cream = BEZEL_WALL +
+BEZEL_WALL = 3.40          # cream wall outside the glass edge. Visible cream = BEZEL_WALL +
                            # LIP_OVERLAP = 4.5 (option B; default, Paul to confirm. LyricFlash is 2.95)
-BEZEL_R = 8.25             # outer corner radius (LyricFlash 6.7 + the extra bezel width)
-GLASS_CLEAR = 0.30         # gap glass edge -> pocket wall, per side  # COUPON: tune after test print (GLASS RING)
+BEZEL_R = 8.50             # outer corner radius (LyricFlash 6.7 + the extra bezel width)
+GLASS_CLEAR = 0.55         # gap glass edge -> pocket wall, per side. GLASS RING test: 0.30 did not fit, 0.55 'just right'.
+                           # BEZEL_WALL grew by 0.25 with it, so the cup walls and every tested clearance stay as they were
 
 # =============================================================================
 # Screen module: cream cup (bezel + walls), carrier plate, back cover
@@ -100,10 +103,14 @@ BUTTON_HOLE_D = 3.4        # hole in the module's top wall; wider than the tunne
                            # the board sits cannot stop the pin reaching the button
 TUNNEL_D = 3.0             # guide tunnel through the frame wall and the TPU body (teardrop in the TPU)
 PIN_D = 2.6                # pusher pin shaft: 0.2 mm clear of the tunnel all round, so it slides freely
-PIN_HEAD_D = 6.0           # finger pad
+PIN_HEAD_D = 8.0           # finger pad (A4: Ø6.0 was too small)
 PIN_HEAD_T = 1.2
-CBORE_D = 6.5              # dimple in the ridge that the pin head sits in
-PIN_PROUD = 0.6            # at rest the head stands this far out of the ridge, so a fingernail can pull it
+CBORE_D = 8.6              # dimple in the ridge that the pin head sits in
+PIN_PROUD = 1.2            # at rest the head stands this far out of the ridge (A4: 0.6 was too sunk in)
+PIN_RIB_D = 3.2             # a short band on the shaft, a little wider than the TUNNEL_D tunnel: the soft TPU grips it so the
+                           # pin stays put when the case is tipped (A4: loose pins fell out). Too grippy would stick a button
+                           # down: COUPON: tune after test print (BTN)
+PIN_RIB_W = 1.5
 PIN_OVERTRAVEL = 0.5       # how far past 'touching the button' the pin can be pushed before its head bottoms
 SD_SLOT = (18.5, 3.6)      # card slot window in the cup wall
 MIC_HOLE_D = 2.0           # measured (LyricFlash). MIC results: 1.8 printed clean, so 2.0 is safe; kept
@@ -259,6 +266,7 @@ def derive():
     g["PIN_HEAD_REST_Y"] = BTN_EXIT_Y - PIN_PROUD + PIN_HEAD_T       # head's inner face at rest
     g["PIN_LEN"] = abs(PIN_HEAD_REST_Y) - abs(BTN_TIP_Y)             # shaft length, tip to head
     g["PIN_FLOOR_Y"] = PIN_HEAD_REST_Y + PIN_OVERTRAVEL              # head bottoms here when pushed in
+    g["PIN_RIB_Y"] = (-(FRAME_W / 2) + BTN_EXIT_Y) / 2               # middle of the TPU part of the tunnel
     g["LIP_RUN"] = (FRAME_L - MODULE_L) / 2 - SEAM + FRAME_FIT      # how far the lip overhangs the frame
     g["LIP_D"] = LIP_LAND + LIP_RUN                                # depth where the pocket reaches full width
     g["ROOF_FLAT"] = (POCKET_D - LIP_D) - 2 * ROOF_H               # flat strip left at the pocket's top end

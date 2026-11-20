@@ -112,6 +112,26 @@ Waiting on the board: C1 to C4. Calipers: D1 to D8.
 
 Still to do: A4 (button strip, the TPU part is printing), A5 (glass rings), C5 (buttons on the board), D1, D2, D5, D6 (battery, accelerometer).
 
+## Round 8: button pins on the bench, glass ring retest, first button test on the board
+
+| Test | Question | Paul's answer | Applied |
+|---|---|---|---|
+| Button pins (A4) | Pins slide through all layers; move freely | freely; yes | `TUNNEL_D`, `PIN_D` confirmed |
+| | Head easy to find and press | **too small and too sunk in** | `PIN_HEAD_D` 6.0 -> **8.0**, `CBORE_D` 6.5 -> **8.6**, `PIN_PROUD` 0.6 -> **1.2** |
+| | Tip the strip with the ridge down | **all pins fall out** | New grip band on each pin (`PIN_RIB_D` 3.2, `PIN_RIB_W` 1.5) that the TPU holds lightly |
+| | Pull a pin out with a fingernail | "yes, easily, falls out" | same fix. Pulling must stay easy; retest A4 |
+| | Dimples printed clean | yes | no change |
+| Glass ring (A5) | Which ring fits | **B only** (0.55 mm per side); just right | `GLASS_CLEAR` 0.30 -> **0.55**. `BEZEL_WALL` 3.15 -> 3.40 and `BEZEL_R` 8.25 -> 8.50 so the cup walls and every tested clearance stay as they were (visible cream 4.5 -> 4.75). **Ring test finished** |
+| | Lip covers only the black border; border even; gap lip to glass | yes; yes; small gap | `LIP_OVERLAP`, `LIP_GAP` confirmed |
+| Buttons on the board (C5) | Other two holes over RESET and POWER | yes, both | button pitch confirmed |
+| | Each pin clicks its button | all three | no change |
+| | Pin returns when you let go | yes (Paul's note: "too loose?", consistent with the pins falling out) | grip band, see above; retest |
+| | Switch the board back on through POWER | yes | **works** |
+| | How hard BOOT and RESET need pressing | very easy, like POWER | no change: `PIN_OVERTRAVEL` stays 0.5 |
+| | Measured the button distances from where | not answered | `BUTTONS_X` set to the midpoint of the two readings (+1.26): a pin hits its button either way |
+
+New pieces to print: `coupons/buttons-tpu.3mf` (BTN-body, bigger dimples) and `coupons/buttons-petg.3mf` (3 pins). BTN-frame and BTN-cup stay as printed.
+
 ## Cross-check: every test this form ever asked
 
 | Test | Questions | Status |

@@ -35,3 +35,15 @@ Private alpha repo `project-summit`; public release at 1.0 as `slopeform-home`. 
 
 ## Enclosure
 Case design brief: `hardware/enclosure/ENCLOSURE.md` (single source of truth for the case). Update it first, then the CAD.
+**Starting a case session? Read `hardware/enclosure/CLAUDE.md` first**: it holds the current status, the decisions, how Paul
+likes to work, what went wrong before, and a starter prompt.
+
+## Project status (2026-11-20)
+- **Firmware:** Phase 0 steps 1 to 6 are merged to `main` (monorepo and partition table, CI, framework, LVGL simulator
+  and shell, update engine with rollback, web UI). Phase 1 (real hardware: demo flash, I2C scan, rotation spike) needs
+  the board; Paul now has the board but not yet the battery or accelerometer.
+- **Enclosure:** designed and modelled; fit testing on coupons is nearly done; no full case printed yet. Details in
+  `hardware/enclosure/CLAUDE.md`.
+- Paul keeps decisions in the Claude design doc (see rule 10 above) and answers questions best with pictures and
+  A/B/C choices.
+

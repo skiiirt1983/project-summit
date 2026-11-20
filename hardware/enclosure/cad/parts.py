@@ -57,11 +57,12 @@ def button_pins():
         shaft = Pos(x, p.BTN_TIP_Y - p.PIN_LEN / 2, p.BTN_Z) * _along_y(p.PIN_D / 2, p.PIN_LEN)
         head_y = p.PIN_HEAD_REST_Y - p.PIN_HEAD_T / 2
         head = Pos(x, head_y, p.BTN_Z) * _along_y(p.PIN_HEAD_D / 2, p.PIN_HEAD_T)
-        pin = shaft + head
-        if i == p.POWER_PIN:                                                       # the POWER pin has a bar on its head
-            bar = Pos(x, p.PIN_HEAD_REST_Y - p.PIN_HEAD_T - p.POWER_BAR[2] / 2, p.BTN_Z) * Box(
-                p.POWER_BAR[0], p.POWER_BAR[2], p.POWER_BAR[1])
-            pin = pin + bar
+        rib = Pos(x, p.PIN_RIB_Y, p.BTN_Z) * _along_y(p.PIN_RIB_D / 2, p.PIN_RIB_W)
+        pin = shaft + head + rib
+        if i == p.POWER_PIN:                                                       # POWER pin: a groove across its head
+            groove = Pos(x, p.PIN_HEAD_REST_Y - p.PIN_HEAD_T + p.POWER_BAR[2] / 2 - 0.01, p.BTN_Z) * Box(
+                p.POWER_BAR[0], p.POWER_BAR[2] + 0.02, p.POWER_BAR[1])
+            pin = pin - groove
         out = pin if out is None else out + pin
     return out
 
