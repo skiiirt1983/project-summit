@@ -102,7 +102,7 @@ Paul: the latest Waveshare ESP32-S3 came with an updated PCB with unreleased cha
 
 | Decision | Why |
 |---|---|
-| Button pins follow the measured buttons: +1.9 mm along the board (the three pins move with it), centre height 1.4, stick-out 0.75. The printed A4 strip keeps the old drawing positions, so C5 asks how far to slide it | Measured on the real board. The distances may have been taken from the connector tip, not the board edge; C5 will show it |
+| (superseded: see "Button position settled") Button pins follow the measured buttons: +1.9 mm along the board (the three pins move with it), centre height 1.4, stick-out 0.75. The printed A4 strip keeps the old drawing positions, so C5 asks how far to slide it | Measured on the real board. The distances may have been taken from the connector tip, not the board edge; C5 will show it |
 | POWER (button 3, nearest the far end) gets a pin with a raised bar on its head; RESET and BOOT stay plain | Paul: POWER needs a hard press; find it by touch |
 | Glass-to-standoff depth 11.8 (7.8 + 4.0). Module depth to the header 11.6 | Measured: the standoffs are taller than the header, so nothing pokes into the plate |
 | Glass ring: reprint at the standard line width (0.42, Classic walls), plus ring B with 0.25 mm more room per side | First ring did not fit; Paul recalls a different line width. The white adhesive is on the back of the glass (facing the board), so it is not the cause |
@@ -124,7 +124,7 @@ Decide when D2 (battery length) is known. Nothing is modelled yet.
 |---|---|
 | Glass pocket 0.55 mm per side (was 0.30); cream bezel wall 3.40 (was 3.15), visible cream 4.75 | Ring B fit "just right", A did not (after printing with the right settings the pocket still needs this room). The bezel grew by the same amount so the cup walls, clip grooves and every tested clearance are unchanged |
 | Button pins: heads Ø8, standing 1.2 mm out, a 3.2 mm grip band mid-way, a groove across the POWER head (instead of a raised bar: a bar would be an overhang when printing) | A4: heads too small and sunk in; pins fell out |
-| Button positions: midpoint (+1.26 mm) of the two possible readings | Paul did not say whether he measured from the board edge or the connector tip; either way the pin hits the button |
+| (superseded: see "Button position settled") Button positions: midpoint (+1.26 mm) of the two possible readings | Paul did not say whether he measured from the board edge or the connector tip; either way the pin hits the button |
 | BOOT and RESET need no extra travel | Paul: very easy to press, like POWER |
 | **Risk: the grip band could hold a button down.** Retested in C5 with the board | Friction vs the button's own return spring |
 
@@ -143,10 +143,6 @@ Paul: he only needs the POWER button reachable. RESET can be a programmed short 
 ## Button position settled (2026-11-20)
 
 Paul measured the button distances from the **outer face of the USB-C connector**, which sticks out 1.32 mm past the board edge (STEP). So the buttons are at 73.22 / 85.18 / 96.73 from the board edge: **the drawing (72.76, 84.44, 96.12) was right to within 0.5 to 0.7 mm**. The earlier "+1.9 mm" and the "+1.26 midpoint" were both wrong readings of the same numbers; `BUTTONS_X` now uses the measured values. Only POWER (button 3) has a pin, which moves 0.6 mm from the drawing position. The printed A4 test strip is at the drawing positions (0.6 mm away): fine for a bench test of the pin.
-
-## Button position settled (2026-11-20)
-
-Paul measured the button distances from the **outer face of the USB-C connector**, which sticks out 1.32 mm past the board edge (STEP). So the buttons are at 73.22 / 85.18 / 96.73 from the board edge: **the drawing (72.76, 84.44, 96.12) was right to within 0.5 to 0.7 mm**. The earlier "+1.9 mm" and "+1.26 midpoint" were both wrong readings of the same numbers; `BUTTONS_X` now uses the measured values. Only POWER (button 3) has a pin, which moves 0.6 mm from the drawing position. The printed A4 test strip is at the drawing positions (0.6 mm away): fine for a bench test of the pin.
 
 ## Fixed 2026-11-13
 - **Mic exit holes were blocked.** The mics sit 29.9 mm off the centre line, which is behind the solid corners of

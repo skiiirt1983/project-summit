@@ -107,7 +107,7 @@ Waiting on the board: C1 to C4. Calipers: D1 to D8.
 | Measurements | D3 header depth | 11.6 | `MODULE_DEPTH = 11.6` (documentation only) |
 | | D4 standoff depth | 11.8 | `GLASS_TO_BOARD` 7.6 -> **7.8** (standoff top = 11.8) |
 | | D7 glass | 126.93 x 70.71 | matches the drawing; no change |
-| | D9 buttons | from the USB-C end: 74.54, 86.50, 98.05; stick out 0.75; centre height 1.4; no extra buttons | `BUTTONS_X` (74.68, 86.36, 98.04: a +1.9 shift with the drawing's pitch), `BUTTON_STICKOUT = 0.75`, `BUTTON_H = 1.4`. **Assumes the distances were taken from the board edge, not the connector tip**; C5 checks it |
+| | D9 buttons | from the USB-C end: 74.54, 86.50, 98.05; stick out 0.75; centre height 1.4; no extra buttons | `BUTTON_STICKOUT = 0.75`, `BUTTON_H = 1.4`. The distances were measured from the connector tip (told later), so `BUTTONS_X` = 73.22 / 85.18 / 96.73 from the board edge (the drawing was right to within 0.7 mm) |
 | | D8 speaker | wanted: 25.9 x 26.1 x 4.52 mm, wires from the middle of the side | **open decision, see `decisions.md`** |
 
 Still to do: A4 (button strip, the TPU part is printing), A5 (glass rings), C5 (buttons on the board), D1, D2, D5, D6 (battery, accelerometer).
