@@ -102,4 +102,4 @@ From `ref/lyricflash-enclosure/lyricflash_print_plates.3mf`: `top_shell.stl`, `b
 | UART USB-C port | the upper one (nearer the buttons) | read from the board |
 | Sockets | X = BAT (J2), Y = SPK (J5), Z = RTC (H3) | read from the board |
 | Speaker | 25.9 x 26.1 x 4.52, wires from the middle of the side | measured |
-| White adhesive on the glass edge | not measured yet (D10) | — |
+| White adhesive | on the back of the glass, facing the board; not interfering | Paul |

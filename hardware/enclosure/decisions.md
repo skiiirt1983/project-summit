@@ -105,7 +105,7 @@ Paul: the latest Waveshare ESP32-S3 came with an updated PCB with unreleased cha
 | Button pins follow the measured buttons: +1.9 mm along the board (the three pins move with it), centre height 1.4, stick-out 0.75. The printed A4 strip keeps the old drawing positions, so C5 asks how far to slide it | Measured on the real board. The distances may have been taken from the connector tip, not the board edge; C5 will show it |
 | POWER (button 3, nearest the far end) gets a pin with a raised bar on its head; RESET and BOOT stay plain | Paul: POWER needs a hard press; find it by touch |
 | Glass-to-standoff depth 11.8 (7.8 + 4.0). Module depth to the header 11.6 | Measured: the standoffs are taller than the header, so nothing pokes into the plate |
-| Glass ring: reprint at the standard line width (0.42, Classic walls), plus ring B with 0.25 mm more room per side | First ring did not fit; Paul recalls a different line width and sees white adhesive on the glass edge |
+| Glass ring: reprint at the standard line width (0.42, Classic walls), plus ring B with 0.25 mm more room per side | First ring did not fit; Paul recalls a different line width. The white adhesive is on the back of the glass (facing the board), so it is not the cause |
 | UART port is the upper one; BAT = J2 (bottom edge), SPK = J5 (top edge), RTC = H3 | Read from the board |
 
 ### OPEN: speaker (Paul wants one, was "not fitted")

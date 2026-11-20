@@ -1,6 +1,6 @@
 # Remaining tests
 
-**Left to do: A. Reprints: 2 · B. Tests not done yet: 0 · C. Needs the board: 1 · D. Measurements: 5**
+**Left to do: A. Reprints: 2 · B. Tests not done yet: 0 · C. Needs the board: 1 · D. Measurements: 4**
 
 Only what is still open. Finished tests are not here (the record of those is COUPON-RESULTS.md). Tick a box or write in a blank. Never press on the screen glass.
 
@@ -54,7 +54,7 @@ Two things to print: the PETG plate (coupons/petg-plate.3mf: the two glass rings
 
 ![A5](tests/A5-glass.png)
 
-**What you're testing and why:** The first ring did not fit the real screen, and you saw white adhesive on the inside of the glass edge. This time there are two rings: A is as designed (0.3 mm of room per side), B has 0.25 mm more room per side. Print them with the settings in the table at the top: last time the line width was probably different, which changes how thick the walls come out and how big the pocket is. If one fits, we know how much room the glass needs; if neither does, we need the adhesive measurement (D10).
+**What you're testing and why:** The first ring did not fit the real screen. The white adhesive you saw is on the back of the glass, facing the circuit board, so it is not the cause. The likeliest cause is the print: last time the line width was probably different, which changes how thick the walls come out and how big the pocket is. So this time there are two rings: A is the same design printed with the settings in the table at the top; B has 0.25 mm more room per side. If A fits, it was the print. If only B fits, the glass needs more room than the drawing says and I will enlarge the pocket. If neither fits, I need to know where it catches.
 
 | Piece | Where it is | Note |
 |---|---|---|
@@ -65,16 +65,15 @@ Two things to print: the PETG plate (coupons/petg-plate.3mf: the two glass rings
 
 **What to do:**
 
-1. First measure the screen module with the white adhesive on it (test D10).
-2. Lay a ring face down on a soft cloth. Lower the screen into it, glass down. Never press on the glass.
-3. Do the same with the other ring.
-4. Turn the one that fits over and look at the screen through the opening, switched on if you can.
+1. Lay a ring face down on a soft cloth. Lower the screen into it, glass down. Never press on the glass.
+2. Do the same with the other ring.
+3. Turn the one that fits over and look at the screen through the opening, switched on if you can.
 
 | Question | Answer |
 |---|---|
 | Which ring does the screen drop into? | ☐ A only  ☐ B only  ☐ both  ☐ neither |
 | In the ring that fits, how much play is there? | ☐ rattles  ☐ just right  ☐ tight |
-| Is the white adhesive visible or catching on the ring's wall? | ☐ no  ☐ yes, on the ___ side(s) |
+| If neither fits: where does it catch? | ☐ corners  ☐ long sides  ☐ short sides  ☐ all round  ☐ not applicable |
 | Does the lip cover only the black border, not the picture? | ☐ yes  ☐ covers the picture on the ___ side |
 | Does the black border look even enough behind the cream? | ☐ yes  ☐ no |
 | With the board resting in the ring, is there a gap between lip and glass? | ☐ touching  ☐ small gap  ☐ large gap |
@@ -117,7 +116,7 @@ Needs the printed button pieces from A4 and the real board. The plate, ports and
 
 ## D. Measurements (calipers)
 
-Calipers, in mm, one decimal. D1, D2 and D5 need the battery, D6 the accelerometer, D10 the screen you already have.
+Calipers, in mm, one decimal. D1, D2 and D5 need the battery, D6 the accelerometer.
 
 ### D1. Battery thickness
 
@@ -173,29 +172,13 @@ Calipers, in mm, one decimal. D1, D2 and D5 need the battery, D6 the acceleromet
 | Height | ☐ ___ mm |
 | Hole size and spacing | ☐ hole ___ mm  ☐ spacing ___ mm |
 
-### D10. The screen with its white adhesive
-
-**What you're testing and why:** The first glass ring did not fit and you noticed white adhesive on the inside of the glass edge (top, right and bottom). If it sticks out past the glass edge, the pocket has to be bigger.
-
-**What to do:**
-
-1. With the screen glass up, measure the whole outline at the widest point, including any white adhesive: long side, then short side.
-2. Then note how far the adhesive sticks out past the glass edge on each side, and how thick it is.
-
-| Question | Answer |
-|---|---|
-| Outline with the adhesive: long side x short side | ☐ ___ x ___ mm |
-| Adhesive sticks out past the glass by | ☐ top ___ mm  ☐ right ___ mm  ☐ bottom ___ mm  ☐ left ___ mm |
-| Adhesive thickness | ☐ ___ mm |
-
 ---
 
 <details><summary>For Claude: what each answer changes (ignore this)</summary>
 
 | Test | Answer | Changes in cad/params.py |
 |---|---|---|
-| A5 | rings | `A fits: GLASS_CLEAR stays; B only: GLASS_CLEAR +0.25 (and the real bezel pocket); neither: from D10; lip/border/gap: LIP_OVERLAP, BEZEL_WALL, LIP_GAP` |
-| D10 | adhesive | `GLASS_CLEAR (pocket must clear glass + adhesive); maybe a relief groove` |
+| A5 | rings | `A fits: GLASS_CLEAR stays (it was the print); B only: GLASS_CLEAR +0.25 (and the real bezel pocket); neither: where it catches, glass corner radius; lip/border/gap: LIP_OVERLAP, BEZEL_WALL, LIP_GAP` |
 | A4 | pins | `stick/stiff -> TUNNEL_D +0.1 or PIN_D -0.1; too small/sunk/proud -> PIN_HEAD_D, PIN_PROUD, CBORE_D; fall out -> add a retaining lip in the dimple; hard to pull -> PIN_PROUD +0.4` |
 | A4 | holes clean | `no -> TUNNEL_D +0.2 (teardrop in the TPU body)` |
 | C5 | reach / click | `off sideways -> BUTTONS_X; up or down -> BUTTON_H; no click -> pin tip (BTN_TIP_Y) or BUTTON_HOLE_D; stuck press -> TUNNEL_D, PIN_D` |

@@ -98,21 +98,20 @@ TESTS = [
                     ("Can you pull a pin out again with a fingernail?", ["yes, easily", "yes, but hard", "no"]),
                     ("Did the three pin holes in BTN-body print clean (round, not blocked)?", ["yes", "no"])]),
     dict(id="A5", title="Glass ring, second try", pic="A5-glass.png",
-         why="The first ring did not fit the real screen, and you saw white adhesive on the inside of the glass edge. This time "
-             "there are two rings: A is as designed (0.3 mm of room per side), B has 0.25 mm more room per side. Print them with the "
-             "settings in the table at the top: last time the line width was probably different, which changes how thick the "
-             "walls come out and how big the pocket is. If one fits, we know how much room the glass needs; if neither does, "
-             "we need the adhesive measurement (D10).",
+         why="The first ring did not fit the real screen. The white adhesive you saw is on the back of the glass, facing the circuit board, so "
+             "it is not the cause. The likeliest cause is the print: last time the line width was probably different, which changes how thick the "
+             "walls come out and how big the pocket is. So this time there are two rings: A is the same design printed with the "
+             "settings in the table at the top; B has 0.25 mm more room per side. If A fits, it was the print. If only B fits, the "
+             "glass needs more room than the drawing says and I will enlarge the pocket. If neither fits, I need to know where it catches.",
          pieces=[("GLASS-ring", "coupons/petg-plate.3mf (or GLASS-ring.stl)", "PETG, 0.12 mm layers, face down. Same file as before: reprint it with the correct line width"),
                  ("GLASS-ring-B", "coupons/petg-plate.3mf (or GLASS-ring-B.stl)", "PETG, 0.12 mm layers, face down. New: bigger pocket")],
          settings=PETG_FINE + ". Elephant foot compensation 0.15 mm. Prints face down.",
-         steps=["First measure the screen module with the white adhesive on it (test D10).",
-                "Lay a ring face down on a soft cloth. Lower the screen into it, glass down. Never press on the glass.",
+         steps=["Lay a ring face down on a soft cloth. Lower the screen into it, glass down. Never press on the glass.",
                 "Do the same with the other ring.",
                 "Turn the one that fits over and look at the screen through the opening, switched on if you can."],
          questions=[("Which ring does the screen drop into?", ["A only", "B only", "both", "neither"]),
                     ("In the ring that fits, how much play is there?", ["rattles", "just right", "tight"]),
-                    ("Is the white adhesive visible or catching on the ring's wall?", ["no", "yes, on the ___ side(s)"]),
+                    ("If neither fits: where does it catch?", ["corners", "long sides", "short sides", "all round", "not applicable"]),
                     ("Does the lip cover only the black border, not the picture?", ["yes", "covers the picture on the ___ side"]),
                     ("Does the black border look even enough behind the cream?", ["yes", "no"]),
                     ("With the board resting in the ring, is there a gap between lip and glass?", ["touching", "small gap", "large gap"])]),
@@ -241,15 +240,6 @@ TESTS = [
                     ("How far each button sticks out beyond the board's top edge", ["___ mm"]),
                     ("Height of the button centre above the board", ["___ mm"]),
                     ("Any extra button, or a button on a different edge? (drawing: three on the top edge)", ["no", "yes: ___"])]),
-    dict(id="D10", title="The screen with its white adhesive", pic="D-measure.png", needs="board",
-         why="The first glass ring did not fit and you noticed white adhesive on the inside of the glass edge (top, right and bottom). "
-             "If it sticks out past the glass edge, the pocket has to be bigger.",
-         pieces=[], settings="",
-         steps=["With the screen glass up, measure the whole outline at the widest point, including any white adhesive: long side, then short side.",
-                "Then note how far the adhesive sticks out past the glass edge on each side, and how thick it is."],
-         questions=[("Outline with the adhesive: long side x short side", ["___ x ___ mm"]),
-                    ("Adhesive sticks out past the glass by", ["top ___ mm", "right ___ mm", "bottom ___ mm", "left ___ mm"]),
-                    ("Adhesive thickness", ["___ mm"])]),
 ]
 
 # Finished (kept in the source for reference, not listed): A1 cap, A2 clip, A3 back cover, B1 seat, and with the real
@@ -259,8 +249,7 @@ TESTS = [t for t in TESTS if t["id"] not in FINISHED]
 
 # For Claude: what each answer changes. Kept out of the questions on purpose.
 FOR_CLAUDE = [
-    ("A5", "rings", "A fits: GLASS_CLEAR stays; B only: GLASS_CLEAR +0.25 (and the real bezel pocket); neither: from D10; lip/border/gap: LIP_OVERLAP, BEZEL_WALL, LIP_GAP"),
-    ("D10", "adhesive", "GLASS_CLEAR (pocket must clear glass + adhesive); maybe a relief groove"),
+    ("A5", "rings", "A fits: GLASS_CLEAR stays (it was the print); B only: GLASS_CLEAR +0.25 (and the real bezel pocket); neither: where it catches, glass corner radius; lip/border/gap: LIP_OVERLAP, BEZEL_WALL, LIP_GAP"),
     ("A4", "pins", "stick/stiff -> TUNNEL_D +0.1 or PIN_D -0.1; too small/sunk/proud -> PIN_HEAD_D, PIN_PROUD, CBORE_D; fall out -> add a retaining lip in the dimple; hard to pull -> PIN_PROUD +0.4"),
     ("A4", "holes clean", "no -> TUNNEL_D +0.2 (teardrop in the TPU body)"),
     ("C5", "reach / click", "off sideways -> BUTTONS_X; up or down -> BUTTON_H; no click -> pin tip (BTN_TIP_Y) or BUTTON_HOLE_D; stuck press -> TUNNEL_D, PIN_D"),
@@ -401,7 +390,7 @@ GROUP_NOTES = {
     "A": "Two things to print: the PETG plate (coupons/petg-plate.3mf: the two glass rings and the PETG button pieces), and the TPU button strip that is printing now. Cap, clip, seat and back-cover tests are finished.",
     "B": "Nothing left here. The seat test is finished, and the T1/T2/T3 material test was answered long ago (TPU for AMS, T1, no firm zone, 13 mm legs right).",
     "C": "Needs the printed button pieces from A4 and the real board. The plate, ports and labels are done.",
-    "D": "Calipers, in mm, one decimal. D1, D2 and D5 need the battery, D6 the accelerometer, D10 the screen you already have.",
+    "D": "Calipers, in mm, one decimal. D1, D2 and D5 need the battery, D6 the accelerometer.",
 }
 
 
