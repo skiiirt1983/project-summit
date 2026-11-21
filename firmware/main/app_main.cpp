@@ -5,11 +5,16 @@
 
 #include "esp_app_desc.h"
 #include "esp_log.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "nvs_flash.h"
 
 #include "board_pins.h"
+#include "demo_panels.h"
 #include "hardware_id.h"
 #include "nvs_settings_storage.h"
+#include "summit/bsp/bsp.h"
 #include "summit/event_bus.h"
 #include "summit/modules.h"
 #include "summit/recipes/module.h"
@@ -19,6 +24,7 @@
 #include "summit/recipes/web_api.h"
 #include "summit/registry.h"
 #include "summit/settings.h"
+#include "summit/shell/shell.h"
 #include "summit/sd_card.h"
 #include "summit/state_store.h"
 #include "summit/system_settings.h"
@@ -65,6 +71,8 @@ extern "C" void app_main(void)
     static summit::recipes::HttpsPageFetcher page_fetcher;  // untested on hardware
     recipe_api.set_fetcher(&page_fetcher);
     recipe_api.set_bus(&bus);
+    // First-light placeholder panels (home, calendar, weather, news, printer), shared with the simulator.
+    sim::register_demo_panels(registry);
     registry.add(std::make_unique<summit::recipes::RecipesPanel>(recipe_store));
 
     // Modules ship in the firmware but start uninstalled (ARCHITECTURE.md "Modules").
@@ -114,4 +122,39 @@ extern "C" void app_main(void)
     state.set("system/hardware_id", std::string(SUMMIT_HARDWARE_ID));
     state.set("system/firmware_version", std::string(desc->version));
     bus.dispatch();
+
+    // ---- Display, touch and the UI loop (Phase 1, first light; UNTESTED on hardware) ----
+    // The loop runs here, so the main task stack is raised in sdkconfig.defaults. Nothing but this task
+    // touches LVGL; other tasks only use the (thread-safe) event bus.
+    static summit::bsp::Handles hw;
+    if (!summit::bsp::start(hw)) {
+        ESP_LOGE(TAG, "display/touch failed to start: the update engine and web server keep running without a UI");
+        return;
+    }
+    summit::bsp::set_orientation(hw.display, summit::kLandscape);  // until the accelerometer service exists
+    sim::publish_placeholders(state);                              // fake time, weather, battery... (placeholders)
+    static summit::shell::Shell shell(
+        summit::shell::Shell::Deps{bus, state, settings, registry, host, &modules},
+        [](summit::Orientation o) { summit::bsp::set_orientation(hw.display, o); });
+    auto now_ms = [] { return static_cast<uint32_t>(esp_timer_get_time() / 1000); };
+    std::string ui_error;
+    if (!shell.start(now_ms(), &ui_error)) {
+        ESP_LOGE(TAG, "shell start failed: %s", ui_error.c_str());
+        return;
+    }
+    if (hw.touch) shell.attach_input(hw.touch);
+    else ESP_LOGW(TAG, "no touch controller: the UI is display-only");
+    lv_timer_handler();                                // draw the first frame, then light the panel
+    summit::bsp::set_brightness(80);
+    ESP_LOGI(TAG, "UI running");
+    // PowerService::tick() is deliberately not called yet: deep sleep is untested and the device would
+    // sleep after 5 idle minutes. Timers and the shell run.
+    for (;;) {
+        const uint32_t now = now_ms();
+        bus.dispatch();
+        timers.tick(now);
+        shell.tick(now);
+        lv_timer_handler();
+        vTaskDelay(pdMS_TO_TICKS(5));
+    }
 }

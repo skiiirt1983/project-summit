@@ -14,6 +14,11 @@ CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y
 
 # 32 MB in-package PSRAM
 CONFIG_SPIRAM=y
+# Large allocations (LVGL, framebuffers, snapshot pictures) go to PSRAM.
+CONFIG_SPIRAM_USE_MALLOC=y
+
+# The UI loop runs in the main task (LVGL needs room).
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384
 
 CONFIG_COMPILER_OPTIMIZATION_PERF=y
 
@@ -29,3 +34,8 @@ CONFIG_LV_FONT_DEFAULT_MONTSERRAT_20=y
 # Recipes panel: QR code to the web UI for PDF conversion.
 CONFIG_LV_USE_QRCODE=y
 CONFIG_LV_USE_SNAPSHOT=y
+
+# LVGL uses the C library allocator (PSRAM-backed) rather than its fixed 64 KB pool, as in the simulator.
+CONFIG_LV_USE_CLIB_MALLOC=y
+CONFIG_LV_USE_CLIB_STRING=y
+CONFIG_LV_USE_CLIB_SPRINTF=y
