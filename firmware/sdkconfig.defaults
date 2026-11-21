@@ -17,6 +17,10 @@ CONFIG_SPIRAM=y
 # Large allocations (LVGL, framebuffers, snapshot pictures) go to PSRAM.
 CONFIG_SPIRAM_USE_MALLOC=y
 
+# 1 ms RTOS tick: the UI loop sleeps in whole ticks (at the default 100 Hz a 5 ms delay rounded to 0 and starved
+# the idle task, which tripped the task watchdog).
+CONFIG_FREERTOS_HZ=1000
+
 # The UI loop runs in the main task (LVGL needs room).
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384
 

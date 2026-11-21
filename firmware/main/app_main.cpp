@@ -155,6 +155,6 @@ extern "C" void app_main(void)
         timers.tick(now);
         shell.tick(now);
         lv_timer_handler();
-        vTaskDelay(pdMS_TO_TICKS(5));
+        vTaskDelay(1);  // one tick (1 ms at 1000 Hz): lets the idle task run and feed the watchdog
     }
 }

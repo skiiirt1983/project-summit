@@ -19,6 +19,8 @@
 #include "esp_lcd_touch_gt911.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 namespace summit::bsp {
 
@@ -134,10 +136,16 @@ bool touch_init(i2c_master_bus_handle_t i2c)
     cfg.y_max = kVRes;
     cfg.rst_gpio_num = GPIO_NUM_NC;  // not connected on this board
     cfg.int_gpio_num = GPIO_NUM_NC;
-    // Two possible I2C addresses depending on how the chip sampled its reset pin at power-up.
-    for (uint8_t addr : {static_cast<uint8_t>(ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS),
-                         static_cast<uint8_t>(ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS_BACKUP)}) {
-        if (i2c_master_probe(i2c, addr, 100) != ESP_OK) continue;
+    // The LCD reset pin is shared with the touch chip, so the GT911 restarts when the panel is reset and is
+    // not answering for a while (first run: found by the bus scan before the panel reset, gone right after).
+    // Two possible I2C addresses depending on how it sampled its reset pin; retry for about 3 s.
+    for (int attempt = 0; attempt < 15; ++attempt) {
+        if (attempt) vTaskDelay(pdMS_TO_TICKS(200));
+        uint8_t addr = 0;
+        for (uint8_t a : {static_cast<uint8_t>(ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS),
+                          static_cast<uint8_t>(ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS_BACKUP)})
+            if (addr == 0 && i2c_master_probe(i2c, a, 50) == ESP_OK) addr = a;
+        if (addr == 0) continue;
         // The values of ESP_LCD_TOUCH_IO_I2C_GT911_CONFIG(), set by name: that macro's initialiser order is
         // not valid C++ (it failed to compile).
         esp_lcd_panel_io_i2c_config_t io_cfg = {};
@@ -150,10 +158,10 @@ bool touch_init(i2c_master_bus_handle_t i2c)
         esp_lcd_panel_io_handle_t io = nullptr;
         if (esp_lcd_new_panel_io_i2c(i2c, &io_cfg, &io) != ESP_OK) return false;
         if (esp_lcd_touch_new_i2c_gt911(io, &cfg, &g_touch) != ESP_OK) return false;
-        ESP_LOGI(TAG, "GT911 touch found at 0x%02x", addr);
+        ESP_LOGI(TAG, "GT911 touch found at 0x%02x (attempt %d)", addr, attempt + 1);
         return true;
     }
-    ESP_LOGE(TAG, "GT911 touch not found on I2C (0x5d / 0x14)");
+    ESP_LOGE(TAG, "GT911 touch not found on I2C (0x5d / 0x14) after 15 tries");
     return false;
 }
 
@@ -174,8 +182,17 @@ void flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px)
         lv_draw_sw_rotate(px, g_rotate_buf, src_w, src_h, src_stride, dst_stride, rot, cf);
         px = static_cast<uint8_t *>(g_rotate_buf);
     }
-    esp_lcd_panel_draw_bitmap(g_panel, out.x1, out.y1, out.x2 + 1, out.y2 + 1, px);
-    lv_display_flush_ready(disp);
+    // The copy into the frame buffer runs by DMA2D; the panel driver calls trans_done_cb when it has finished
+    // and only then may LVGL reuse the buffer (flush_ready). Calling it here made the next strip start too
+    // early ("previous draw operation is not finished", flicker).
+    if (esp_lcd_panel_draw_bitmap(g_panel, out.x1, out.y1, out.x2 + 1, out.y2 + 1, px) != ESP_OK)
+        lv_display_flush_ready(disp);  // not started: do not hang LVGL
+}
+
+bool trans_done_cb(esp_lcd_panel_handle_t, esp_lcd_dpi_panel_event_data_t *, void *user)
+{
+    lv_display_flush_ready(static_cast<lv_display_t *>(user));
+    return false;  // no higher-priority task woken
 }
 
 void touch_read_cb(lv_indev_t *, lv_indev_data_t *data)
@@ -235,6 +252,12 @@ bool start(Handles &out)
     lv_display_set_buffers(disp, b1, b2, buf_bytes, LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_set_flush_cb(disp, flush_cb);
     out.display = disp;
+    esp_lcd_dpi_panel_event_callbacks_t cbs = {};
+    cbs.on_color_trans_done = trans_done_cb;
+    if (esp_lcd_dpi_panel_register_event_callbacks(g_panel, &cbs, disp) != ESP_OK) {
+        ESP_LOGE(TAG, "could not register the draw-done callback");
+        return false;
+    }
 
     if (touch_init(i2c)) {
         out.touch = lv_indev_create();
