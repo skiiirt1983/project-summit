@@ -160,6 +160,14 @@ Paul measured the button distances from the **outer face of the USB-C connector*
 | Grip band: the next round tries 3.05 / 3.10 / 3.15 mm; default 3.1 | 3.2 stuck and held POWER down; 2.8, 2.9, 3.0 and no band all fell out. A friction fit this sensitive may not be stable: if none of the three works, switch to a different retention (a lip in the dimple) rather than a finer friction fit |
 | Head Ø8, 1.6 out: kept | Easy to find and press |
 
+## Decided from results round 11 (buttons finished, 2026-11-21)
+
+| Decision | Why |
+|---|---|
+| **POWER pin grip band 3.10 mm (final).** 3.05 also worked; 3.15 was a little stiff | A4 and C5 on the real board: stays in when tipped, easy to press and pull, comes back when released, switches the board on with a short press |
+| Button work is finished: POWER pin to the ridge; BOOT and RESET as 1.8 mm paperclip holes in the PETG module (both click with a paperclip); no battery switch | Paul's call and the tests |
+| The pin may still need a retest in the full case, since a printed full body will hold it differently from the test strip | Only a coupon so far |
+
 ## Fixed 2026-11-13
 - **Mic exit holes were blocked.** The mics sit 29.9 mm off the centre line, which is behind the solid corners of
   the triangle, so the holes in frame and body did not reach the hollow. The exit holes (cover, frame, body) are now

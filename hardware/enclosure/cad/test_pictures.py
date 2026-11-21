@@ -35,7 +35,7 @@ def render(name, pieces, view):
     return Image.open(folder / "view.png").convert("RGB")
 
 
-ACTIVE = {"A4-buttons"}          # pictures for tests still open; finished tests are not redrawn
+ACTIVE = set()          # pictures for tests still open; finished tests are not redrawn
 
 
 def picture(name, pieces, apart, direction, flip=False, zoom=1.0):

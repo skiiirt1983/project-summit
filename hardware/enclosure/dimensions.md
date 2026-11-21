@@ -117,3 +117,7 @@ From `ref/lyricflash-enclosure/lyricflash_print_plates.3mf`: `top_shell.stl`, `b
 ## Buttons after Paul's change (2026-11-20)
 
 POWER (button 3) has the only pin to the surface (Ø2.6 shaft, Ø8.0 head, grip band Ø3.2). BOOT and RESET are Ø1.8 paperclip holes in the PETG module wall (`BUTTON_PIN_D`).
+
+## Final pin (2026-11-21)
+
+POWER pin: Ø2.6 shaft, grip band Ø3.10 x 1.5 (final, from A4), head Ø8.0 x 1.2 standing 1.6 out, in a Ø3.0 tunnel and Ø8.6 dimple. Tested on the TPU strip and on the real board.

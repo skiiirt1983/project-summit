@@ -17,10 +17,9 @@ Handoff for a new Claude Code session working on the case. Read this first, then
   another, both mic exits are open.
 - **Nothing has been printed as a full case yet.** Everything so far was tested on small coupons (pieces of the real
   parts) that Paul prints and fills in a form for. Passed: material, body ends, cap push-fit, clips, seat, back cover,
-  port block, carrier plate, glass ring, first button test on the real board.
-- **Open right now:** A4 pin grip (three pins with grip bands 3.05 / 3.10 / 3.15 in the printed strip: 3.2 stuck and held
-  POWER down, 2.8 / 2.9 / 3.0 and no band all fell out), then C5 once more with the chosen pin, battery and accelerometer measurements (D1, D2, D5, D6; not arrived), and the
-  **speaker** decision (needs the battery length). See section 7.
+  port block, carrier plate, glass ring, and the button tests on the real board (POWER pin, BOOT/RESET paperclip holes).
+- **Open right now:** only the battery and accelerometer measurements (D1, D2, D5, D6; not arrived) and the **speaker** decision
+  (needs the battery length). **All fit and button tests are finished.** The next big step is the first full-body print. See section 7.
 
 ## 2. How to work with Paul (read this; it saved a lot of rework)
 
@@ -52,7 +51,7 @@ Handoff for a new Claude Code session working on the case. Read this first, then
 | Shape | One hollow rounded triangle, front 60°, back 60°, legs 13 mm, outer corners R16, **no sharp edges anywhere**: near full round on every outside edge, inside and out. Only the screen opening is crisp |
 | Orientation | Landscape on the bottom; **portrait stands on the end away from the USB-C ports**. Ports face the right end seen from the front |
 | Material | **TPU for AMS only** (Paul owns it; no other spools, no stone PLA). Whole body at "T1": 2 walls, 10 % gyroid. No firm zone. Inner frame, bezel, plate, cover and pins are PETG |
-| Parts | main body (TPU) + **port-end cap** (TPU, 19.55 mm, six pegs, no glue) + inner **frame** (PETG, slides in from the open end) + **screen module** (cream bezel with walls, carrier plate, back cover; all PETG) + one **POWER pin** + TPU **pads** |
+| Parts | main body (TPU) + **port-end cap** (TPU, 19.55 mm, six pegs, no glue) + inner **frame** (PETG, slides in from the open end) + **screen module** (cream bezel with walls, carrier plate, back cover; all PETG) + one **POWER pin** (grip band 3.10, final) + TPU **pads** |
 | Cap | Carries both USB-C openings. A 0.6 mm V-groove at the seam, mirrored at the other end so both look intended |
 | Module | Snap-fit: four clips hold it in the frame; plate screws to the board's four M2.5 standoffs; back cover snaps in (two ridges per long side) and opens with a bent paperclip through a pull slot in its floor (next to the battery) |
 | Bezel | Copied from LyricFlash: glass sits 1.25 mm below the face behind a 1.0 mm lip (overlap 1.35, gap 0.25). Visible cream 4.75 mm |
@@ -83,8 +82,7 @@ still a placeholder). Placeholders also live in `ACC_*`, `BATT_*`.
 
 ## 6. Known risks
 
-- The POWER pin's grip band is the open question: 3.2 mm stuck (and held the button down); 2.8, 2.9, 3.0 and no band
-  all fell out. 3.1 is the current guess; if 3.05 to 3.15 do not work, change the retention (a lip in the dimple), not the friction. The first board test showed the pin clicks POWER and switches the board on with a short press.
+- The POWER pin's grip band is settled on the test strip (3.10 mm) but not yet in a printed full body, which may hold it differently.
 - Mic path is ~20 mm through the free strip and a cavity: needs a listening test on the real board before the design is frozen.
 - The pull slot position beside the battery is untested (the coupon has a test slot).
 - Nothing has been printed as a whole case: first full-body print is still ahead.

@@ -218,14 +218,11 @@ TESTS = [
 
 # Finished (kept in the source for reference, not listed): A1 cap, A2 clip, A3 back cover, B1 seat, and with the real
 # board (2026-11-20) C1 (replaced by A5), C2, C3, C4, D3, D4, D7, D8, D9.
-FINISHED = {"A1", "A2", "A3", "A5", "B1", "C1", "C2", "C3", "C4", "D3", "D4", "D7", "D8", "D9"}
+FINISHED = {"A1", "A2", "A3", "A4", "A5", "B1", "C1", "C2", "C3", "C4", "C5", "D3", "D4", "D7", "D8", "D9"}
 TESTS = [t for t in TESTS if t["id"] not in FINISHED]
 
 # For Claude: what each answer changes. Kept out of the questions on purpose.
 FOR_CLAUDE = [
-    ("A4", "which pin", "1 groove -> PIN_RIB_D 3.05, 2 -> 3.10, 3 -> 3.15. 'None': all fall out -> try 3.15 to 3.2 and a second band; all stick -> try 3.0 to 3.05, or a different retention (a lip in the dimple). Then retest in C5"),
-    ("A4", "head", "too small -> PIN_HEAD_D (now 8.0); too sunk/proud -> PIN_PROUD (now 1.6); CBORE_D follows (8.6)"),
-    ("C5", "click / return / hard press", "no click -> BTN_TIP_Y or BUTTON_HOLE_D; stuck -> PIN_RIB_D -0.1 (the grip band holds the pin down; 3.2 did); POWER no -> PIN_OVERTRAVEL"),
     ("D1", "T", "BATT_T (drives FRONT_T)"),
     ("D2", "L, W", "BATT_L, BATT_W; decides the speaker (decisions.md)"),
     ("D5", "wires", "battery orientation, WIRE_NOTCH"),
@@ -356,10 +353,10 @@ PRINT_SETTINGS = [
 INTRO = ("Only what is still open. Finished tests are not here (the record of those is COUPON-RESULTS.md). "
          "Tick a box or write in a blank. Never press on the screen glass.")
 GROUP_NOTES = {
-    "A": "One thing to print: three pins (coupons/buttons-petg.3mf). Glass ring, cap, clip, seat and back-cover tests are finished.",
+    "A": "Nothing left to print. The cap, clip, seat, back cover, glass ring and button pin tests are all finished.",
     "B": "Nothing left here. The seat test is finished, and the T1/T2/T3 material test was answered long ago (TPU for AMS, T1, no firm zone, 13 mm legs right).",
-    "C": "Needs the pin you choose in A4 and the real board. The plate, ports, labels and most of the button test are done.",
-    "D": "Calipers, in mm, one decimal. D1, D2 and D5 need the battery, D6 the accelerometer.",
+    "C": "Nothing left. The plate, ports, labels and the button tests on the real board are all done.",
+    "D": "Everything else is finished. These four wait for the battery and the accelerometer board to arrive. Calipers, in mm, one decimal.",
 }
 
 

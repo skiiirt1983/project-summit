@@ -156,6 +156,17 @@ Retest left: **three pins with different grip bands** (`coupons/buttons-petg.3mf
 | | Head with a free pin | easy to find and press | `PIN_PROUD = 1.6`, `PIN_HEAD_D = 8.0` confirmed |
 | POWER on the board (C5) | Pin clicks POWER; comes back when you let go; board back on with a short press; paperclip through BOOT and RESET | yes; **yes** (not held down); yes; both | works. Retest only because the final band will be larger than the ones tried |
 
+## Round 11: the pin grip, final (button tests complete)
+
+| Test | Question | Paul's answer | Applied |
+|---|---|---|---|
+| Pins (A4) | 3.05 mm band (1 groove) | just right: stays in, easy to press, easy to pull | acceptable |
+| | **3.10 mm band (2 grooves)** | **just right** | **chosen: `PIN_RIB_D = 3.10`** |
+| | 3.15 mm band (3 grooves) | a little stiff | too tight |
+| POWER on the board (C5) | Pin clicks POWER; comes back when you let go; board back on with a short press; paperclip through BOOT and RESET | yes; yes; yes; both | **Button tests finished** |
+
+The three pins in `coupons/buttons-petg.3mf` are printed and finished; nothing more to reissue for buttons.
+
 ## Cross-check: every test this form ever asked
 
 | Test | Questions | Status |

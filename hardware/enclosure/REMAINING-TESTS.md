@@ -1,6 +1,6 @@
 # Remaining tests
 
-**Left to do: A. Reprints: 1 · B. Tests not done yet: 0 · C. Needs the board: 1 · D. Measurements: 4**
+**Left to do: A. Reprints: 0 · B. Tests not done yet: 0 · C. Needs the board: 0 · D. Measurements: 4**
 
 Only what is still open. Finished tests are not here (the record of those is COUPON-RESULTS.md). Tick a box or write in a blank. Never press on the screen glass.
 
@@ -13,33 +13,7 @@ Only what is still open. Finished tests are not here (the record of those is COU
 
 ## A. Reprints (pieces changed by your last results)
 
-One thing to print: three pins (coupons/buttons-petg.3mf). Glass ring, cap, clip, seat and back-cover tests are finished.
-
-### A4. Button pin: which grip is right (fourth try)
-
-![A4](tests/A4-buttons.png)
-
-**What you're testing and why:** Last time all three pins (bands 2.8, 2.9, 3.0) fell out when tipped, and the 3.2 band before that was too tight. So the right size is between 3.0 and 3.2. Here are three pins in that gap: 3.05, 3.10 and 3.15 mm, marked by 1, 2 or 3 grooves across the head. Try all three in the TPU strip and tell me which feels right: stays in when tipped, still easy to press and to pull out.
-
-| Piece | Where it is | Note |
-|---|---|---|
-| **BTN-pin-rib3.05 (1 groove), BTN-pin-rib3.1 (2 grooves), BTN-pin-rib3.15 (3 grooves)** | coupons/buttons-petg.3mf (or the three STLs) | PETG, new. Stand on their heads |
-| **BTN-body, BTN-frame, BTN-cup** | already printed | reuse them |
-
-**Print settings:** Pins: 0.12 mm layers, 3 walls, 100 % infill, line width 0.42, Classic walls, supports off, elephant foot compensation 0.15 mm. They stand on their heads.
-
-**What to do:**
-
-1. Stack the strip as before: BTN-cup (flat side towards the body), then BTN-frame, then BTN-body with its curved ridge at the far end. Line up one set of three holes.
-2. Push the 1-groove pin in from the ridge end until it is through all three layers. Press it and let go. Tip the strip with the ridge down and shake gently. Pull the pin out with a fingernail.
-3. Do the same with the 2-groove pin, then the 3-groove pin (a fresh set of holes for each keeps the tunnels unworn).
-
-| Question | Answer |
-|---|---|
-| 1-groove pin (3.05 mm band): how does it feel? | ☐ falls out when tipped  ☐ just right: stays in, easy to press, easy to pull  ☐ a little stiff  ☐ too stiff, sticks |
-| 2-groove pin (3.10 mm band): how does it feel? | ☐ falls out when tipped  ☐ just right: stays in, easy to press, easy to pull  ☐ a little stiff  ☐ too stiff, sticks |
-| 3-groove pin (3.15 mm band): how does it feel? | ☐ falls out when tipped  ☐ just right: stays in, easy to press, easy to pull  ☐ a little stiff  ☐ too stiff, sticks |
-| Which one would you choose? | ☐ 1 groove  ☐ 2 grooves  ☐ 3 grooves  ☐ none of them |
+Nothing left to print. The cap, clip, seat, back cover, glass ring and button pin tests are all finished.
 
 ## B. Tests not done yet
 
@@ -47,38 +21,11 @@ Nothing left here. The seat test is finished, and the T1/T2/T3 material test was
 
 ## C. Needs the board (when it arrives)
 
-Needs the pin you choose in A4 and the real board. The plate, ports, labels and most of the button test are done.
-
-### C5. POWER pin, BOOT and RESET on the board
-
-![C5](tests/D-board.png)
-
-**What you're testing and why:** Only POWER goes to the outside of the case now (your call: RESET can be a programmed short press of POWER, and you have never needed BOOT). BOOT and RESET stay as small paperclip holes in the screen module. This checks the POWER pin (the one you pick in A4) returns when you let go, and that a paperclip reaches BOOT and RESET through the first two holes of BTN-cup (the holes in that piece are bigger than the real ones, which is fine for this check).
-
-| Piece | Where it is | Note |
-|---|---|---|
-| **BTN-cup, the pin you chose in A4** | from test A4 | reuse them |
-
-**Print settings:** Nothing to print.
-
-**What to do:**
-
-1. Lay the board on the table with the buttons along the top edge, as in the picture. From the USB-C end: 1 = RESET, 2 = BOOT, 3 = POWER.
-2. Hold BTN-cup about 3 mm from the buttons with the right-hand hole over POWER. Push the pin through it until it touches the button.
-3. Press, let go. Does the board react once per press, and only while you press?
-4. Switch the board off, then use the pin to switch it back on.
-5. Slide BTN-cup to the left so the other two holes are over BOOT and RESET. Push a straightened paperclip through each and feel for the click.
-
-| Question | Answer |
-|---|---|
-| Does the pin click POWER? | ☐ yes  ☐ no |
-| Does the pin (the one you chose in A4) come back when you let go, so POWER is not held down? | ☐ yes  ☐ no, it stays down |
-| Can you switch the board back on through the pin? | ☐ yes, short press  ☐ yes, needs a hard press  ☐ no |
-| Does a paperclip click BOOT and RESET through the first two holes? | ☐ both  ☐ only ___  ☐ neither |
+Nothing left. The plate, ports, labels and the button tests on the real board are all done.
 
 ## D. Measurements (calipers)
 
-Calipers, in mm, one decimal. D1, D2 and D5 need the battery, D6 the accelerometer.
+Everything else is finished. These four wait for the battery and the accelerometer board to arrive. Calipers, in mm, one decimal.
 
 ### D1. Battery thickness
 
@@ -140,9 +87,6 @@ Calipers, in mm, one decimal. D1, D2 and D5 need the battery, D6 the acceleromet
 
 | Test | Answer | Changes in cad/params.py |
 |---|---|---|
-| A4 | which pin | `1 groove -> PIN_RIB_D 3.05, 2 -> 3.10, 3 -> 3.15. 'None': all fall out -> try 3.15 to 3.2 and a second band; all stick -> try 3.0 to 3.05, or a different retention (a lip in the dimple). Then retest in C5` |
-| A4 | head | `too small -> PIN_HEAD_D (now 8.0); too sunk/proud -> PIN_PROUD (now 1.6); CBORE_D follows (8.6)` |
-| C5 | click / return / hard press | `no click -> BTN_TIP_Y or BUTTON_HOLE_D; stuck -> PIN_RIB_D -0.1 (the grip band holds the pin down; 3.2 did); POWER no -> PIN_OVERTRAVEL` |
 | D1 | T | `BATT_T (drives FRONT_T)` |
 | D2 | L, W | `BATT_L, BATT_W; decides the speaker (decisions.md)` |
 | D5 | wires | `battery orientation, WIRE_NOTCH` |
