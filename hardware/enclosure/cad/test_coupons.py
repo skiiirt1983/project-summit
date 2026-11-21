@@ -1,7 +1,7 @@
 """Test coupons, cut from the real model so they test the real fits.
 
 Run:  python test_coupons.py          -> the pieces still to print:
-     ../coupons/buttons-petg.3mf     PETG: three pins with grip bands 2.8 / 2.9 / 3.0 (1, 2, 3 grooves on the head)
+     ../coupons/buttons-petg.3mf     PETG: three pins with grip bands 3.05 / 3.10 / 3.15 (1, 2, 3 grooves on the head)
       python test_coupons.py --all    -> also rebuilds the pieces already issued (material slices,
      SEAT, END-bed, CAP-corner, GLASS-ring, MIC-plate, PORT-block). Only after a design change:
      the files in ../coupons/ are the ones Paul printed.
@@ -231,11 +231,11 @@ def button_coupons():
     return printable
 
 
-RIB_TEST = (2.8, 2.9, 3.0)         # grip band diameters tried in A4, third round (Paul: 3.2 too tight, none fell out)
+RIB_TEST = (3.05, 3.10, 3.15)      # grip band diameters tried in A4, fourth round (3.2 stuck; 2.8, 2.9 and 3.0 all fell out)
 
 
 def rib_test_pins():
-    """Three pins that differ only in the grip band (2.8, 2.9, 3.0), marked by 1, 2 or 3 grooves across the head.
+    """Three pins that differ only in the grip band (see RIB_TEST), marked by 1, 2 or 3 grooves across the head.
     Built at the printed strip's positions. Each stands on its head."""
     out = {}
     with frozen_v1():

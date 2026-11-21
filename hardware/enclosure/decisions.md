@@ -153,6 +153,13 @@ Paul measured the button distances from the **outer face of the USB-C connector*
 | BOOT and RESET paperclip holes work as designed | C5: both clicked |
 | The POWER pin switches the board back on with a short press | C5 |
 
+## Decided from results round 10 (2026-11-21)
+
+| Decision | Why |
+|---|---|
+| Grip band: the next round tries 3.05 / 3.10 / 3.15 mm; default 3.1 | 3.2 stuck and held POWER down; 2.8, 2.9, 3.0 and no band all fell out. A friction fit this sensitive may not be stable: if none of the three works, switch to a different retention (a lip in the dimple) rather than a finer friction fit |
+| Head Ø8, 1.6 out: kept | Easy to find and press |
+
 ## Fixed 2026-11-13
 - **Mic exit holes were blocked.** The mics sit 29.9 mm off the centre line, which is behind the solid corners of
   the triangle, so the holes in frame and body did not reach the hollow. The exit holes (cover, frame, body) are now

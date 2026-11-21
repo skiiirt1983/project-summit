@@ -18,8 +18,8 @@ Handoff for a new Claude Code session working on the case. Read this first, then
 - **Nothing has been printed as a full case yet.** Everything so far was tested on small coupons (pieces of the real
   parts) that Paul prints and fills in a form for. Passed: material, body ends, cap push-fit, clips, seat, back cover,
   port block, carrier plate, glass ring, first button test on the real board.
-- **Open right now:** A4 pin grip (three pins with grip bands 2.8 / 2.9 / 3.0 in the printed strip: 3.2 stuck and held POWER
-  down, none fell out), then C5 once more with the chosen pin, battery and accelerometer measurements (D1, D2, D5, D6; not arrived), and the
+- **Open right now:** A4 pin grip (three pins with grip bands 3.05 / 3.10 / 3.15 in the printed strip: 3.2 stuck and held
+  POWER down, 2.8 / 2.9 / 3.0 and no band all fell out), then C5 once more with the chosen pin, battery and accelerometer measurements (D1, D2, D5, D6; not arrived), and the
   **speaker** decision (needs the battery length). See section 7.
 
 ## 2. How to work with Paul (read this; it saved a lot of rework)
@@ -83,8 +83,8 @@ still a placeholder). Placeholders also live in `ACC_*`, `BATT_*`.
 
 ## 6. Known risks
 
-- The POWER pin's grip band is the open question: 3.2 mm stuck (and held the button down), no band fell out; 2.9 is the
-  current guess until A4/C5 pick a size. The first board test showed the pin clicks POWER and switches the board on with a short press.
+- The POWER pin's grip band is the open question: 3.2 mm stuck (and held the button down); 2.8, 2.9, 3.0 and no band
+  all fell out. 3.1 is the current guess; if 3.05 to 3.15 do not work, change the retention (a lip in the dimple), not the friction. The first board test showed the pin clicks POWER and switches the board on with a short press.
 - Mic path is ~20 mm through the free strip and a cavity: needs a listening test on the real board before the design is frozen.
 - The pull slot position beside the battery is untested (the coupon has a test slot).
 - Nothing has been printed as a whole case: first full-body print is still ahead.

@@ -8,22 +8,22 @@ Only what is still open. Finished tests are not here (the record of those is COU
 
 | Piece | Settings |
 |---|---|
-| BTN-pin-rib2.8, -rib2.9, -rib3.0 (PETG) | 0.4 mm nozzle. 0.12 mm layers. Line width 0.42 mm for every line type. Wall generator Classic. 3 walls, 100 % infill (they are only 2.6 mm thick). Supports off. They stand on their heads (laid that way in the 3MF). Elephant foot compensation 0.15 mm. |
+| BTN-pin-rib3.05, -rib3.1, -rib3.15 (PETG) | 0.4 mm nozzle. 0.12 mm layers. Line width 0.42 mm for every line type. Wall generator Classic. 3 walls, 100 % infill (they are only 2.6 mm thick). Supports off. They stand on their heads (laid that way in the 3MF). Elephant foot compensation 0.15 mm. |
 | Where the settings are | Bambu Studio: Process, tab Quality, 'Line width'; tab Strength, 'Wall generator'. Set both before slicing. Classic keeps every wall exactly 0.42 mm; the other generator (Arachne) squeezes wall widths to fit thin features, which changes how a lip or a pocket comes out. |
 
 ## A. Reprints (pieces changed by your last results)
 
 One thing to print: three pins (coupons/buttons-petg.3mf). Glass ring, cap, clip, seat and back-cover tests are finished.
 
-### A4. Button pin: which grip is right (third try)
+### A4. Button pin: which grip is right (fourth try)
 
 ![A4](tests/A4-buttons.png)
 
-**What you're testing and why:** With no grip band the pins fell out; with the 3.2 mm band they stuck, were hard to pull, and one held the POWER button down. The right size is in between, so here are three pins that differ only in the band: 2.8, 2.9 and 3.0 mm, marked by 1, 2 or 3 grooves across the head. You try all three in the TPU strip you already printed and tell me which feels right. Only POWER gets a pin now, so the strip's three tunnels are just three places to try them.
+**What you're testing and why:** Last time all three pins (bands 2.8, 2.9, 3.0) fell out when tipped, and the 3.2 band before that was too tight. So the right size is between 3.0 and 3.2. Here are three pins in that gap: 3.05, 3.10 and 3.15 mm, marked by 1, 2 or 3 grooves across the head. Try all three in the TPU strip and tell me which feels right: stays in when tipped, still easy to press and to pull out.
 
 | Piece | Where it is | Note |
 |---|---|---|
-| **BTN-pin-rib2.8 (1 groove), BTN-pin-rib2.9 (2 grooves), BTN-pin-rib3.0 (3 grooves)** | coupons/buttons-petg.3mf (or the three STLs) | PETG, new. Stand on their heads |
+| **BTN-pin-rib3.05 (1 groove), BTN-pin-rib3.1 (2 grooves), BTN-pin-rib3.15 (3 grooves)** | coupons/buttons-petg.3mf (or the three STLs) | PETG, new. Stand on their heads |
 | **BTN-body, BTN-frame, BTN-cup** | already printed | reuse them |
 
 **Print settings:** Pins: 0.12 mm layers, 3 walls, 100 % infill, line width 0.42, Classic walls, supports off, elephant foot compensation 0.15 mm. They stand on their heads.
@@ -31,16 +31,15 @@ One thing to print: three pins (coupons/buttons-petg.3mf). Glass ring, cap, clip
 **What to do:**
 
 1. Stack the strip as before: BTN-cup (flat side towards the body), then BTN-frame, then BTN-body with its curved ridge at the far end. Line up one set of three holes.
-2. Push the 1-groove pin in from the ridge end until it is through all three layers. Press it and let go. Tip the strip with the ridge down. Pull the pin out with a fingernail.
-3. Do the same with the 2-groove pin, then the 3-groove pin (use a different set of holes if you like, to keep a fresh tunnel for each).
+2. Push the 1-groove pin in from the ridge end until it is through all three layers. Press it and let go. Tip the strip with the ridge down and shake gently. Pull the pin out with a fingernail.
+3. Do the same with the 2-groove pin, then the 3-groove pin (a fresh set of holes for each keeps the tunnels unworn).
 
 | Question | Answer |
 |---|---|
-| 1-groove pin (2.8 mm band): how does it feel? | ☐ falls out when tipped  ☐ just right: stays in, easy to press, easy to pull  ☐ a little stiff  ☐ too stiff, sticks |
-| 2-groove pin (2.9 mm band): how does it feel? | ☐ falls out when tipped  ☐ just right: stays in, easy to press, easy to pull  ☐ a little stiff  ☐ too stiff, sticks |
-| 3-groove pin (3.0 mm band): how does it feel? | ☐ falls out when tipped  ☐ just right: stays in, easy to press, easy to pull  ☐ a little stiff  ☐ too stiff, sticks |
+| 1-groove pin (3.05 mm band): how does it feel? | ☐ falls out when tipped  ☐ just right: stays in, easy to press, easy to pull  ☐ a little stiff  ☐ too stiff, sticks |
+| 2-groove pin (3.10 mm band): how does it feel? | ☐ falls out when tipped  ☐ just right: stays in, easy to press, easy to pull  ☐ a little stiff  ☐ too stiff, sticks |
+| 3-groove pin (3.15 mm band): how does it feel? | ☐ falls out when tipped  ☐ just right: stays in, easy to press, easy to pull  ☐ a little stiff  ☐ too stiff, sticks |
 | Which one would you choose? | ☐ 1 groove  ☐ 2 grooves  ☐ 3 grooves  ☐ none of them |
-| With a free-moving pin, is the head easy to find and press? | ☐ yes  ☐ too small  ☐ too sunk in  ☐ too proud |
 
 ## B. Tests not done yet
 
@@ -141,7 +140,7 @@ Calipers, in mm, one decimal. D1, D2 and D5 need the battery, D6 the acceleromet
 
 | Test | Answer | Changes in cad/params.py |
 |---|---|---|
-| A4 | which pin | `1 groove -> PIN_RIB_D 2.8, 2 -> 2.9, 3 -> 3.0. 'None': too loose -> try 3.05 and 3.1; too tight -> 2.7. Then retest in C5` |
+| A4 | which pin | `1 groove -> PIN_RIB_D 3.05, 2 -> 3.10, 3 -> 3.15. 'None': all fall out -> try 3.15 to 3.2 and a second band; all stick -> try 3.0 to 3.05, or a different retention (a lip in the dimple). Then retest in C5` |
 | A4 | head | `too small -> PIN_HEAD_D (now 8.0); too sunk/proud -> PIN_PROUD (now 1.6); CBORE_D follows (8.6)` |
 | C5 | click / return / hard press | `no click -> BTN_TIP_Y or BUTTON_HOLE_D; stuck -> PIN_RIB_D -0.1 (the grip band holds the pin down; 3.2 did); POWER no -> PIN_OVERTRAVEL` |
 | D1 | T | `BATT_T (drives FRONT_T)` |

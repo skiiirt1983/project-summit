@@ -148,6 +148,14 @@ New pieces to print: `coupons/buttons-tpu.3mf` (BTN-body, bigger dimples) and `c
 
 Retest left: **three pins with different grip bands** (`coupons/buttons-petg.3mf`), then C5 once more with the chosen pin.
 
+## Round 10: three pins with grip bands 2.8 / 2.9 / 3.0, POWER on the board
+
+| Test | Question | Paul's answer | Applied |
+|---|---|---|---|
+| Pins (A4) | All three pins (bands 2.8, 2.9, 3.0) | **all fall out when tipped**; none chosen | the answer lies between 3.0 and 3.2: next round 3.05 / 3.10 / 3.15; default `PIN_RIB_D` 3.1 |
+| | Head with a free pin | easy to find and press | `PIN_PROUD = 1.6`, `PIN_HEAD_D = 8.0` confirmed |
+| POWER on the board (C5) | Pin clicks POWER; comes back when you let go; board back on with a short press; paperclip through BOOT and RESET | yes; **yes** (not held down); yes; both | works. Retest only because the final band will be larger than the ones tried |
+
 ## Cross-check: every test this form ever asked
 
 | Test | Questions | Status |

@@ -108,9 +108,9 @@ PIN_HEAD_T = 1.2
 CBORE_D = 8.6              # dimple in the ridge that the pin head sits in
 PIN_PROUD = 1.6            # at rest the head stands this far out of the ridge (A4: 0.6 was too sunk in; 1.2 still read sunk in,
                            # but those pins were also stuck pushed in by the grip band, so 1.6 is a modest extra)
-PIN_RIB_D = 2.9             # grip band on the shaft in the Ø3.0 TPU tunnel. 3.2 was too tight (pins stuck, hard to pull, one held the
-                           # button down); no band (2.6) fell out when tipped. 2.9 is a guess in between: the A4 retest tries
-                           # 2.8 / 2.9 / 3.0. COUPON: tune after test print (BTN)
+PIN_RIB_D = 3.1             # grip band on the shaft in the Ø3.0 TPU tunnel. Tried on the printed strip: 3.2 too tight (stuck, hard to pull,
+                           # held the button down); 2.8, 2.9, 3.0 and no band all fell out when tipped. So the answer is between
+                           # 3.0 and 3.2: the next round tries 3.05 / 3.10 / 3.15. COUPON: tune after test print (BTN)
 PIN_RIB_W = 1.5
 PIN_OVERTRAVEL = 0.5       # how far past 'touching the button' the pin can be pushed before its head bottoms
 SD_SLOT = (18.5, 3.6)      # card slot window in the cup wall
