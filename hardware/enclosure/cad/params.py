@@ -106,10 +106,11 @@ PIN_D = 2.6                # pusher pin shaft: 0.2 mm clear of the tunnel all ro
 PIN_HEAD_D = 8.0           # finger pad (A4: Ø6.0 was too small)
 PIN_HEAD_T = 1.2
 CBORE_D = 8.6              # dimple in the ridge that the pin head sits in
-PIN_PROUD = 1.2            # at rest the head stands this far out of the ridge (A4: 0.6 was too sunk in)
-PIN_RIB_D = 3.2             # a short band on the shaft, a little wider than the TUNNEL_D tunnel: the soft TPU grips it so the
-                           # pin stays put when the case is tipped (A4: loose pins fell out). Too grippy would stick a button
-                           # down: COUPON: tune after test print (BTN)
+PIN_PROUD = 1.6            # at rest the head stands this far out of the ridge (A4: 0.6 was too sunk in; 1.2 still read sunk in,
+                           # but those pins were also stuck pushed in by the grip band, so 1.6 is a modest extra)
+PIN_RIB_D = 2.9             # grip band on the shaft in the Ø3.0 TPU tunnel. 3.2 was too tight (pins stuck, hard to pull, one held the
+                           # button down); no band (2.6) fell out when tipped. 2.9 is a guess in between: the A4 retest tries
+                           # 2.8 / 2.9 / 3.0. COUPON: tune after test print (BTN)
 PIN_RIB_W = 1.5
 PIN_OVERTRAVEL = 0.5       # how far past 'touching the button' the pin can be pushed before its head bottoms
 SD_SLOT = (18.5, 3.6)      # card slot window in the cup wall

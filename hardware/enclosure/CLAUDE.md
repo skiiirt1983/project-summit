@@ -18,8 +18,8 @@ Handoff for a new Claude Code session working on the case. Read this first, then
 - **Nothing has been printed as a full case yet.** Everything so far was tested on small coupons (pieces of the real
   parts) that Paul prints and fills in a form for. Passed: material, body ends, cap push-fit, clips, seat, back cover,
   port block, carrier plate, glass ring, first button test on the real board.
-- **Open right now:** A4 pin retest (new TPU strip, printing now, any one of its three tunnels; one pin), C5 (POWER pin on the
-  board again to confirm the grip band does not hold the button down, and a paperclip through the BOOT/RESET holes), battery and accelerometer measurements (D1, D2, D5, D6; not arrived), and the
+- **Open right now:** A4 pin grip (three pins with grip bands 2.8 / 2.9 / 3.0 in the printed strip: 3.2 stuck and held POWER
+  down, none fell out), then C5 once more with the chosen pin, battery and accelerometer measurements (D1, D2, D5, D6; not arrived), and the
   **speaker** decision (needs the battery length). See section 7.
 
 ## 2. How to work with Paul (read this; it saved a lot of rework)
@@ -83,7 +83,8 @@ still a placeholder). Placeholders also live in `ACC_*`, `BATT_*`.
 
 ## 6. Known risks
 
-- The POWER pin's grip band (Ø3.2 in a Ø3.0 TPU tunnel) must hold the pin in place without holding the button down.
+- The POWER pin's grip band is the open question: 3.2 mm stuck (and held the button down), no band fell out; 2.9 is the
+  current guess until A4/C5 pick a size. The first board test showed the pin clicks POWER and switches the board on with a short press.
 - Mic path is ~20 mm through the free strip and a cavity: needs a listening test on the real board before the design is frozen.
 - The pull slot position beside the battery is untested (the coupon has a test slot).
 - Nothing has been printed as a whole case: first full-body print is still ahead.
@@ -115,7 +116,7 @@ pip install build123d pillow python-docx trimesh shapely   # build123d 0.13, OCP
 cd hardware/enclosure/cad/render && npm i && cd ..          # three.js renderer; needs Playwright + Chromium
 python peak.py            # full model: STEP / STL / 3MF -> ../out/ (git-ignored)
 python render_all.py      # review renders (landscape, portrait, exploded, cut, buttons)
-python test_coupons.py    # reissue pieces (see its docstring; --all rebuilds everything)
+python test_coupons.py    # reissue pieces (see its docstring; --all rebuilds everything). The printed button strip is never rebuilt
 python test_pictures.py   # pictures for the checklist
 python remaining_tests.py # REMAINING-TESTS.md + .docx
 ```

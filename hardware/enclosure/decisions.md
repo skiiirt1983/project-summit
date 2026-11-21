@@ -144,6 +144,15 @@ Paul: he only needs the POWER button reachable. RESET can be a programmed short 
 
 Paul measured the button distances from the **outer face of the USB-C connector**, which sticks out 1.32 mm past the board edge (STEP). So the buttons are at 73.22 / 85.18 / 96.73 from the board edge: **the drawing (72.76, 84.44, 96.12) was right to within 0.5 to 0.7 mm**. The earlier "+1.9 mm" and the "+1.26 midpoint" were both wrong readings of the same numbers; `BUTTONS_X` now uses the measured values. Only POWER (button 3) has a pin, which moves 0.6 mm from the drawing position. The printed A4 test strip is at the drawing positions (0.6 mm away): fine for a bench test of the pin.
 
+## Decided from results round 9 (pins, 2026-11-21)
+
+| Decision | Why |
+|---|---|
+| Grip band 2.9 mm for now (was 3.2); the A4 retest tries 2.8 / 2.9 / 3.0, marked by 1, 2, 3 grooves on the head | 3.2 was too tight (stuck, hard to pull, held POWER down); no band fell out. The middle is a guess: Paul picks |
+| Pin heads stand 1.6 mm out (was 1.2) | "Too sunk in" twice; partly because the pins were stuck pushed in |
+| BOOT and RESET paperclip holes work as designed | C5: both clicked |
+| The POWER pin switches the board back on with a short press | C5 |
+
 ## Fixed 2026-11-13
 - **Mic exit holes were blocked.** The mics sit 29.9 mm off the centre line, which is behind the solid corners of
   the triangle, so the holes in frame and body did not reach the hollow. The exit holes (cover, frame, body) are now

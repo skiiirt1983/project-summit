@@ -99,9 +99,9 @@ if __name__ == "__main__":
     with tc.frozen_v1():                                         # same positions as the printed strip
         btn = tc.button_raw()
     pins = {"BTN-body (TPU)": ("#8d8f8c", btn["BTN-body"]), "BTN-frame": (FRAME, btn["BTN-frame"]),
-            "BTN-cup": (CREAM, btn["BTN-cup"]), "3 x BTN-pin": ("#d8452f", btn["BTN-pins"])}
+            "BTN-cup": (CREAM, btn["BTN-cup"]), "BTN-pin (3 band sizes)": ("#d8452f", btn["BTN-pins"])}
     picture("A4-buttons", [(k, c, s) for k, (c, s) in pins.items()],
-            {"BTN-body (TPU)": (0, 0, 0), "BTN-frame": (0, 34, 0), "BTN-cup": (0, 54, 0), "3 x BTN-pin": (0, -26, 0)},
+            {"BTN-body (TPU)": (0, 0, 0), "BTN-frame": (0, 34, 0), "BTN-cup": (0, 54, 0), "BTN-pin (3 band sizes)": (0, -26, 0)},
             [-0.6, -0.9, 0.7], flip=False)
 
     glass, board = screen_stand_in()

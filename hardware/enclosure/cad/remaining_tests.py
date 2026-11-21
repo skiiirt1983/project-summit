@@ -76,45 +76,22 @@ TESTS = [
                 "Press SNAP-cover in behind it, then turn it over and shake it."],
          questions=[("The plate on its step?", ["loose, slides about", "right: drops in, no binding", "tight", "won't go in"]),
                     ("Does the cover still snap and open as before?", ["yes", "no"])]),
-    dict(id="A4", title="Button pins, second try", pic="A4-buttons.png",
-         why="Last time the pins slid freely and the holes printed clean, but the heads were too small and too sunk in, and the pins fell out "
-             "when the strip was tipped. Now: bigger heads that stand out more, a thin grip band on each pin that the soft body holds lightly "
-             "(so they stay put but can still be pulled out), and a groove across the POWER head so you can find it by touch. "
-             "Two pieces change: the TPU strip (its dimples are bigger) and the pins. BTN-frame and BTN-cup stay as printed. "
-             "Update: only POWER gets a pin to the outside now (BOOT and RESET become small paperclip holes inside the module), so you only need to "
-             "try ONE pin. The strip has three identical tunnels; use any one.",
-         pieces=[("BTN-body", "coupons/buttons-tpu.3mf (or BTN-body.stl)", "TPU, new: bigger dimples. Prints standing up"),
-                 ("BTN-pin-1, -2, -3", "coupons/buttons-petg.3mf (or BTN-pin-N.stl)", "PETG, new. Stand on their heads. One is enough now; the others are spares"),
-                 ("BTN-frame, BTN-cup", "already printed", "reuse them")],
-         settings="BTN-body: TPU for AMS settings from the table. Pins: 0.12 mm layers, 3 walls, 100 % infill. Everything with line width 0.42, Classic walls.",
-         steps=["Stack the strip: BTN-cup (flat side towards the body), then BTN-frame, then the new BTN-body with its curved ridge at the far end. Line up the three pairs of holes.",
-                "Push a pin in from the ridge end until it is through all three layers (any one of the three holes). Notice how hard it is to push in.",
-                "Press the pin with a fingertip, then let go.",
-                "Hold the strip with the ridge pointing down and shake gently, then lay it on its side.",
-                "Pull the pin out again with a fingernail."],
-         questions=[("Is the pin easy to push in and press?", ["yes", "a little stiff", "too stiff, it sticks"]),
-                    ("Is the head easy to find and press with a fingertip?", ["yes", "too small", "too sunk in", "too proud"]),
-                    ("Does the pin stay in when you tip the strip with the ridge down?", ["yes", "it falls out"]),
-                    ("Can you pull a pin out again with a fingernail?", ["yes, easily", "yes, but hard", "no"]),
-                    ("Did the three dimples in BTN-body print clean (round, not blocked)?", ["yes", "no"])]),
-    dict(id="A5", title="Glass ring, second try", pic="A5-glass.png",
-         why="The first ring did not fit the real screen. The white adhesive you saw is on the back of the glass, facing the circuit board, so "
-             "it is not the cause. The likeliest cause is the print: last time the line width was probably different, which changes how thick the "
-             "walls come out and how big the pocket is. So this time there are two rings: A is the same design printed with the "
-             "settings in the table at the top; B has 0.25 mm more room per side. If A fits, it was the print. If only B fits, the "
-             "glass needs more room than the drawing says and I will enlarge the pocket. If neither fits, I need to know where it catches.",
-         pieces=[("GLASS-ring", "coupons/petg-plate.3mf (or GLASS-ring.stl)", "PETG, 0.12 mm layers, face down. Same file as before: reprint it with the correct line width"),
-                 ("GLASS-ring-B", "coupons/petg-plate.3mf (or GLASS-ring-B.stl)", "PETG, 0.12 mm layers, face down. New: bigger pocket")],
-         settings=PETG_FINE + ". Elephant foot compensation 0.15 mm. Prints face down.",
-         steps=["Lay a ring face down on a soft cloth. Lower the screen into it, glass down. Never press on the glass.",
-                "Do the same with the other ring.",
-                "Turn the one that fits over and look at the screen through the opening, switched on if you can."],
-         questions=[("Which ring does the screen drop into?", ["A only", "B only", "both", "neither"]),
-                    ("In the ring that fits, how much play is there?", ["rattles", "just right", "tight"]),
-                    ("If neither fits: where does it catch?", ["corners", "long sides", "short sides", "all round", "not applicable"]),
-                    ("Does the lip cover only the black border, not the picture?", ["yes", "covers the picture on the ___ side"]),
-                    ("Does the black border look even enough behind the cream?", ["yes", "no"]),
-                    ("With the board resting in the ring, is there a gap between lip and glass?", ["touching", "small gap", "large gap"])]),
+    dict(id="A4", title="Button pin: which grip is right (third try)", pic="A4-buttons.png",
+         why="With no grip band the pins fell out; with the 3.2 mm band they stuck, were hard to pull, and one held the POWER button down. "
+             "The right size is in between, so here are three pins that differ only in the band: 2.8, 2.9 and 3.0 mm, marked by 1, 2 or 3 "
+             "grooves across the head. You try all three in the TPU strip you already printed and tell me which feels right. "
+             "Only POWER gets a pin now, so the strip's three tunnels are just three places to try them.",
+         pieces=[("BTN-pin-rib2.8 (1 groove), BTN-pin-rib2.9 (2 grooves), BTN-pin-rib3.0 (3 grooves)", "coupons/buttons-petg.3mf (or the three STLs)", "PETG, new. Stand on their heads"),
+                 ("BTN-body, BTN-frame, BTN-cup", "already printed", "reuse them")],
+         settings="Pins: 0.12 mm layers, 3 walls, 100 % infill, line width 0.42, Classic walls, supports off, elephant foot compensation 0.15 mm. They stand on their heads.",
+         steps=["Stack the strip as before: BTN-cup (flat side towards the body), then BTN-frame, then BTN-body with its curved ridge at the far end. Line up one set of three holes.",
+                "Push the 1-groove pin in from the ridge end until it is through all three layers. Press it and let go. Tip the strip with the ridge down. Pull the pin out with a fingernail.",
+                "Do the same with the 2-groove pin, then the 3-groove pin (use a different set of holes if you like, to keep a fresh tunnel for each)."],
+         questions=[("1-groove pin (2.8 mm band): how does it feel?", ["falls out when tipped", "just right: stays in, easy to press, easy to pull", "a little stiff", "too stiff, sticks"]),
+                    ("2-groove pin (2.9 mm band): how does it feel?", ["falls out when tipped", "just right: stays in, easy to press, easy to pull", "a little stiff", "too stiff, sticks"]),
+                    ("3-groove pin (3.0 mm band): how does it feel?", ["falls out when tipped", "just right: stays in, easy to press, easy to pull", "a little stiff", "too stiff, sticks"]),
+                    ("Which one would you choose?", ["1 groove", "2 grooves", "3 grooves", "none of them"]),
+                    ("With a free-moving pin, is the head easy to find and press?", ["yes", "too small", "too sunk in", "too proud"])]),
     dict(id="B1", title="Seat: body, frame and bezel corner", pic="B1-seat.png",
          why="This is one corner of the real case: the soft body, the stiff frame inside it, and the cream bezel. It checks "
              "how the three fit and how the thin line between cream and body looks. Your results document had ticks for this "
@@ -177,9 +154,9 @@ TESTS = [
                     ("Mics M1 and M2: is there a small hole on top of the metal can?", ["yes", "no, plain top"])]),
     dict(id="C5", title="POWER pin, BOOT and RESET on the board", pic="D-board.png",
          why="Only POWER goes to the outside of the case now (your call: RESET can be a programmed short press of POWER, and you have never needed BOOT). "
-             "BOOT and RESET stay as small paperclip holes in the screen module. This checks the new POWER pin still returns when you let go, and "
+             "BOOT and RESET stay as small paperclip holes in the screen module. This checks the POWER pin (the one you pick in A4) returns when you let go, and "
              "that a paperclip reaches BOOT and RESET through the first two holes of BTN-cup (the holes in that piece are bigger than the real ones, which is fine for this check).",
-         pieces=[("BTN-cup, one new BTN-pin", "from test A4", "reuse them")],
+         pieces=[("BTN-cup, the pin you chose in A4", "from test A4", "reuse them")],
          settings="Nothing to print.",
          steps=["Lay the board on the table with the buttons along the top edge, as in the picture. From the USB-C end: 1 = RESET, 2 = BOOT, 3 = POWER.",
                 "Hold BTN-cup about 3 mm from the buttons with the right-hand hole over POWER. Push the pin through it until it touches the button.",
@@ -187,7 +164,7 @@ TESTS = [
                 "Switch the board off, then use the pin to switch it back on.",
                 "Slide BTN-cup to the left so the other two holes are over BOOT and RESET. Push a straightened paperclip through each and feel for the click."],
          questions=[("Does the pin click POWER?", ["yes", "no"]),
-                    ("Does the pin come back when you let go (POWER not held down)?", ["yes", "no, it stays down"]),
+                    ("Does the pin (the one you chose in A4) come back when you let go, so POWER is not held down?", ["yes", "no, it stays down"]),
                     ("Can you switch the board back on through the pin?", ["yes, short press", "yes, needs a hard press", "no"]),
                     ("Does a paperclip click BOOT and RESET through the first two holes?", ["both", "only ___", "neither"])]),
     dict(id="D1", title="Battery thickness", pic="D-measure.png", needs="battery",
@@ -248,13 +225,9 @@ TESTS = [t for t in TESTS if t["id"] not in FINISHED]
 
 # For Claude: what each answer changes. Kept out of the questions on purpose.
 FOR_CLAUDE = [
-    ("A4", "ease / stiff", "stiff/sticks -> PIN_RIB_D -0.1 (now 3.2) or TUNNEL_D +0.1; too loose later -> PIN_RIB_D +0.1"),
-    ("A4", "head", "too small -> PIN_HEAD_D (now 8.0); too sunk/proud -> PIN_PROUD (now 1.2); CBORE_D follows (8.6)"),
-    ("A4", "stay in", "fall out -> PIN_RIB_D +0.1, PIN_RIB_W +0.5, or a retaining lip in the dimple"),
-    ("A4", "pull out", "hard -> PIN_RIB_D -0.1; no -> PIN_PROUD +0.4"),
-    ("A4", "POWER groove", "no -> POWER_BAR deeper or longer"),
-    ("A4", "dimples clean", "no -> TUNNEL_D +0.2 / CBORE_D +0.2 (teardrop in the TPU body)"),
-    ("C5", "click / return / hard press", "no click -> BTN_TIP_Y or BUTTON_HOLE_D; stuck -> PIN_RIB_D -0.2 (the grip band holds the pin down); POWER no -> PIN_OVERTRAVEL"),
+    ("A4", "which pin", "1 groove -> PIN_RIB_D 2.8, 2 -> 2.9, 3 -> 3.0. 'None': too loose -> try 3.05 and 3.1; too tight -> 2.7. Then retest in C5"),
+    ("A4", "head", "too small -> PIN_HEAD_D (now 8.0); too sunk/proud -> PIN_PROUD (now 1.6); CBORE_D follows (8.6)"),
+    ("C5", "click / return / hard press", "no click -> BTN_TIP_Y or BUTTON_HOLE_D; stuck -> PIN_RIB_D -0.1 (the grip band holds the pin down; 3.2 did); POWER no -> PIN_OVERTRAVEL"),
     ("D1", "T", "BATT_T (drives FRONT_T)"),
     ("D2", "L, W", "BATT_L, BATT_W; decides the speaker (decisions.md)"),
     ("D5", "wires", "battery orientation, WIRE_NOTCH"),
@@ -375,9 +348,8 @@ def summary():
 
 
 PRINT_SETTINGS = [
-    ("BTN-pin-1, -2, -3 (PETG)", "0.4 mm nozzle. 0.12 mm layers. Line width 0.42 mm for every line type. Wall generator Classic. 3 walls, 100 % infill (they are only 2.6 mm thick). "
-                                 "Supports off. They stand on their heads. Elephant foot compensation 0.15 mm."),
-    ("BTN-body (TPU for AMS)", "TPU for AMS profile speeds. 0.2 mm layers. Line width 0.42 mm. 2 walls, 10 % gyroid. Supports off. Elephant foot compensation 0.15 mm. Filament dried. Prints standing up."),
+    ("BTN-pin-rib2.8, -rib2.9, -rib3.0 (PETG)", "0.4 mm nozzle. 0.12 mm layers. Line width 0.42 mm for every line type. Wall generator Classic. 3 walls, 100 % infill (they are only 2.6 mm thick). "
+                                 "Supports off. They stand on their heads (laid that way in the 3MF). Elephant foot compensation 0.15 mm."),
     ("Where the settings are", "Bambu Studio: Process, tab Quality, 'Line width'; tab Strength, 'Wall generator'. Set both before slicing. "
                                "Classic keeps every wall exactly 0.42 mm; the other generator (Arachne) squeezes wall widths to fit thin features, "
                                "which changes how a lip or a pocket comes out."),
@@ -386,9 +358,9 @@ PRINT_SETTINGS = [
 INTRO = ("Only what is still open. Finished tests are not here (the record of those is COUPON-RESULTS.md). "
          "Tick a box or write in a blank. Never press on the screen glass.")
 GROUP_NOTES = {
-    "A": "Two things to print: the TPU strip (coupons/buttons-tpu.3mf) and the three pins (coupons/buttons-petg.3mf). Glass ring, cap, clip, seat and back-cover tests are finished.",
+    "A": "One thing to print: three pins (coupons/buttons-petg.3mf). Glass ring, cap, clip, seat and back-cover tests are finished.",
     "B": "Nothing left here. The seat test is finished, and the T1/T2/T3 material test was answered long ago (TPU for AMS, T1, no firm zone, 13 mm legs right).",
-    "C": "Needs the new pins from A4 and the real board. The plate, ports, labels and the first button test are done.",
+    "C": "Needs the pin you choose in A4 and the real board. The plate, ports, labels and most of the button test are done.",
     "D": "Calipers, in mm, one decimal. D1, D2 and D5 need the battery, D6 the accelerometer.",
 }
 

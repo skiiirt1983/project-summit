@@ -132,6 +132,22 @@ Still to do: A4 (button strip, the TPU part is printing), A5 (glass rings), C5 (
 
 New pieces to print: `coupons/buttons-tpu.3mf` (BTN-body, bigger dimples) and `coupons/buttons-petg.3mf` (3 pins). BTN-frame and BTN-cup stay as printed.
 
+## Round 9: button pins, second try (grip band), POWER on the board
+
+| Test | Question | Paul's answer | Applied |
+|---|---|---|---|
+| Pins (A4) | Easy to push in and press | **too stiff, it sticks** | `PIN_RIB_D` 3.2 -> **2.9** as the full-model default; three variants (2.8 / 2.9 / 3.0) to try |
+| | Head easy to find | still "too sunk in" (those pins were stuck pushed in) | `PIN_PROUD` 1.2 -> **1.6**; judged again with free pins |
+| | Tip the strip with the ridge down | the pin **stays in** | grip is enough; just less of it |
+| | Pull a pin out | yes, but hard | less grip |
+| | Dimples clean | yes | no change |
+| POWER on the board (C5) | Pin clicks POWER | yes | works |
+| | Pin comes back when you let go | **no, it stays down** | the grip band holds the button down: less grip, retest |
+| | Switch the board back on through the pin | **yes, a short press** | works |
+| | Paperclip through the BOOT and RESET holes | both click | BOOT and RESET paperclip holes work |
+
+Retest left: **three pins with different grip bands** (`coupons/buttons-petg.3mf`), then C5 once more with the chosen pin.
+
 ## Cross-check: every test this form ever asked
 
 | Test | Questions | Status |

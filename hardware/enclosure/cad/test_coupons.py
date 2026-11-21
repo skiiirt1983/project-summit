@@ -1,8 +1,7 @@
 """Test coupons, cut from the real model so they test the real fits.
 
 Run:  python test_coupons.py          -> the pieces still to print:
-     ../coupons/buttons-tpu.3mf      TPU: BTN-body (reissued)
-     ../coupons/buttons-petg.3mf     PETG: 3 x BTN-pin (reissued)
+     ../coupons/buttons-petg.3mf     PETG: three pins with grip bands 2.8 / 2.9 / 3.0 (1, 2, 3 grooves on the head)
       python test_coupons.py --all    -> also rebuilds the pieces already issued (material slices,
      SEAT, END-bed, CAP-corner, GLASS-ring, MIC-plate, PORT-block). Only after a design change:
      the files in ../coupons/ are the ones Paul printed.
@@ -232,6 +231,31 @@ def button_coupons():
     return printable
 
 
+RIB_TEST = (2.8, 2.9, 3.0)         # grip band diameters tried in A4, third round (Paul: 3.2 too tight, none fell out)
+
+
+def rib_test_pins():
+    """Three pins that differ only in the grip band (2.8, 2.9, 3.0), marked by 1, 2 or 3 grooves across the head.
+    Built at the printed strip's positions. Each stands on its head."""
+    out = {}
+    with frozen_v1():
+        was = p.PIN_RIB_D
+        try:
+            for n, rib in enumerate(RIB_TEST, 1):
+                p.PIN_RIB_D = rib
+                pins = sorted(parts.button_pins().solids(), key=lambda q: q.center().X)
+                pin = pins[-1]                                                   # frozen strip has 3 pins: take the last (POWER)
+                x = parts.button_xs()[-1]
+                face_y = p.PIN_HEAD_REST_Y - p.PIN_HEAD_T                     # outer face of the head
+                for k in range(n):
+                    z = p.BTN_Z + (k - (n - 1) / 2) * 2.2
+                    pin = pin - Pos(x, face_y + 0.25 - 0.01, z) * Box(6.0, 0.52, 1.0)
+                out[f"BTN-pin-rib{rib}"] = lay_flat(Rot(90, 0, 0) * pin)
+        finally:
+            p.PIN_RIB_D = was
+    return out
+
+
 def glass_ring(extra=0.0):
     """The front 6 mm of the bezel, all the way round: checks the glass fit and the lip.
     `extra` makes the glass pocket larger per side (ring B), to see how much room the real screen needs."""
@@ -344,14 +368,12 @@ if __name__ == "__main__":
     import sys
     seat, clip, snap, cap = seat_coupons(), clip_coupons(), snap_coupons(), cap_corner()
     # What Paul still has to print (see ../REMAINING-TESTS.md, group A).
-    # The button strip: BTN-frame and BTN-cup are as printed (their STLs are not rebuilt). BTN-body and the
-    # pins are reissued (A4 retest: bigger heads, higher heads, a grip band on the pins), at the printed positions.
-    with frozen_v1():
-        for name, shape in button_coupons().items():
-            if name == "BTN-body" or "pin" in name:
-                export_stl(shape, str(OUT / f"{name}.stl"), tolerance=0.02, angular_tolerance=0.1)
-    combine(["BTN-body"], "buttons-tpu")
-    combine(["BTN-pin-1", "BTN-pin-2", "BTN-pin-3"], "buttons-petg")
+    # The button strip (BTN-body in TPU, BTN-frame, BTN-cup) is as printed: not rebuilt here. Only the pins are reissued.
+    # (BTN-body, TPU: already printed, not reissued.)
+    rib_pins = rib_test_pins()
+    for name, shape in rib_pins.items():
+        export_stl(shape, str(OUT / f"{name}.stl"), tolerance=0.02, angular_tolerance=0.1)
+    combine(list(rib_pins), "buttons-petg")
     # Glass rings for the second try (the first did not fit the real screen): A as designed, B larger.
     # (Glass rings: finished. Ring B, 0.55 mm per side, fit; the rings are not rebuilt here: with the real
     # pocket now at 0.55, rebuilding them would give different shapes from the ones Paul printed.)
