@@ -91,8 +91,23 @@ bool panel_init()
         ESP_LOGE(TAG, "DBI io failed");
         return false;
     }
-    esp_lcd_dpi_panel_config_t dpi = HX8394_720_1280_PANEL_30HZ_DPI_CONFIG(LCD_COLOR_PIXEL_FORMAT_RGB565);
+    // The values of HX8394_720_1280_PANEL_30HZ_DPI_CONFIG() (waveshare/esp_lcd_hx8394 2.1.0, ESP-IDF 5.x
+    // field names), set by name: the vendor macro is C-only and does not compile as C++.
+    esp_lcd_dpi_panel_config_t dpi = {};
+    dpi.dpi_clk_src = MIPI_DSI_DPI_CLK_SRC_DEFAULT;
+    dpi.dpi_clock_freq_mhz = 58;
+    dpi.virtual_channel = 0;
+    dpi.pixel_format = LCD_COLOR_PIXEL_FORMAT_RGB565;
     dpi.num_fbs = 1;
+    dpi.video_timing.h_size = kHRes;
+    dpi.video_timing.v_size = kVRes;
+    dpi.video_timing.hsync_back_porch = 20;
+    dpi.video_timing.hsync_pulse_width = 20;
+    dpi.video_timing.hsync_front_porch = 40;
+    dpi.video_timing.vsync_back_porch = 10;
+    dpi.video_timing.vsync_pulse_width = 4;
+    dpi.video_timing.vsync_front_porch = 24;
+    dpi.flags.use_dma2d = true;
     hx8394_vendor_config_t vendor = {};
     vendor.mipi_config.dsi_bus = dsi;
     vendor.mipi_config.dpi_config = &dpi;
