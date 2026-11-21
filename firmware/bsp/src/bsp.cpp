@@ -123,8 +123,14 @@ bool touch_init(i2c_master_bus_handle_t i2c)
     for (uint8_t addr : {static_cast<uint8_t>(ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS),
                          static_cast<uint8_t>(ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS_BACKUP)}) {
         if (i2c_master_probe(i2c, addr, 100) != ESP_OK) continue;
-        esp_lcd_panel_io_i2c_config_t io_cfg = ESP_LCD_TOUCH_IO_I2C_GT911_CONFIG();
+        // The values of ESP_LCD_TOUCH_IO_I2C_GT911_CONFIG(), set by name: that macro's initialiser order is
+        // not valid C++ (it failed to compile).
+        esp_lcd_panel_io_i2c_config_t io_cfg = {};
         io_cfg.dev_addr = addr;
+        io_cfg.control_phase_bytes = 1;
+        io_cfg.dc_bit_offset = 0;
+        io_cfg.lcd_cmd_bits = 16;
+        io_cfg.flags.disable_control_phase = 1;
         io_cfg.scl_speed_hz = 400000;
         esp_lcd_panel_io_handle_t io = nullptr;
         if (esp_lcd_new_panel_io_i2c(i2c, &io_cfg, &io) != ESP_OK) return false;
