@@ -31,6 +31,8 @@ Updated after every merge so a new session can continue (D-009).
 3. Optional before hardware: the remaining motion steps listed under "Not yet built" in ARCHITECTURE.md "Motion and controls" (recipe step moves, dialogs, toast slide, rotation morph).
 4. Phase 1 on the board: everything in `docs/HARDWARE_TODO.md` (display/touch BSP and UI loop first; then SD card, Wi-Fi, JPEG decoder, double-tap, audio, deep sleep and the INT1 pin check).
 
+Usage limits (Paul has a daily allowance, and a session can stop at any moment): commit and push after every small step; keep this file's table and "what is left" list current in the same commit; log anything half-decided in `docs/OPEN_QUESTIONS.md`; never leave the tree uncommitted or the tests red at the end of a step; run slow commands (full host tests, simulator build) once per step, not repeatedly.
+
 How to work here: branch `recipes/stepN-...` from `main`, `bash tests/run_tests.sh`, build the simulator (`firmware/sim/README.md`), run `summit_sim --selftest`, `node tests/web/e2e.mjs` and `node tests/web/e2e_recipes.mjs`, open a PR, merge when CI is green.
 
 # Kickoff — Phase 0 (before hardware arrives)
