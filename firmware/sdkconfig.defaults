@@ -72,6 +72,3 @@ CONFIG_LV_USE_CLIB_MALLOC=y
 CONFIG_LV_USE_CLIB_STRING=y
 CONFIG_LV_USE_CLIB_SPRINTF=y
 
-# Flash erase/write used to freeze the cache and starve the display's PSRAM reads (blue flashing while an image
-# is installed). Auto suspend lets the cache keep serving PSRAM/flash reads during erase and write.
-CONFIG_SPI_FLASH_AUTO_SUSPEND=y
