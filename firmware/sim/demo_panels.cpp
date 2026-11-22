@@ -243,7 +243,12 @@ void publish_placeholders(StateStore &s, bool with_network)
     s.set("weather/now_text", std::string("4\xC2\xB0" "C Cloudy"));
     s.set("printer/progress_text", std::string("Enclosure v2 \xE2\x80\xA2 42%"));
     s.set("printer/progress_pct", int64_t{42});
-    if (with_network) s.set("net/wifi_connected", true);  // the device has the real Wi-Fi state
+    if (with_network) {
+        s.set("net/wifi_connected", true);
+        s.set("net/ssid", std::string("HomeNetwork"));
+        s.set("net/ip", std::string("192.168.1.50"));
+    }
+    // (on the device the net service publishes the real Wi-Fi state)
     s.set("update/available", true);
     s.set("power/battery_text", std::string("85%"));
     s.set("power/battery_icon", std::string(LV_SYMBOL_BATTERY_3));
