@@ -3,6 +3,28 @@
   "project": "summit",
   "builds": [
     {
+      "version": "0.0.2-alpha.7",
+      "channel": "alpha",
+      "hardware_id": "waveshare-p4-wifi6-lcd5-rev3",
+      "partition_layout": 1,
+      "url": "https://skiiirt1983.github.io/project-summit/firmware/0.0.2-alpha.7/summit-0.0.2-alpha.7-rev3-ota.bin",
+      "size": 3633328,
+      "sha256": "38d820a9ae8d1f6b0475ab294a4e10e3e5e78f754df24d3291db2a48e56b489a",
+      "released": "2026-11-22",
+      "notes": ""
+    },
+    {
+      "version": "0.0.2-alpha.7",
+      "channel": "alpha",
+      "hardware_id": "waveshare-p4-wifi6-lcd5-rev1",
+      "partition_layout": 1,
+      "url": "https://skiiirt1983.github.io/project-summit/firmware/0.0.2-alpha.7/summit-0.0.2-alpha.7-rev1-ota.bin",
+      "size": 3630352,
+      "sha256": "f10d66284761671311188698c4f1341f90b3e05afb86d75559ec3f572ddc7ff8",
+      "released": "2026-11-22",
+      "notes": ""
+    },
+    {
       "version": "0.0.2-alpha.6",
       "channel": "alpha",
       "hardware_id": "waveshare-p4-wifi6-lcd5-rev3",
