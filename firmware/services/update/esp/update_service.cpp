@@ -204,9 +204,6 @@ void do_install(const std::string &version)
         publish_locked();
         if (!ok) return;
     }
-    // Flash writes freeze the flash cache and starve the display's reads: the panel flashes blue. Switch the
-    // backlight off for the transfer (the UI loop applies it) and bring it back when the writes are over.
-    g->bus->publish("display/blank", true);
     std::string error;
     int64_t last_pct = -1;
     int status = http_get(url.c_str(), INT64_MAX,
@@ -229,7 +226,6 @@ void do_install(const std::string &version)
         g->engine->fail(error.empty() ? "download failed" : error, status > 0 ? status : 0);
     }
     publish_locked();
-    g->bus->publish("display/blank", false);
     if (g->engine->status().stage == Stage::ReadyToReboot) {
         g->bus->publish("notify/toast", std::string("Update ready: restart to finish"));
     }

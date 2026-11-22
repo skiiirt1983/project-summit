@@ -53,7 +53,6 @@ enum FlushMode { kFlushNormal = 0, kFlushCpuCopy = 1, kFlushSkip = 2 };
 std::atomic<int> g_flush_mode{kFlushNormal};
 std::atomic<bool> g_backlight_full{false};
 std::atomic<int> g_brightness{0};
-std::atomic<bool> g_blank{false};
 esp_lcd_touch_handle_t g_touch = nullptr;
 void *g_rotate_buf = nullptr;
 bool g_backlight_ready = false;
@@ -357,7 +356,6 @@ void set_brightness(int percent)
     if (percent > 100) percent = 100;
     g_brightness = percent;
     if (g_backlight_full.load() && percent > 0) percent = 100;
-    if (g_blank.load()) percent = 0;
     ledc_set_duty(LEDC_LOW_SPEED_MODE, kLedcChannel, static_cast<uint32_t>(1023 * percent / 100));
     ledc_update_duty(LEDC_LOW_SPEED_MODE, kLedcChannel);
 }
@@ -379,11 +377,6 @@ uint32_t pixel_clock_mhz() { return kPixelClockMhz; }
 }  // namespace summit::bsp
 
 namespace summit::bsp {
-void set_display_blank(bool blank)
-{
-    g_blank = blank;
-    set_brightness(g_brightness.load());
-}
 void set_debug_flush(const char *mode)
 {
     const std::string m = mode ? mode : "";

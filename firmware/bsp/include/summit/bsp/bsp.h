@@ -32,9 +32,6 @@ bool i2c_present(uint8_t addr);
 void set_debug_flush(const char *mode);
 void set_debug_backlight_full(bool full);
 
-// Forces the backlight off (true) or back to the set brightness (false); used while a firmware image is written.
-void set_display_blank(bool blank);
-
 // 0..100 percent (LEDC PWM on the backlight pin).
 void set_brightness(int percent);
 
