@@ -16,6 +16,9 @@ CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y
 CONFIG_SPIRAM=y
 # Large allocations (LVGL, framebuffers, snapshot pictures) go to PSRAM.
 CONFIG_SPIRAM_USE_MALLOC=y
+# Allocations up to this size normally go to internal RAM first (default 16 KB). LVGL's many small objects and
+# network buffers filled the internal heap that the Wi-Fi link needs; 2 KB sends most of them to PSRAM.
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=2048
 
 # waveshare/esp_lcd_hx8394 by default runs another board's I2C setup (its own bus on GPIO7/8, a chip at 0x45).
 # This board has no such chip, and that second bus took the pins from ours (touch then never answered).
