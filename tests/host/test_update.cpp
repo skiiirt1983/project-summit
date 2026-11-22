@@ -296,6 +296,48 @@ TEST(catalog_install_happy_path)
     CHECK(r.engine.status().stage == Stage::ReadyToReboot && r.writer.finished && r.writer.flash == img);
 }
 
+TEST(writing_stage_shows_before_the_flash_burst)
+{
+    Rig r;
+    auto img = image("0.2.0");
+    CatalogBuild b = build("0.2.0", "stable", static_cast<int64_t>(img.size()));
+    b.sha256 = sha(img);
+    CHECK(r.engine.begin_check());
+    r.engine.catalog_received(catalog({b}));
+    CHECK(r.engine.start_install("0.2.0", ok_preflight()));
+    CHECK(!r.engine.begin_writing());                              // nothing downloaded yet
+    r.feed(img);
+    CHECK(r.engine.begin_writing());                               // download done: "Writing update" stage
+    CHECK(r.engine.status().stage == Stage::Verifying && r.engine.busy());  // still counts as installing
+    CHECK(!r.writer.finished);                                     // the flash burst has not happened yet
+    CHECK(r.engine.complete());                                    // complete() accepts the writing stage
+    CHECK(r.engine.status().stage == Stage::ReadyToReboot && r.writer.finished && r.writer.flash == img);
+}
+
+TEST(writing_stage_still_rejects_a_bad_hash_and_a_short_download)
+{
+    Rig r;
+    auto img = image("0.2.0");
+    CatalogBuild b = build("0.2.0", "stable", static_cast<int64_t>(img.size()));
+    b.sha256 = std::string(64, 'b');                               // wrong hash
+    CHECK(r.engine.begin_check());
+    r.engine.catalog_received(catalog({b}));
+    CHECK(r.engine.start_install("0.2.0", ok_preflight()));
+    r.feed(img);
+    CHECK(r.engine.begin_writing());
+    CHECK(!r.engine.complete() && r.engine.status().stage == Stage::Failed);
+    CHECK(r.writer.aborted && !r.writer.finished);
+
+    Rig t;
+    CatalogBuild b2 = build("0.2.0", "stable", static_cast<int64_t>(img.size()));
+    b2.sha256 = sha(img);
+    CHECK(t.engine.begin_check());
+    t.engine.catalog_received(catalog({b2}));
+    CHECK(t.engine.start_install("0.2.0", ok_preflight()));
+    t.feed(std::vector<uint8_t>(img.begin(), img.begin() + 2000));
+    CHECK(!t.engine.begin_writing());                              // short download never reaches the writing stage
+}
+
 TEST(install_picks_this_devices_entry_when_a_version_lists_both_chip_variants)
 {
     // Live bug (2026-11-22): the release catalog has a rev3 and a rev1 entry under the same version. The device
@@ -524,6 +566,8 @@ int main()
     RUN(channels_and_newest_update);
     RUN(preflight_rules);
     RUN(catalog_install_happy_path);
+    RUN(writing_stage_shows_before_the_flash_burst);
+    RUN(writing_stage_still_rejects_a_bad_hash_and_a_short_download);
     RUN(install_picks_this_devices_entry_when_a_version_lists_both_chip_variants);
     RUN(catalog_install_rejects_bad_images_before_writing);
     RUN(catalog_install_sha_mismatch_and_truncation);
