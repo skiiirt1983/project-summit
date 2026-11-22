@@ -308,6 +308,7 @@ The state store and event bus are the public API between services, panels and th
 | `storage/sd_present` | bool | storage service | Modules screen (requirements), module panels |
 | `storage/sd_free_mb` | int: free space on the SD card | storage service | Modules screen (requirements) |
 | `diag/warnings` | string: newline-separated warnings, e.g. a missing add-on; empty = none | health gate (add-on checks) | web UI diagnostics |
+| `diag/metrics` | string: `key=value` lines (LVGL busy %, peak fps, panel strips/s, worst LVGL pass ms, heap, PSRAM, uptime, pending_verify, reset reason), refreshed every 5 s | UI loop (app_main) | web UI diagnostics, `diag:` log line every 30 s |
 | `system/settings_notice` | string; empty = none | boot (`app_main`), shell (clears after reset) | shell (toast + quick settings), web UI |
 | `notify/toast` | event: string | any service or panel | shell (toast) |
 | `ui/brightness_live` | event: int 0–100, the brightness slider while it is being dragged (not saved; the setting is saved when the finger lifts) | shell (quick settings) | display driver (backlight) |

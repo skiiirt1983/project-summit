@@ -38,3 +38,4 @@ Code here compiles in CI but has never run on the device. Do not treat it as wor
 
 | Health gate on a real update | Probes wired (UI tick, panel strips drawn, touch, I2C 0x5d/0x18/0x40). Install an update; expect "new image confirmed" about 10 s after boot and no rollback. | not yet tested |
 | Log survives restarts | Last 16 KB of log kept in noinit RAM; shown at the top of the web Log tab after a crash/rollback/restart ("log from before the last restart"). Lost on power cut (no spare partition; SD copy possible later). | not yet tested |
+| Diagnostics metrics | Web UI Diagnostics tab and a `diag:` log line every 30 s show LVGL busy %, peak fps, panel strips/s, worst LVGL pass, heap, PSRAM, uptime, reset reason. Report these instead of full logs. | not yet tested |

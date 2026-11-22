@@ -526,6 +526,18 @@ Response WebApi::diagnostics()
     w.key("event_bus").begin_object().key("published").value(b.published).key("delivered").value(b.delivered);
     w.key("dropped").value(b.dropped).key("high_water").value(static_cast<int64_t>(b.high_water)).end_object();
     w.key("update").begin_object().key("stage").value(str("update/stage")).key("error").value(str("update/error"));
+    w.end_object().key("metrics").begin_object();
+    {  // "key=value" lines published by the UI loop (diag/metrics)
+        const std::string m = str("diag/metrics");
+        size_t st = 0;
+        while (st < m.size()) {
+            size_t en = m.find('\n', st);
+            if (en == std::string::npos) en = m.size();
+            const size_t eq = m.find('=', st);
+            if (eq != std::string::npos && eq < en) w.key(m.substr(st, eq - st)).value(m.substr(eq + 1, en - eq - 1));
+            st = en + 1;
+        }
+    }
     w.end_object().key("device").begin_object();
     for (const auto &kv : facts_.facts()) w.key(kv.first).value(kv.second);
     w.end_object().end_object();

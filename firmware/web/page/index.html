@@ -448,6 +448,7 @@ loaders.diagnostics = async () => {
   const pairs = [["Settings notice", d.settings.notice], ["Settings schema", d.settings.schema_version + " (stored " + d.settings.stored_version + ")"],
     ["Update", d.update.stage + (d.update.error ? ": " + d.update.error : "")],
     ["Event bus", d.event_bus.published + " published, " + d.event_bus.dropped + " dropped, peak queue " + d.event_bus.high_water]];
+  for (const [k, v] of Object.entries(d.metrics || {})) pairs.push([k, v]);
   for (const [k, v] of Object.entries(d.device)) pairs.push([k, v]);
   fillDl($("diag-dl"), pairs);
 };
