@@ -231,9 +231,9 @@ void ModulesScreen::tick()
         const int n = data ? data->count() : 0;
         if (n > 0) {
             set_text(r.del_label, "Delete " + std::to_string(n) + " " + data->noun(n));
-            lv_obj_remove_flag(r.del, LV_OBJ_FLAG_HIDDEN);
+            ui_motion::set_hidden(r.del, false);
         } else {
-            lv_obj_add_flag(r.del, LV_OBJ_FLAG_HIDDEN);
+            ui_motion::set_hidden(r.del, true);
         }
         set_text(r.button_label, installed ? "Remove" : "Install");
         lv_obj_set_style_bg_color(r.button, lv_color_hex(installed ? kChipBg : kAccent), 0);

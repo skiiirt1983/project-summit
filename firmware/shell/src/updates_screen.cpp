@@ -44,11 +44,7 @@ lv_obj_t *button(lv_obj_t *parent, const char *text, bool primary)
     return b;
 }
 
-void show(lv_obj_t *o, bool visible)
-{
-    if (visible) lv_obj_remove_flag(o, LV_OBJ_FLAG_HIDDEN);
-    else lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
-}
+void show(lv_obj_t *o, bool visible) { ui_motion::set_hidden(o, !visible); }
 
 void set_text(lv_obj_t *l, const std::string &text)
 {
@@ -238,7 +234,7 @@ void UpdatesScreen::tick()
     show(close_btn_, !installing);
     if (installing) {
         set_text(progress_title_, "Installing " + str("update/target_version"));
-        lv_bar_set_value(bar_, static_cast<int32_t>(pct), LV_ANIM_OFF);
+        if (lv_bar_get_value(bar_) != static_cast<int32_t>(pct)) lv_bar_set_value(bar_, static_cast<int32_t>(pct), LV_ANIM_OFF);
         set_text(pct_, std::to_string(pct) + "%");
         return;
     }
@@ -248,11 +244,10 @@ void UpdatesScreen::tick()
     Value ch = settings_.get("update/channel");
     const std::string *chs = std::get_if<std::string>(&ch);
     for (uint32_t i = 0; i < 3; ++i) {
-        if (chs && *chs == kChannelValues[i]) {
-            lv_buttonmatrix_set_button_ctrl(channel_, i, LV_BUTTONMATRIX_CTRL_CHECKED);
-        } else {
-            lv_buttonmatrix_clear_button_ctrl(channel_, i, LV_BUTTONMATRIX_CTRL_CHECKED);
-        }
+        const bool want = chs && *chs == kChannelValues[i];
+        if (want == lv_buttonmatrix_has_button_ctrl(channel_, i, LV_BUTTONMATRIX_CTRL_CHECKED)) continue;  // no change, no redraw
+        if (want) lv_buttonmatrix_set_button_ctrl(channel_, i, LV_BUTTONMATRIX_CTRL_CHECKED);
+        else lv_buttonmatrix_clear_button_ctrl(channel_, i, LV_BUTTONMATRIX_CTRL_CHECKED);
     }
 
     const std::string available = str("update/available_version");
@@ -266,7 +261,9 @@ void UpdatesScreen::tick()
     else if (stage == "ready_to_reboot") status = "Update " + str("update/target_version") + " is ready. Restart to finish.";
     else status = "Check for updates to see what's new.";
     set_text(status_, status);
-    lv_obj_set_style_text_color(status_, lv_color_hex(stage == "failed" || stage == "check_failed" ? kError : kText), 0);
+    const lv_color_t status_color = lv_color_hex(stage == "failed" || stage == "check_failed" ? kError : kText);
+    if (!lv_color_eq(lv_obj_get_style_text_color(status_, LV_PART_MAIN), status_color))
+        lv_obj_set_style_text_color(status_, status_color, 0);
 
     show(available_, !available.empty() && stage != "ready_to_reboot");
     set_text(available_title_, "Version " + available);

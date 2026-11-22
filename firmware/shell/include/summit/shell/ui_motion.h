@@ -33,4 +33,14 @@ inline void press_feedback(lv_obj_t *obj);  // with press_travel()
 int32_t press_travel();
 inline void press_feedback(lv_obj_t *obj) { press_feedback(obj, press_travel()); }
 
+// Hide or show an object only when that changes anything. LVGL redraws the object's area on every
+// add_flag / remove_flag call, even when the flag is already as asked, and the screens call these every tick:
+// the top bar and the Updates screen were redrawn about 50 times a second and flashed.
+inline void set_hidden(lv_obj_t *o, bool hidden)
+{
+    if (lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN) == hidden) return;
+    if (hidden) lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_remove_flag(o, LV_OBJ_FLAG_HIDDEN);
+}
+
 }  // namespace summit::shell::ui_motion

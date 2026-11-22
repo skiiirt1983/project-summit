@@ -602,11 +602,8 @@ bool Shell::strip_visible() const { return !lv_obj_has_flag(strip_, LV_OBJ_FLAG_
 void Shell::refresh_strip_visibility()
 {
     // A critical toast shows the strip even in full-screen modes (as an overlay).
-    if (visibility_.visible(now_) || (toast_on_ && toast_critical_)) {
-        lv_obj_remove_flag(strip_, LV_OBJ_FLAG_HIDDEN);
-    } else {
-        lv_obj_add_flag(strip_, LV_OBJ_FLAG_HIDDEN);
-    }
+    // Every tick: only touch the bar when it really changes (see ui_motion::set_hidden).
+    ui_motion::set_hidden(strip_, !(visibility_.visible(now_) || (toast_on_ && toast_critical_)));
 }
 
 void Shell::update_hide_reasons()

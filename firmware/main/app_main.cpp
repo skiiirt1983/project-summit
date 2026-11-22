@@ -232,8 +232,9 @@ extern "C" void app_main(void)
         vTaskDelay(pdMS_TO_TICKS(wait));  // at least one tick: lets the idle task run and feed the watchdog
         if (static_cast<int32_t>(now - next_report) >= 0) {
             next_report = now + 30000;
-            ESP_LOGI(TAG, "ui load: LVGL busy %u%% (last 0.5 s), free internal heap %u KB", 100u - lv_timer_get_idle(),
-                     static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024));
+            ESP_LOGI(TAG, "ui load: LVGL busy %u%% (last 0.5 s), internal heap free %u KB (lowest ever %u KB)", 100u - lv_timer_get_idle(),
+                     static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
+                     static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL) / 1024));
         }
     }
 }

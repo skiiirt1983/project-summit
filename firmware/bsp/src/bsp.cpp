@@ -33,7 +33,11 @@ constexpr gpio_num_t kSda = GPIO_NUM_7, kScl = GPIO_NUM_8;
 constexpr gpio_num_t kBacklight = GPIO_NUM_26, kLcdReset = GPIO_NUM_27;
 constexpr int kDphyLdoChan = 3, kDphyLdoMv = 2500;
 constexpr int kLaneMbps = 700, kLanes = 2;
-constexpr int kBufLines = 40;  // partial render buffer height; two buffers + a rotate buffer, in internal RAM if they fit
+// Partial render buffer height; two draw buffers + a rotate buffer in internal RAM. 40 lines (3 x 57 KB) used
+// up most of the internal heap (about 90 KB were left), and the esp_hosted Wi-Fi link allocates its receive buffers
+// on demand from internal RAM: under a big download an allocation failed and the sdio_read task called abort()
+// (the crash at panic_abort, pc 0x4ff2a694, seen on every update). 20 lines is 3 x 29 KB.
+constexpr int kBufLines = 20;
 constexpr ledc_channel_t kLedcChannel = LEDC_CHANNEL_1;
 constexpr ledc_timer_t kLedcTimer = LEDC_TIMER_1;
 
