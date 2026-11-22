@@ -7,6 +7,7 @@
 
 #include "esp_app_desc.h"
 #include "esp_core_dump.h"
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_timer.h"
@@ -211,13 +212,28 @@ extern "C" void app_main(void)
     ESP_LOGI(TAG, "UI running");
     // PowerService::tick() is deliberately not called yet: deep sleep is untested and the device would
     // sleep after 5 idle minutes. Timers and the shell run.
+    // The housekeeping (event bus, timers, shell, splash) runs every 4 ms while something moves (a finger down or
+    // an animation) and every 20 ms otherwise; it used to run every millisecond, which cost a lot of CPU at idle.
+    // LVGL's own timers still run every pass, and the loop sleeps until the next one is due.
+    uint32_t next_services = 0, next_report = now_ms() + 30000;
     for (;;) {
         const uint32_t now = now_ms();
-        bus.dispatch();
-        timers.tick(now);
-        shell.tick(now);
-        if (splash.tick(now) && hw.touch) lv_indev_enable(hw.touch, true);
-        lv_timer_handler();
-        vTaskDelay(1);  // one tick (1 ms at 1000 Hz): lets the idle task run and feed the watchdog
+        if (static_cast<int32_t>(now - next_services) >= 0) {
+            bus.dispatch();
+            timers.tick(now);
+            shell.tick(now);
+            if (splash.tick(now) && hw.touch) lv_indev_enable(hw.touch, true);
+            const bool moving = lv_anim_count_running() > 0 || (hw.touch && lv_indev_get_state(hw.touch) == LV_INDEV_STATE_PRESSED);
+            next_services = now + (moving ? 4 : 20);
+        }
+        uint32_t wait = lv_timer_handler();
+        if (wait < 1) wait = 1;
+        if (wait > 10) wait = 10;
+        vTaskDelay(pdMS_TO_TICKS(wait));  // at least one tick: lets the idle task run and feed the watchdog
+        if (static_cast<int32_t>(now - next_report) >= 0) {
+            next_report = now + 30000;
+            ESP_LOGI(TAG, "ui load: LVGL busy %u%% (last 0.5 s), free internal heap %u KB", 100u - lv_timer_get_idle(),
+                     static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024));
+        }
     }
 }

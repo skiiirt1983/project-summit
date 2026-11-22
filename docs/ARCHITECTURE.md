@@ -257,6 +257,7 @@ The state store and event bus are the public API between services, panels and th
 | `net/wifi_connected` | bool | net service | glance strip (Wi-Fi chip), web UI |
 | `net/ssid` | string: connected network | net service | web UI |
 | `net/ip` | string: IPv4 address | net service | web UI |
+| `net/last_error` | string: why the last connection attempt failed, in words ("Wrong password? (code 15)"); empty when connected | net service | quick-settings sheet, web UI Wi-Fi tab |
 | `net/ap_active` | bool: the setup access point (Summit-Setup) is on | net service | quick-settings sheet (shows how to join it) |
 | `net/scan` | string: JSON array of {ssid, rssi, secure} | net service | web UI (Wi-Fi page) |
 | `net/connect` | event: SSID just saved (the password stays in the Wi-Fi store) | web UI | net service |

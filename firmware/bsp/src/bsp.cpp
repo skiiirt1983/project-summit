@@ -199,8 +199,19 @@ bool trans_done_cb(esp_lcd_panel_handle_t, esp_lcd_dpi_panel_event_data_t *, voi
     return false;  // no higher-priority task woken
 }
 
-void touch_read_cb(lv_indev_t *, lv_indev_data_t *data)
+void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 {
+    // The GT911's interrupt pin is not connected, so the chip has to be polled over I2C. Poll quickly (8 ms) while
+    // a finger is down or was just lifted, and slowly (30 ms) when idle: at idle the 8 ms polling alone kept
+    // the CPU busy for no reason (the on-screen load readout showed 50% or more).
+    static uint32_t last_touch_ms = 0;
+    static bool fast = true;
+    const uint32_t now_ms = tick_ms();
+    const bool want_fast = now_ms - last_touch_ms < 1000;
+    if (want_fast != fast) {
+        fast = want_fast;
+        lv_timer_set_period(lv_indev_get_read_timer(indev), fast ? 8 : 30);
+    }
     static bool was_down = false;
     static bool armed = false;  // a touch only counts after the screen has been seen released once
     static int logged = 0;
@@ -220,6 +231,7 @@ void touch_read_cb(lv_indev_t *, lv_indev_data_t *data)
         data->point.x = x[0];
         data->point.y = y[0];
         data->state = LV_INDEV_STATE_PRESSED;
+        last_touch_ms = now_ms;
         if (!was_down && logged < 40) {  // the first touches in the serial log (phantom touches at start-up)
             ++logged;
             ESP_LOGI(TAG, "touch down x=%d y=%d (t=%u ms)", x[0], y[0], static_cast<unsigned>(tick_ms()));

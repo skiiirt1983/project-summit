@@ -776,8 +776,10 @@ void Shell::sync_quick_settings()
             t = text("net/ssid") + "\nhttp://" + text("net/ip");
         } else if (state_bool(d_.state, "net/ap_active")) {
             t = "Not connected. Join Wi-Fi \"Summit-Setup\" (password summit123),\nthen open http://192.168.4.1";
+            if (!text("net/last_error").empty()) t = text("net/last_error") + "\n" + t;
         } else {
             t = "Not connected";
+            if (!text("net/last_error").empty()) t += "\n" + text("net/last_error");
         }
         if (t != wifi_text_) {
             wifi_text_ = t;
