@@ -27,6 +27,11 @@ uint32_t pixel_clock_mhz();
 // True if a device answers at this 7-bit I2C address (health gate; safe to call from any task).
 bool i2c_present(uint8_t addr);
 
+// Debug switches (settings debug/display_flush and debug/backlight), changeable at run time.
+// mode: "normal" (DMA2D), "cpu_copy" (CPU copy into the frame buffer), "skip" (nothing is drawn).
+void set_debug_flush(const char *mode);
+void set_debug_backlight_full(bool full);
+
 // 0..100 percent (LEDC PWM on the backlight pin).
 void set_brightness(int percent);
 

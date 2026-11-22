@@ -202,6 +202,22 @@ extern "C" void app_main(void)
     auto apply_brightness = [brightness_of](const std::string &, const summit::Value &v) {
         summit::bsp::set_brightness(brightness_of(v, 80));
     };
+    auto str_of = [](const summit::Value &v, const char *fallback) {
+        const std::string *p = std::get_if<std::string>(&v);
+        return p ? *p : std::string(fallback);
+    };
+    // Debug switches for the screen-flashing hunt (see system_settings.cpp); applied now and on every change.
+    {   // "skip" freezes the screen, so it never survives a restart
+        const std::string m = str_of(settings.get("debug/display_flush"), "normal");
+        summit::bsp::set_debug_flush(m == "skip" ? "normal" : m.c_str());
+    }
+    summit::bsp::set_debug_backlight_full(str_of(settings.get("debug/backlight"), "pwm") == "full");
+    bus.subscribe("settings/debug/display_flush", [str_of](const std::string &, const summit::Value &v) {
+        summit::bsp::set_debug_flush(str_of(v, "normal").c_str());
+    });
+    bus.subscribe("settings/debug/backlight", [str_of](const std::string &, const summit::Value &v) {
+        summit::bsp::set_debug_backlight_full(str_of(v, "pwm") == "full");
+    });
     bus.subscribe("settings/display/brightness", apply_brightness);  // saved value (web UI, release)
     bus.subscribe("ui/brightness_live", apply_brightness);           // while the slider is dragged
     sim::publish_placeholders(state, false);                              // fake time, weather, battery... (placeholders)

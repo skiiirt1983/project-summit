@@ -4,5 +4,5 @@ idf_component_register(
     SRCS "src/bsp.cpp"
     INCLUDE_DIRS "include"
     REQUIRES framework
-    PRIV_REQUIRES esp_lcd esp_driver_i2c esp_driver_ledc esp_driver_gpio esp_hw_support esp_timer esp_psram heap)
+    PRIV_REQUIRES esp_lcd esp_driver_i2c esp_driver_ledc esp_driver_gpio esp_hw_support esp_timer esp_psram esp_mm heap)
 target_compile_options(${COMPONENT_LIB} PRIVATE -std=gnu++17)

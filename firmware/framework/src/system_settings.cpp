@@ -23,6 +23,13 @@ SettingsSchema system_settings_schema()
                    "Timers and alarms still wake it."),
         SettingDef("power/stay_on_charging", true, {}, "Stay on when charging",
                    "On USB power the device does not go to sleep."),
+        // Hardware debugging while the screen flashing is chased (0.0.2-alpha.10). Additive keys: no version bump.
+        // Remove once the flashing is fixed.
+        SettingDef("debug/display_flush", std::string("normal"), {"normal", "cpu_copy", "skip"}, "Debug: how pixels reach the panel",
+                   "normal = DMA2D copy. cpu_copy = plain CPU copy into the frame buffer. skip = draw nothing "
+                   "(the screen freezes; if it still flashes, drawing is not the cause)."),
+        SettingDef("debug/backlight", std::string("pwm"), {"pwm", "full"}, "Debug: backlight",
+                   "pwm = brightness slider (PWM). full = constant full brightness, no PWM (slider ignored)."),
     };
     // v1 is the first schema: no migrations yet. Add {from, apply} per version bump.
     s.migrations = {};
