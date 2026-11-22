@@ -2,8 +2,8 @@
 // glance strip read:  net/wifi_connected, net/ssid, net/ip, net/scan  (ARCHITECTURE.md "State topics").
 // The web UI saves credentials in NVS namespace "wifi" (keys ssid, pass) and publishes net/connect.
 // With no network saved, or none reachable for about 45 s, it also runs a setup access point
-// ("Slopeform-XXXX", WPA2, random password printed on the serial console and in the web log) so the
-// web UI can be reached at http://192.168.4.1 to enter the home network.
+// ("Summit-Setup", WPA2, password "summit123": Paul's choice for now) so the web UI can be reached at
+// http://192.168.4.1 to enter the home network. It is isolated: nothing is forwarded to the home network.
 #pragma once
 #include "summit/event_bus.h"
 #include "summit/state_store.h"

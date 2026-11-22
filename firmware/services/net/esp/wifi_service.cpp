@@ -7,9 +7,7 @@
 
 #include "esp_event.h"
 #include "esp_log.h"
-#include "esp_mac.h"
 #include "esp_netif.h"
-#include "esp_random.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
@@ -133,31 +131,27 @@ void scan()
     ESP_LOGI(TAG, "scan: %u networks", static_cast<unsigned>(n));
 }
 
+// Setup access point. Paul's choice for now (easy set-up, no blocks): a fixed name and a short password.
+// WPA2 needs at least 8 characters, so "summit123". Safety that matters: it is its own subnet and the device
+// never forwards traffic between it and the home network (no NAPT / IP forwarding, see sdkconfig.defaults),
+// and it is switched off as soon as the device is on the home Wi-Fi.
+constexpr const char *kApSsid = "Summit-Setup";
+constexpr const char *kApPassword = "summit123";
+
 void ap_start()
 {
     if (g_ap_on) return;
-    std::string pass = nvs_read("ap_pass", 16);
-    if (pass.size() < 8) {  // generated once: random, letters and digits that are easy to read out
-        static const char kChars[] = "abcdefghjkmnpqrstuvwxyz23456789";
-        pass.clear();
-        for (int i = 0; i < 10; ++i) pass.push_back(kChars[esp_random() % (sizeof kChars - 1)]);
-        nvs_write("ap_pass", pass);
-    }
-    uint8_t mac[6] = {};
-    esp_read_mac(mac, ESP_MAC_WIFI_SOFTAP);
-    char ssid[24];
-    snprintf(ssid, sizeof ssid, "Slopeform-%02X%02X", mac[4], mac[5]);
     wifi_config_t c = {};
-    strlcpy(reinterpret_cast<char *>(c.ap.ssid), ssid, sizeof c.ap.ssid);
-    c.ap.ssid_len = static_cast<uint8_t>(strlen(ssid));
-    strlcpy(reinterpret_cast<char *>(c.ap.password), pass.c_str(), sizeof c.ap.password);
+    strlcpy(reinterpret_cast<char *>(c.ap.ssid), kApSsid, sizeof c.ap.ssid);
+    c.ap.ssid_len = static_cast<uint8_t>(strlen(kApSsid));
+    strlcpy(reinterpret_cast<char *>(c.ap.password), kApPassword, sizeof c.ap.password);
     c.ap.channel = 1;
-    c.ap.max_connection = 4;
+    c.ap.max_connection = 3;
     c.ap.authmode = WIFI_AUTH_WPA2_PSK;
     esp_wifi_set_mode(WIFI_MODE_APSTA);
     esp_err_t err = esp_wifi_set_config(WIFI_IF_AP, &c);
     g_ap_on = err == ESP_OK;
-    ESP_LOGW(TAG, "SETUP WI-FI: join '%s' with password '%s', then open http://192.168.4.1  (%s)", ssid, pass.c_str(),
+    ESP_LOGW(TAG, "SETUP WI-FI: join '%s' (password '%s'), then open http://192.168.4.1  (%s)", kApSsid, kApPassword,
              esp_err_to_name(err));
 }
 

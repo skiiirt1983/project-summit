@@ -28,6 +28,11 @@ CONFIG_ESP_HOSTED_CP_TARGET_ESP32C6=y
 CONFIG_ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD=y
 CONFIG_ESP_WIFI_REMOTE_ENABLED=y
 
+# The setup access point must never be a way into the home network: no IP forwarding or NAPT between the
+# access point and the station interface.
+CONFIG_LWIP_IP_FORWARD=n
+CONFIG_LWIP_IPV4_NAPT=n
+
 # On-screen frame-rate / CPU readout (alpha builds; remove for release).
 CONFIG_LV_USE_SYSMON=y
 CONFIG_LV_USE_PERF_MONITOR=y
