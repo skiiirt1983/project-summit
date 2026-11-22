@@ -303,7 +303,7 @@ void selftest_boot(App &app)
     boot::Splash splash;
     lv_obj_t *main_screen = lv_screen_active();
     EXPECT(!splash.active(), "no boot screen yet");
-    splash.show(g_ms);
+    splash.show(g_ms, g_hw.disp, false);
     EXPECT(splash.active() && lv_screen_active() != main_screen, "boot screen is the active screen");
     EXPECT(lv_obj_get_style_opa(lv_layer_top(), LV_PART_MAIN) == LV_OPA_TRANSP, "the shell's strip is hidden behind it");
     splash.set_status("STARTING");

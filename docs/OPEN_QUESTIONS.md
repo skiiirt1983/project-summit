@@ -4,6 +4,16 @@ Each entry: the question, the choice made, why. Newest first. Say if any should 
 
 **D-010 (2026-11-13): Paul accepted all R1-R3 defaults below and the SD wiring guesses (still to be checked on the board, see HARDWARE_TODO.md).**
 
+## First flash feedback (2026-11-22)
+
+From Paul's test on the board (touch, boot screen and shell work):
+
+- **Choppy page swipes.** While dragging, only the current page moves and black shows behind it; the next page appears only after the finger lifts. A phone shows both pages together during the drag. Doing that means preparing the neighbouring panel (show, snapshot, hide) at drag start, which touches the one-panel-at-a-time rule and has side effects (a panel's show/hide sets state such as `ui/keep_awake`). **Needs Paul's decision** before it is built. Meanwhile frame rate was raised: draw buffers in internal RAM (were PSRAM), redraw timer 16 ms and touch read 8 ms (were 33 ms), and an on-screen FPS readout (`CONFIG_LV_USE_PERF_MONITOR`, alpha only) so the real numbers can be read.
+- **"Rotation locked / unlocked" toasts at start-up.** They come from a long-press on the top bar, so something touched the bar with no finger there. Touch is now ignored while the boot screen shows, and the first 40 touches are written to the serial log (`touch down x= y=`).
+- **Boot screen** background changed to solid very dark grey; it shows in portrait unless `sensor/orientation` reads landscape (no accelerometer service yet, so always portrait for now), and the shell starts landscape.
+- **Sliders.** Brightness now sets the backlight (and the saved value applies at start-up). Volume does nothing until the audio driver exists (HARDWARE_TODO).
+- **Flashing speed** is the flasher's serial baud rate, not the firmware: raise it (921600) in the flasher.
+
 ## Motion and controls (2026-11-16)
 
 Paul asked for the front-end feel to be designed (buttons, phone-like transitions). The design is in ARCHITECTURE.md "Motion and controls". Choices made, say if any should change:

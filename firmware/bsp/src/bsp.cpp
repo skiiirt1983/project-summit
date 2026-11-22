@@ -33,7 +33,7 @@ constexpr gpio_num_t kSda = GPIO_NUM_7, kScl = GPIO_NUM_8;
 constexpr gpio_num_t kBacklight = GPIO_NUM_26, kLcdReset = GPIO_NUM_27;
 constexpr int kDphyLdoChan = 3, kDphyLdoMv = 2500;
 constexpr int kLaneMbps = 700, kLanes = 2;
-constexpr int kBufLines = 80;  // partial render buffer height; two buffers in PSRAM
+constexpr int kBufLines = 40;  // partial render buffer height; two buffers + a rotate buffer, in internal RAM if they fit
 constexpr ledc_channel_t kLedcChannel = LEDC_CHANNEL_1;
 constexpr ledc_timer_t kLedcTimer = LEDC_TIMER_1;
 
@@ -197,6 +197,8 @@ bool trans_done_cb(esp_lcd_panel_handle_t, esp_lcd_dpi_panel_event_data_t *, voi
 
 void touch_read_cb(lv_indev_t *, lv_indev_data_t *data)
 {
+    static bool was_down = false;
+    static int logged = 0;
     uint16_t x[1], y[1];
     uint8_t n = 0;
     esp_lcd_touch_read_data(g_touch);
@@ -204,8 +206,14 @@ void touch_read_cb(lv_indev_t *, lv_indev_data_t *data)
         data->point.x = x[0];
         data->point.y = y[0];
         data->state = LV_INDEV_STATE_PRESSED;
+        if (!was_down && logged < 40) {  // the first touches in the serial log (phantom touches at start-up)
+            ++logged;
+            ESP_LOGI(TAG, "touch down x=%d y=%d (t=%u ms)", x[0], y[0], static_cast<unsigned>(tick_ms()));
+        }
+        was_down = true;
     } else {
         data->state = LV_INDEV_STATE_RELEASED;
+        was_down = false;
     }
 }
 
@@ -242,9 +250,18 @@ bool start(Handles &out)
     lv_display_t *disp = lv_display_create(kHRes, kVRes);
     lv_display_set_color_format(disp, LV_COLOR_FORMAT_RGB565);
     const size_t buf_bytes = static_cast<size_t>(kHRes) * kBufLines * 2;
-    void *b1 = heap_caps_aligned_alloc(64, buf_bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-    void *b2 = heap_caps_aligned_alloc(64, buf_bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-    g_rotate_buf = heap_caps_aligned_alloc(64, buf_bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    // Rendering into internal RAM is much faster than into PSRAM; fall back to PSRAM if it does not fit.
+    auto alloc = [&](const char *what) {
+        void *p = heap_caps_aligned_alloc(64, buf_bytes, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
+        if (!p) {
+            ESP_LOGW(TAG, "%s: no internal RAM, using PSRAM (slower)", what);
+            p = heap_caps_aligned_alloc(64, buf_bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        }
+        return p;
+    };
+    void *b1 = alloc("draw buffer 1");
+    void *b2 = alloc("draw buffer 2");
+    g_rotate_buf = alloc("rotate buffer");
     if (!b1 || !b2 || !g_rotate_buf) {
         ESP_LOGE(TAG, "no memory for the draw buffers (%u bytes each)", static_cast<unsigned>(buf_bytes));
         return false;
@@ -264,7 +281,9 @@ bool start(Handles &out)
         lv_indev_set_type(out.touch, LV_INDEV_TYPE_POINTER);
         lv_indev_set_read_cb(out.touch, touch_read_cb);
         lv_indev_set_display(out.touch, disp);
+        lv_timer_set_period(lv_indev_get_read_timer(out.touch), 8);  // default 33 ms: laggy response to touch
     }
+    lv_timer_set_period(lv_display_get_refr_timer(disp), 16);  // up to about 60 redraws a second (default 33 ms)
     return true;
 }
 

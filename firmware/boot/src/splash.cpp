@@ -4,10 +4,13 @@
 
 namespace summit::boot {
 
-void Splash::show(uint32_t now_ms)
+void Splash::show(uint32_t now_ms, lv_display_t *display, bool portrait)
 {
     if (active_) return;
     main_ = lv_screen_active();
+    display_ = display;
+    saved_rotation_ = lv_display_get_rotation(display);
+    if (portrait) lv_display_set_rotation(display, LV_DISPLAY_ROTATION_0);  // before the screen is laid out
     // The shell's strip and sheets live on the display's top layer, which is shared by every screen.
     // Transparent, not HIDDEN: LVGL cannot un-hide a display layer (it has no screen to mark dirty).
     lv_obj_set_style_opa(lv_layer_top(), LV_OPA_TRANSP, 0);
@@ -24,6 +27,7 @@ void Splash::set_status(const char *text)
 bool Splash::tick(uint32_t now_ms)
 {
     if (!active_ || !timer_.done(now_ms)) return false;
+    lv_display_set_rotation(display_, saved_rotation_);  // the shell's orientation
     lv_screen_load(main_);  // the main screen first, then the boot screen goes (boot_screen.h)
     lv_obj_set_style_opa(lv_layer_top(), LV_OPA_COVER, 0);
     boot_screen_hide();

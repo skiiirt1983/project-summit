@@ -11,8 +11,9 @@ namespace summit::boot {
 class Splash {
 public:
     // Call after the shell has been built on the active screen. Shows the boot screen over it
-    // (the shell's top layer, strip and sheets, is hidden meanwhile).
-    void show(uint32_t now_ms);
+    // (the shell's top layer, strip and sheets, is hidden meanwhile). `portrait` true shows it on the
+    // panel's native 720x1280 orientation; the display's own rotation (the shell's) comes back when it ends.
+    void show(uint32_t now_ms, lv_display_t *display, bool portrait);
     // Replaces "LOADING" (e.g. "CONNECTING WI-FI").
     void set_status(const char *text);
     // Start-up has finished; the screen goes at the later of this and the 2 s minimum.
@@ -24,6 +25,8 @@ public:
 private:
     SplashTimer timer_;
     lv_obj_t *main_ = nullptr;
+    lv_display_t *display_ = nullptr;
+    lv_display_rotation_t saved_rotation_ = LV_DISPLAY_ROTATION_0;
     bool active_ = false;
 };
 

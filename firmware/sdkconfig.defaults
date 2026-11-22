@@ -21,6 +21,10 @@ CONFIG_SPIRAM_USE_MALLOC=y
 # This board has no such chip, and that second bus took the pins from ours (touch then never answered).
 CONFIG_ESP_LCD_HX8394_SKIP_I2C_INIT=y
 
+# On-screen frame-rate / CPU readout (alpha builds; remove for release).
+CONFIG_LV_USE_SYSMON=y
+CONFIG_LV_USE_PERF_MONITOR=y
+
 # 1 ms RTOS tick: the UI loop sleeps in whole ticks (at the default 100 Hz a 5 ms delay rounded to 0 and starved
 # the idle task, which tripped the task watchdog).
 CONFIG_FREERTOS_HZ=1000

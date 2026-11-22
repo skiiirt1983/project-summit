@@ -2,6 +2,8 @@
 // Phase 0: framework wiring (bus, state, settings, panel registry) and the update
 // engine with its post-boot health gate. Shell and panels start once the display BSP lands.
 #include <memory>
+#include <string>
+#include <variant>
 
 #include "esp_app_desc.h"
 #include "esp_log.h"
@@ -132,7 +134,16 @@ extern "C" void app_main(void)
         ESP_LOGE(TAG, "display/touch failed to start: the update engine and web server keep running without a UI");
         return;
     }
-    summit::bsp::set_orientation(hw.display, summit::kLandscape);  // until the accelerometer service exists
+    summit::bsp::set_orientation(hw.display, summit::kLandscape);  // the shell starts landscape, until the accelerometer service exists
+    // The display slider (quick settings) sets the backlight; the saved value applies from the start.
+    auto brightness_of = [](const summit::Value &v, int fallback) {
+        const int64_t *i = std::get_if<int64_t>(&v);
+        return i ? static_cast<int>(*i) : fallback;
+    };
+    const int start_brightness = brightness_of(settings.get("display/brightness"), 80);
+    bus.subscribe("settings/display/brightness", [brightness_of](const std::string &, const summit::Value &v) {
+        summit::bsp::set_brightness(brightness_of(v, 80));
+    });
     sim::publish_placeholders(state);                              // fake time, weather, battery... (placeholders)
     static summit::shell::Shell shell(
         summit::shell::Shell::Deps{bus, state, settings, registry, host, &modules},
@@ -148,10 +159,15 @@ extern "C" void app_main(void)
     // Boot screen over the finished shell: at least 2 s, and until start-up is ready (nothing else to
     // wait for yet; later, Wi-Fi and the first data fetch can set_status() and delay set_ready()).
     static summit::boot::Splash splash;
-    splash.show(now_ms());
+    // The boot screen is portrait (the panel's native orientation) unless the accelerometer reads landscape.
+    const summit::Value sensor = state.get("sensor/orientation");
+    const std::string *sensor_o = std::get_if<std::string>(&sensor);
+    const bool boot_portrait = !(sensor_o && *sensor_o == "landscape");
+    if (hw.touch) lv_indev_enable(hw.touch, false);    // no touch (or phantom touch) during the boot screen
+    splash.show(now_ms(), hw.display, boot_portrait);
     splash.set_ready();
     lv_timer_handler();                                // draw the first frame, then light the panel
-    summit::bsp::set_brightness(80);
+    summit::bsp::set_brightness(start_brightness);
     ESP_LOGI(TAG, "UI running");
     // PowerService::tick() is deliberately not called yet: deep sleep is untested and the device would
     // sleep after 5 idle minutes. Timers and the shell run.
@@ -160,7 +176,7 @@ extern "C" void app_main(void)
         bus.dispatch();
         timers.tick(now);
         shell.tick(now);
-        splash.tick(now);
+        if (splash.tick(now) && hw.touch) lv_indev_enable(hw.touch, true);
         lv_timer_handler();
         vTaskDelay(1);  // one tick (1 ms at 1000 Hz): lets the idle task run and feed the watchdog
     }

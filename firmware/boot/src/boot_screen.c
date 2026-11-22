@@ -78,9 +78,9 @@ lv_obj_t *boot_screen_show(void)
 {
     scr = lv_obj_create(NULL);
     lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_bg_color(scr, lv_color_hex(0x1B2228), 0);
-    lv_obj_set_style_bg_grad_color(scr, lv_color_hex(0x090B0D), 0);
-    lv_obj_set_style_bg_grad_dir(scr, LV_GRAD_DIR_VER, 0);
+    /* Slopeform Summit change: a solid very dark grey instead of the kit's gradient (Paul). */
+    lv_obj_set_style_bg_color(scr, lv_color_hex(0x0B0D0F), 0);
+    lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
 
     /* Logo, centred, nudged up to leave room for the status line */
     lv_obj_t *logo = lv_image_create(scr);
