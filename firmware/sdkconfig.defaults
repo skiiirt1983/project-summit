@@ -17,6 +17,10 @@ CONFIG_SPIRAM=y
 # Large allocations (LVGL, framebuffers, snapshot pictures) go to PSRAM.
 CONFIG_SPIRAM_USE_MALLOC=y
 
+# waveshare/esp_lcd_hx8394 by default runs another board's I2C setup (its own bus on GPIO7/8, a chip at 0x45).
+# This board has no such chip, and that second bus took the pins from ours (touch then never answered).
+CONFIG_ESP_LCD_HX8394_SKIP_I2C_INIT=y
+
 # 1 ms RTOS tick: the UI loop sleeps in whole ticks (at the default 100 Hz a 5 ms delay rounded to 0 and starved
 # the idle task, which tripped the task watchdog).
 CONFIG_FREERTOS_HZ=1000
