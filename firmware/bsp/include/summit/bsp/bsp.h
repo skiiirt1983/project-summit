@@ -18,6 +18,12 @@ struct Handles {
 // set_brightness() so a half-drawn first frame is never shown.
 bool start(Handles &out);
 
+// Panel strips drawn since boot (health gate: "the display is being driven").
+uint32_t frames_rendered();
+
+// True if a device answers at this 7-bit I2C address (health gate; safe to call from any task).
+bool i2c_present(uint8_t addr);
+
 // 0..100 percent (LEDC PWM on the backlight pin).
 void set_brightness(int percent);
 

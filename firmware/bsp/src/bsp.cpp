@@ -4,6 +4,7 @@
 // channel 3 at 2.5 V, 2 lanes at 700 Mbit/s. Not yet run on hardware.
 #include "summit/bsp/bsp.h"
 
+#include <atomic>
 #include <cstdlib>
 #include <cstring>
 
@@ -42,6 +43,8 @@ constexpr ledc_channel_t kLedcChannel = LEDC_CHANNEL_1;
 constexpr ledc_timer_t kLedcTimer = LEDC_TIMER_1;
 
 esp_lcd_panel_handle_t g_panel = nullptr;
+i2c_master_bus_handle_t g_i2c = nullptr;
+std::atomic<uint32_t> g_frames{0};
 esp_lcd_touch_handle_t g_touch = nullptr;
 void *g_rotate_buf = nullptr;
 bool g_backlight_ready = false;
@@ -199,6 +202,7 @@ void flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px)
 
 bool trans_done_cb(esp_lcd_panel_handle_t, esp_lcd_dpi_panel_event_data_t *, void *user)
 {
+    g_frames.fetch_add(1, std::memory_order_relaxed);
     lv_display_flush_ready(static_cast<lv_display_t *>(user));
     return false;  // no higher-priority task woken
 }
@@ -271,6 +275,7 @@ bool start(Handles &out)
         ESP_LOGE(TAG, "I2C bus failed");
         return false;
     }
+    g_i2c = i2c;
     // Everything on the shared bus, as a quick wiring check in the log.
     for (uint8_t a = 0x08; a < 0x78; ++a)
         if (i2c_master_probe(i2c, a, 20) == ESP_OK) ESP_LOGI(TAG, "I2C device at 0x%02x", a);
@@ -333,4 +338,9 @@ void set_orientation(lv_display_t *display, Orientation o)
     lv_display_set_rotation(display, o == kLandscape ? LV_DISPLAY_ROTATION_90 : LV_DISPLAY_ROTATION_0);
 }
 
+}  // namespace summit::bsp
+
+namespace summit::bsp {
+uint32_t frames_rendered() { return g_frames.load(std::memory_order_relaxed); }
+bool i2c_present(uint8_t addr) { return g_i2c && i2c_master_probe(g_i2c, addr, 50) == ESP_OK; }
 }  // namespace summit::bsp

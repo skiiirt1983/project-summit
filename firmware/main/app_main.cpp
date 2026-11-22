@@ -1,6 +1,7 @@
 // Project Summit firmware entry point.
 // Phase 0: framework wiring (bus, state, settings, panel registry) and the update
 // engine with its post-boot health gate. Shell and panels start once the display BSP lands.
+#include <atomic>
 #include <memory>
 #include <string>
 #include <variant>
@@ -63,6 +64,7 @@ extern "C" void app_main(void)
     summit::web::log_capture_start();  // the web UI's Log tab shows everything printed from here on
     const esp_app_desc_t *desc = esp_app_get_description();
     ESP_LOGI(TAG, "Project Summit %s (%s) booting", desc->version, SUMMIT_HARDWARE_ID);
+    static const char *reset_name = "?";
     {
         const esp_reset_reason_t rr = esp_reset_reason();
         const char *why = rr == ESP_RST_POWERON ? "power on" : rr == ESP_RST_SW ? "software restart" :
@@ -70,6 +72,7 @@ extern "C" void app_main(void)
                           rr == ESP_RST_TASK_WDT ? "task watchdog" : rr == ESP_RST_WDT ? "other watchdog" :
                           rr == ESP_RST_BROWNOUT ? "brown-out (power dip)" : rr == ESP_RST_DEEPSLEEP ? "deep sleep wake" :
                           rr == ESP_RST_EXT ? "reset pin" : "other";
+        reset_name = why;
         if (rr == ESP_RST_POWERON || rr == ESP_RST_SW) ESP_LOGI(TAG, "reset reason: %s (%d)", why, static_cast<int>(rr));
         else ESP_LOGW(TAG, "RESTARTED after: %s (%d)", why, static_cast<int>(rr));
         // After a crash the core dump in flash names the task and the code address that failed: paste these lines.
@@ -139,7 +142,23 @@ extern "C" void app_main(void)
     // (Phase 1); until then a pending OTA image fails the gate and rolls back.
     // Fail-fast: a firmware bug on a new image rolls back at once instead of waiting 40 s.
     if (r == summit::LoadResult::InvalidSchema) summit::update::ota_init_failed("settings schema invalid");
+    // The gate samples every 2.5 s and needs 3 healthy samples in a row within 40 s of boot, so it starts
+    // now and reads values the UI side fills in later (before the UI is up the samples simply count as unhealthy).
+    static std::atomic<uint32_t> ui_last_tick_ms{0};
+    static std::atomic<bool> ui_touch_ok{false};
     summit::update::HealthProbes probes;
+    probes.ui_tick_age_ms = [] {
+        const uint32_t last = ui_last_tick_ms.load();
+        return last == 0 ? UINT32_MAX : static_cast<uint32_t>(esp_timer_get_time() / 1000) - last;
+    };
+    probes.frames_rendered = [] { return summit::bsp::frames_rendered(); };
+    probes.touch_ok = [] { return ui_touch_ok.load(); };
+    probes.i2c_scan = [] {
+        auto devs = summit::update::board_i2c_devices();
+        const uint8_t addr[4] = {0x5d, 0x18, 0x40, 0x19};  // same order as board_i2c_devices()
+        for (size_t i = 0; i < devs.size() && i < 4; ++i) devs[i].present = summit::bsp::i2c_present(addr[i]);
+        return devs;
+    };
     probes.settings_ok = r != summit::LoadResult::InvalidSchema;
     summit::update::ota_guard_start(probes, bus, state);
     summit::update::update_service_start({SUMMIT_HARDWARE_ID, SUMMIT_CHIP_REV_FAMILY}, bus, state, settings);
@@ -195,6 +214,7 @@ extern "C" void app_main(void)
         ESP_LOGE(TAG, "shell start failed: %s", ui_error.c_str());
         return;
     }
+    ui_touch_ok = hw.touch != nullptr;
     if (hw.touch) shell.attach_input(hw.touch);
     else ESP_LOGW(TAG, "no touch controller: the UI is display-only");
     // Boot screen over the finished shell: at least 2 s, and until start-up is ready (nothing else to
@@ -215,9 +235,15 @@ extern "C" void app_main(void)
     // The housekeeping (event bus, timers, shell, splash) runs every 4 ms while something moves (a finger down or
     // an animation) and every 20 ms otherwise; it used to run every millisecond, which cost a lot of CPU at idle.
     // LVGL's own timers still run every pass, and the loop sleeps until the next one is due.
-    uint32_t next_services = 0, next_report = now_ms() + 30000;
+    // Diagnostics (web UI Diagnostics tab + one "diag:" log line every 30 s), so nobody has to paste long logs.
+    static std::atomic<uint32_t> redraws{0};
+    lv_display_add_event_cb(hw.display, [](lv_event_t *) { redraws.fetch_add(1, std::memory_order_relaxed); },
+                            LV_EVENT_REFR_START, nullptr);
+    uint32_t next_services = 0, next_report = now_ms() + 30000, next_metrics = now_ms() + 5000;
+    uint32_t sec_start = now_ms(), sec_redraws = 0, sec_strips = 0, fps_peak = 0, strips_peak = 0, worst_ms = 0;
     for (;;) {
         const uint32_t now = now_ms();
+        ui_last_tick_ms = now ? now : 1;
         if (static_cast<int32_t>(now - next_services) >= 0) {
             bus.dispatch();
             timers.tick(now);
@@ -226,15 +252,46 @@ extern "C" void app_main(void)
             const bool moving = lv_anim_count_running() > 0 || (hw.touch && lv_indev_get_state(hw.touch) == LV_INDEV_STATE_PRESSED);
             next_services = now + (moving ? 4 : 20);
         }
+        const uint32_t t0 = now_ms();
         uint32_t wait = lv_timer_handler();
+        const uint32_t took = now_ms() - t0;
+        if (took > worst_ms) worst_ms = took;
+        if (now - sec_start >= 1000) {  // peak redraws/s and panel strips/s over the window = frame rate while moving
+            const uint32_t r = redraws.load(), f = summit::bsp::frames_rendered();
+            const uint32_t per_s = (r - sec_redraws) * 1000 / (now - sec_start);
+            if (per_s > fps_peak) fps_peak = per_s;
+            const uint32_t strips = (f - sec_strips) * 1000 / (now - sec_start);
+            if (strips > strips_peak) strips_peak = strips;
+            sec_redraws = r;
+            sec_strips = f;
+            sec_start = now;
+        }
+        if (static_cast<int32_t>(now - next_metrics) >= 0) {
+            next_metrics = now + 5000;
+            char m[640];
+            snprintf(m, sizeof m,
+                     "lvgl_busy_pct=%u\nfps_peak_5s=%u\npanel_strips_per_s_peak=%u\nworst_lvgl_pass_ms=%u\n"
+                     "heap_internal_kb=%u\nheap_internal_lowest_kb=%u\npsram_free_kb=%u\nui_pixel_clock_mhz=40\n"
+                     "uptime_s=%u\npending_verify=%s\nreset=%s\n",
+                     (unsigned)(100u - lv_timer_get_idle()), (unsigned)fps_peak, (unsigned)strips_peak, (unsigned)worst_ms,
+                     static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
+                     static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL) / 1024),
+                     static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024), (unsigned)(now / 1000),
+                     summit::update::ota_pending_verify() ? "yes" : "no", reset_name);
+            state.set("diag/metrics", std::string(m));
+            fps_peak = strips_peak = worst_ms = 0;
+        }
         if (wait < 1) wait = 1;
         if (wait > 10) wait = 10;
         vTaskDelay(pdMS_TO_TICKS(wait));  // at least one tick: lets the idle task run and feed the watchdog
         if (static_cast<int32_t>(now - next_report) >= 0) {
             next_report = now + 30000;
-            ESP_LOGI(TAG, "ui load: LVGL busy %u%% (last 0.5 s), internal heap free %u KB (lowest ever %u KB)", 100u - lv_timer_get_idle(),
-                     static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
-                     static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL) / 1024));
+            char m[640];
+            const summit::Value mv = state.get("diag/metrics");
+            snprintf(m, sizeof m, "%s", std::get_if<std::string>(&mv) ? std::get_if<std::string>(&mv)->c_str() : "");
+            std::string md(m);
+            for (char &c : md) if (c == '\n') c = ' ';
+            ESP_LOGI(TAG, "diag: %s", md.c_str());
         }
     }
 }
