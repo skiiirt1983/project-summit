@@ -18,7 +18,9 @@ bool EspOtaWriter::begin(size_t image_size, std::string *error)
         *error = "image larger than the slot";
         return false;
     }
-    esp_err_t err = esp_ota_begin(target_, image_size, &handle_);
+    // Erase sector by sector as the image arrives. With the real size, esp_ota_begin erased the whole image area
+    // up front: seconds with the flash cache frozen, which starves the display's frame buffer reads (screen flashing).
+    esp_err_t err = esp_ota_begin(target_, OTA_WITH_SEQUENTIAL_WRITES, &handle_);
     if (err != ESP_OK) {
         *error = esp_err_to_name(err);
         return false;
