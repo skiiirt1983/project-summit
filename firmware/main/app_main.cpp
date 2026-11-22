@@ -218,6 +218,10 @@ extern "C" void app_main(void)
     bus.subscribe("settings/debug/backlight", [str_of](const std::string &, const summit::Value &v) {
         summit::bsp::set_debug_backlight_full(str_of(v, "pwm") == "full");
     });
+    bus.subscribe("display/blank", [](const std::string &, const summit::Value &v) {
+        const bool *b = std::get_if<bool>(&v);
+        summit::bsp::set_display_blank(b && *b);
+    });
     bus.subscribe("settings/display/brightness", apply_brightness);  // saved value (web UI, release)
     bus.subscribe("ui/brightness_live", apply_brightness);           // while the slider is dragged
     sim::publish_placeholders(state, false);                              // fake time, weather, battery... (placeholders)
