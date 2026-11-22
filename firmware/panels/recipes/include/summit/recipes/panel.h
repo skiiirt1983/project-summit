@@ -56,6 +56,7 @@ private:
     void render_timers();
     void render_message(const std::string &text, bool with_back);
     void sync_flags();
+    void take_open_request(const Value &v);
     void act(int action, int index);
     lv_obj_t *button(lv_obj_t *parent, const std::string &text, int action, int index, bool primary = false);
     static void event_cb(lv_event_t *e);

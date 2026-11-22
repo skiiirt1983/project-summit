@@ -2,10 +2,10 @@
 # also served by the PC simulator); esp/ maps esp_http_server onto it; page/index.html is
 # gzipped at build time and embedded in flash.
 idf_component_register(
-    SRCS "src/api.cpp" "esp/http_server.cpp"
+    SRCS "src/api.cpp" "src/log_buffer.cpp" "esp/http_server.cpp" "esp/log_capture.cpp"
     INCLUDE_DIRS "include"
     REQUIRES framework
-    PRIV_REQUIRES json esp_http_server esp_netif nvs_flash esp_timer esp_system app_update esp_app_format update)
+    PRIV_REQUIRES json log esp_http_server esp_netif nvs_flash esp_timer esp_system app_update esp_app_format update)
 target_compile_options(${COMPONENT_LIB} PRIVATE -std=gnu++17)
 
 # Static web files, gzipped into flash. Served by esp/http_server.cpp (table kStatic).

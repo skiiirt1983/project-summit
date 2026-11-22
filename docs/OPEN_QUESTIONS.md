@@ -4,11 +4,46 @@ Each entry: the question, the choice made, why. Newest first. Say if any should 
 
 **D-010 (2026-11-13): Paul accepted all R1-R3 defaults below and the SD wiring guesses (still to be checked on the board, see HARDWARE_TODO.md).**
 
+## Wi-Fi, web log and updates (2026-11-22)
+
+Paul asked for Wi-Fi, web UI Wi-Fi settings, a copyable log and updates from GitHub. Built in this step: the Wi-Fi service, the setup access point, the Log tab. Choices to review:
+
+- **Setup access point (decided by Paul, 2026-11-22).** With no saved network (or none reachable for 45 s) the device starts "Summit-Setup", WPA2, password "summit123" (WPA2 needs 8 characters or more, so not "summit"). Easy set-up on purpose; to be hardened later (random password with a QR code on the screen, as in ARCHITECTURE.md). It stays off the home network: its own subnet, no forwarding or NAPT, and it switches off once the device is on the home Wi-Fi. Anyone who knows the password can open the web UI while it is up.
+- **Log tab.** The log lives in memory only (48 KB, newest kept) and is lost on reboot; crash dumps still go to the coredump partition. Colour codes are removed so a pasted log is clean.
+- **Updates from GitHub (next step, not built).** Until the Wi-Fi link is proven on the board there is nothing to build against. Plan: after Wi-Fi works, the **Firmware tab upload already installs an `-ota.bin` image from a browser, so the full USB flash is only needed once**. For "update from GitHub" the repository is private, so the device needs a read-only token (a fine-grained personal access token with Contents: read, stored as a secret setting, never exported) to read the releases API and download the `rev3-ota.bin` asset; a CI step would publish a release for each build. A public repository or a separate public releases repository would not need a token. **Decided (2026-11-22): the repository becomes public, so no token is needed.**
+- **Time.** No SNTP yet, so the Home clock is still the placeholder.
+
+## First flash feedback (2026-11-22)
+
+From Paul's test on the board (touch, boot screen and shell work):
+
+- **Choppy page swipes.** While dragging, only the current page moves and black shows behind it; the next page appears only after the finger lifts. A phone shows both pages together during the drag. Doing that means preparing the neighbouring panel (show, snapshot, hide) at drag start, which touches the one-panel-at-a-time rule and has side effects (a panel's show/hide sets state such as `ui/keep_awake`). **Needs Paul's decision** before it is built. Meanwhile frame rate was raised: draw buffers in internal RAM (were PSRAM), redraw timer 16 ms and touch read 8 ms (were 33 ms), and an on-screen FPS readout (`CONFIG_LV_USE_PERF_MONITOR`, alpha only) so the real numbers can be read.
+- **"Rotation locked / unlocked" toasts at start-up.** They come from a long-press on the top bar, so something touched the bar with no finger there. Touch is now ignored while the boot screen shows, and the first 40 touches are written to the serial log (`touch down x= y=`).
+- **Boot screen** background changed to solid very dark grey; it shows in portrait unless `sensor/orientation` reads landscape (no accelerometer service yet, so always portrait for now), and the shell starts landscape.
+- **Sliders.** Brightness now sets the backlight (and the saved value applies at start-up). Volume does nothing until the audio driver exists (HARDWARE_TODO).
+- **Flashing speed** is the flasher's serial baud rate, not the firmware: raise it (921600) in the flasher.
+
+## Motion and controls (2026-11-16)
+
+Paul asked for the front-end feel to be designed (buttons, phone-like transitions). The design is in ARCHITECTURE.md "Motion and controls". Choices made, say if any should change:
+
+- **Timings and curves** (press 80 ms, page up to 320 ms, sheet 300 / 220 ms, screens 320 / 240 ms) are starting values chosen on the simulator; they should be tuned by hand on the panel.
+- **Outgoing page as a picture.** Keeps the "one panel holds LVGL objects" rule, at the cost of about 1.7 MB for a third of a second. Alternative if it is slow on the board: let two panels be shown during a swipe (a change to the panel contract, so it needs a decision).
+- **Updates and Modules come in from the right**, like a phone's settings pages, instead of appearing at once. Their close button is unchanged; swipe-right-to-go-back is not built.
+- **Page dots** at the bottom of the page while swiping and for 1.2 s after. They overlay the page; panels do not reserve space for them.
+- **No whole-screen fades or scaling**, to protect the frame rate. The existing rotation fade is unchanged.
+- **Self-test waits** went from 300 to 400 ms after a page change, because the page move is now up to 320 ms.
+
 ## D-012 — Sleep
+
+**Decided (Paul, 2026-11-14):**
+
+- **Face-down on USB: DND, no deep sleep.** The screen turns off and sounds are muted (alarms and timers still ring, and the screen comes on for them), but the device never deep-sleeps, so Wi-Fi and data stay fresh. Applies on USB power whatever "stay on when charging" says, so that setting no longer affects face-down. On battery nothing changes: face-down for 30 s deep-sleeps. Built as sleep blocker `face_down_usb` plus state `power/dnd` and `power/screen_off`; the display and audio drivers that act on them are hardware work (HARDWARE_TODO.md).
+- **URL import: web UI highlight, device toast, never a jump.** The web UI highlights the new recipe (as built). The device shows "New recipe: <title>" and opens it only when the toast is tapped. Built as `notify/toast_link` (toast with a screen to open) and `ui/open_request`; the device screen never changes by itself. Replaces the D-011 wording "open the new recipe straight away", see the entry below.
 
 - **Ringing blocks sleep.** Not in D-012's list, added: the device does not sleep while a timer or alarm is ringing.
 - **Blockers beat face-down.** Choice: an update, an open recipe, ringing, or "stay on when charging" keep the device awake even face-down.
-- **"Stay on when charging" also applies face-down.** D-012 lists it only under idle; say if face-down on USB should still sleep.
+- ~~**"Stay on when charging" also applies face-down.**~~ **Answered (2026-11-14):** face-down on USB gives screen off + mute, never deep sleep. See above.
 - **Open recipe limit.** Choice: the screen-on rule holds for 30 minutes without a touch (the limit already in ARCHITECTURE.md for `ui/keep_awake`), then normal sleep rules apply.
 - **Something due within the wake margin** (5 s): the device stays awake for it instead of sleeping.
 - **Idle timeout 0 = never** sleep when idle (face-down still sleeps). Settings: `power/idle_sleep_min` (default 5), `power/stay_on_charging` (default on); both additive, no schema bump.
@@ -27,7 +62,7 @@ Each entry: the question, the choice made, why. Newest first. Say if any should 
 - **Library thumbnails on the device.** Choice: a tile shows `thumb.jpg` (the 320 px picture of page 1 made at PDF import) as a band across the top, cropped to fill. Recipes without one (typed, or imported from a website) show text only. Why not `photo.jpg` for website recipes: it is the full-size photo (up to 2 MB) and the device does not resize images, so a library of them would be slow to draw. If you want pictures for website recipes, the browser could make a thumbnail at import time.
 - ~~Keep timers across a restart?~~ **Answered by D-011 / D-012:** memory only until the RTC is proven (HARDWARE_TODO); across deep sleep they are kept (D-012).
 - **Update guard for timers (D-011).** Choice: a ringing timer counts as running too, and the guard also applies to firmware uploaded from the web UI (same pre-flight).
-- **"Open the new recipe straight away" after a URL import (D-011).** Read as the web UI, since that is where Edit is: the new recipe's row is highlighted and scrolled into view, with the message ending "Tap Edit to fix anything." The device screen does not jump to the recipe (someone may be cooking). Say if you meant the device.
+- **"Open the new recipe straight away" after a URL import (D-011).** Read as the web UI, since that is where Edit is: the new recipe's row is highlighted and scrolled into view, with the message ending "Tap Edit to fix anything." The device screen does not jump to the recipe (someone may be cooking). ~~Say if you meant the device.~~ **Answered (2026-11-14):** web UI highlight stays; the device gets only a "New recipe: <title>" toast that opens the recipe when tapped, never a jump. See D-012 above.
 - **URL imports** are still saved directly; fix them afterwards with Edit. No separate pre-save edit screen.
 
 ## R7 — Import from a website

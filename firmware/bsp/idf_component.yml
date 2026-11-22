@@ -1,0 +1,6 @@
+dependencies:
+  # Same pin as firmware/shell.
+  lvgl/lvgl: "9.4.0"
+  # HX8394 MIPI-DSI panel driver and GT911 touch driver (the parts Waveshare's own BSP uses).
+  waveshare/esp_lcd_hx8394: "^2.1.0"
+  espressif/esp_lcd_touch_gt911: "^1"

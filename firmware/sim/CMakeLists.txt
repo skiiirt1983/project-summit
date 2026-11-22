@@ -49,7 +49,7 @@ add_executable(summit_sim
     ${FW}/panels/recipes/src/step_time.cpp ${FW}/panels/recipes/src/store.cpp
     ${FW}/panels/recipes/src/cook.cpp ${FW}/panels/recipes/src/panel.cpp ${FW}/panels/recipes/src/web_api.cpp ${FW}/panels/recipes/src/jsonld.cpp
     ${FW}/shell/src/layout.cpp ${FW}/shell/src/glance.cpp ${FW}/shell/src/strip_state.cpp
-    ${FW}/shell/src/rotation.cpp ${FW}/shell/src/pager.cpp ${FW}/shell/src/shell_ui.cpp
+    ${FW}/shell/src/rotation.cpp ${FW}/shell/src/pager.cpp ${FW}/shell/src/motion.cpp ${FW}/shell/src/ui_motion.cpp ${FW}/shell/src/shell_ui.cpp
     ${FW}/shell/src/updates_screen.cpp ${FW}/shell/src/modules_screen.cpp
     ${FW}/services/update/src/version.cpp ${FW}/services/update/src/catalog.cpp
     ${FW}/services/update/src/preflight.cpp ${FW}/services/update/src/image_check.cpp
@@ -57,8 +57,11 @@ add_executable(summit_sim
     ${FW}/services/update/src/status_topics.cpp
     ${FW}/services/timers/src/timers.cpp
     ${FW}/services/power/src/sleep.cpp ${FW}/services/power/src/power_service.cpp
-    ${FW}/web/src/api.cpp ${FW}/../third_party/cjson/cJSON.c)
-target_include_directories(summit_sim PRIVATE ${FW}/framework/include ${FW}/shell/include
+    ${FW}/boot/src/boot_screen.c ${FW}/boot/src/boot_images.c ${FW}/boot/src/splash.cpp
+    ${FW}/web/src/api.cpp ${FW}/web/src/log_buffer.cpp ${FW}/../third_party/cjson/cJSON.c)
+# The media kit's C files are used as supplied: no -Werror for them.
+set_source_files_properties(${FW}/boot/src/boot_screen.c ${FW}/boot/src/boot_images.c PROPERTIES COMPILE_OPTIONS "-Wno-error")
+target_include_directories(summit_sim PRIVATE ${FW}/boot/include ${FW}/framework/include ${FW}/shell/include
     ${FW}/services/update/include ${FW}/web/include ${FW}/panels/recipes/include ${FW}/services/timers/include ${FW}/services/power/include ${FW}/../third_party/cjson ${FW}/../tests/host)
 target_link_libraries(summit_sim PRIVATE lvgl ZLIB::ZLIB)
 target_compile_options(summit_sim PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Werror>)

@@ -27,7 +27,8 @@ const char *TAG = "update";
 // Catalog locations per channel (ARCHITECTURE.md "Update channels"). Downloads are
 // only allowed from these hosts, over HTTPS, without redirects.
 const char *kCatalogStableBeta = "https://skiiirt1983.github.io/slopeform-home/catalog.json";
-const char *kCatalogAlpha = "https://skiiirt1983.github.io/summit-alpha/catalog.json";
+// Alpha builds are published to this (public) repository's GitHub Pages by .github/workflows/release.yml.
+const char *kCatalogAlpha = "https://skiiirt1983.github.io/project-summit/catalog.json";
 const char *kAllowedHost = "skiiirt1983.github.io";
 constexpr size_t kMaxCatalogBytes = 64 * 1024;
 constexpr int kHttpTimeoutMs = 15000;

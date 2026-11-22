@@ -7,6 +7,7 @@
 #include "fake_storage.h"
 #include "summit/system_settings.h"
 #include "summit/web/api.h"
+#include "summit/web/log_buffer.h"
 
 using namespace summit;
 using namespace summit::web;
@@ -157,7 +158,7 @@ TEST(firmware_commands_go_through_the_update_engine)
     Rig r;
     r.state.set("update/catalog", std::string(R"([{"version":"0.2.0","installable":true}])"));
     Json f(r.get("/api/firmware").body);
-    CHECK(cJSON_GetArraySize(f.at("catalog")) == 1 && f.s("channel") == "stable");
+    CHECK(cJSON_GetArraySize(f.at("catalog")) == 1 && f.s("channel") == "alpha");
     CHECK(r.post("/api/firmware/check", "{}").status == 202);
     CHECK(r.post("/api/firmware/install", R"({"version":"0.2.0"})").status == 202);
     CHECK(r.post("/api/firmware/install", R"({"version":"0.2.0;rm"})").status == 400);
@@ -402,6 +403,28 @@ TEST(modules_list_install_remove)
     CHECK(r.post("/api/modules/remove", R"({"id":"recipes"})").status == 409);
 }
 
+TEST(log_buffer_and_api)
+{
+    summit::web::LogBuffer log(200);
+    log.append("\x1b[0;32mI (10) net: up\x1b[0m\r\nE (20) sd: no card\n");
+    CHECK(log.text() == "I (10) net: up\nE (20) sd: no card\n");     // colour codes and CRs dropped
+    log.append("\x1b[0;3");                                          // an escape split across two writes
+    log.append("1mW (30) late\n");
+    CHECK(log.text().find("W (30) late\n") != std::string::npos && log.text().find('\x1b') == std::string::npos);
+    CHECK(log.tail(1) == "W (30) late\n" && log.tail(2) == "E (20) sd: no card\nW (30) late\n" && log.tail(99) == log.text());
+    for (int i = 0; i < 50; ++i) log.append("line number " + std::to_string(i) + "\n");
+    CHECK(log.size() <= 200 && log.text().back() == '\n' && log.text().rfind("line number 49\n") != std::string::npos);
+    CHECK(log.text().rfind("line number", 0) == 0);                    // trimmed at a line boundary
+    CHECK(log.total_bytes() > log.size());
+    summit::web::LogApi api(log);
+    summit::web::Response r;
+    CHECK(api.handle({"GET", "/api/log", "", "", "lines=2"}, r) && r.status == 200 && r.content_type.rfind("text/plain", 0) == 0 &&
+          r.body == log.tail(2) && r.filename.empty());
+    CHECK(api.handle({"GET", "/api/log", "", "", "download=1"}, r) && r.filename == "summit-log.txt" && r.body == log.text());
+    CHECK(api.handle({"POST", "/api/log/clear", "application/json", "{}"}, r) && r.status == 200 && log.size() == 0);
+    CHECK(!api.handle({"GET", "/api/other"}, r));
+}
+
 int main()
 {
     RUN(routing_and_request_guards);
@@ -416,5 +439,6 @@ int main()
     RUN(secrets_left_out_of_exports_unless_asked);
     RUN(modules_list_install_remove);
     RUN(delete_module_data_needs_the_confirmed_count);
+    RUN(log_buffer_and_api);
     return report("web api");
 }

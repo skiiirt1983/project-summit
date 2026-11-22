@@ -76,5 +76,35 @@ class Catalog(unittest.TestCase):
                 catalog.entry(build_info(d), "https://evil.example.com/x.bin", "stable")
 
 
+class SiteCatalog(unittest.TestCase):
+    def publish(self, site, version, variant):
+        d = Path(site) / "firmware" / version
+        d.mkdir(parents=True, exist_ok=True)
+        (d / f"build-info-{variant}.json").write_text(json.dumps({
+            "project": "summit", "version": version, "hardware_id": f"waveshare-p4-wifi6-lcd5-{variant}",
+            "ota": {"bytes": 1228800, "sha256": SHA}}))
+
+    def test_catalog_from_published_versions(self):
+        with tempfile.TemporaryDirectory() as site:
+            for v in ("0.1.0-alpha.2", "0.1.0-alpha.10", "0.1.0", "0.0.9"):
+                for variant in ("rev1", "rev3"):
+                    self.publish(site, v, variant)
+            cat = catalog.build_site_catalog(site, "https://skiiirt1983.github.io/project-summit/", "alpha")
+            self.assertEqual(catalog.validate(cat), [])
+            self.assertEqual([b["version"] for b in cat["builds"][::2]], ["0.1.0", "0.1.0-alpha.10", "0.1.0-alpha.2", "0.0.9"])
+            self.assertEqual(cat["builds"][0]["url"],
+                             "https://skiiirt1983.github.io/project-summit/firmware/0.1.0/summit-0.1.0-rev3-ota.bin")
+            self.assertEqual(json.loads((Path(site) / "catalog.json").read_text()), cat)
+            self.assertTrue(all(b["channel"] == "alpha" for b in cat["builds"]))
+
+    def test_a_bad_build_stops_the_catalog(self):
+        with tempfile.TemporaryDirectory() as site:
+            self.publish(site, "not-a-version", "rev3")
+            with self.assertRaises(ValueError):
+                catalog.build_site_catalog(site, "https://skiiirt1983.github.io/project-summit", "alpha")
+            self.assertFalse((Path(site) / "catalog.json").exists())
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

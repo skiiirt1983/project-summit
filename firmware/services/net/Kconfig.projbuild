@@ -1,0 +1,18 @@
+# Dependency-resolution shim. The component manager briefly considers esp_hosted 3.x while solving, and its
+# manifest has `if: $CONFIG{ESP_HOSTED_HOST_USB_*_MANIFEST}` rules. Those symbols exist only in esp_hosted 3.x's
+# Kconfig, so with the 2.13 we pin (SDIO, no USB transport) the build stops with "Missing required kconfig option
+# after retry". Defining them here (all 0 = off) satisfies the check and changes nothing in the firmware.
+# Remove this file if esp_hosted is ever moved to 3.x, which defines them itself.
+menu "Summit: esp_hosted 3.x manifest placeholders"
+    config ESP_HOSTED_HOST_USB_CDC_ACM_MANIFEST
+        int
+        default 0
+
+    config ESP_HOSTED_HOST_USB_CHERRYUSB_MANIFEST
+        int
+        default 0
+
+    config ESP_HOSTED_HOST_USB_RNDIS_MANIFEST
+        int
+        default 0
+endmenu

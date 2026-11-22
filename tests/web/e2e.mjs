@@ -186,14 +186,30 @@ try {
   check((await page.textContent("#diag-warnings")).includes("LIS2DW12"), "add-on warning shown");
   await shot("07-diagnostics");
 
+  // Log tab: shows the console text, Copy reports what it copied, Clear empties it.
+  await tab("log");
+  await page.waitForFunction(() => document.getElementById("log-text").value.includes("UI running"));
+  const logValue = await page.inputValue("#log-text");
+  check(logValue.includes("GT911 touch found") && !logValue.includes("\x1b"), "log tab shows the console text");
+  await page.click("#log-copy");
+  await page.waitForFunction(() => document.getElementById("log-msg").textContent.length > 0);
+  const copyMsg = await page.textContent("#log-msg");
+  check(/^Copied \d+ lines\.$/.test(copyMsg) || copyMsg.includes("copy"), "copy button reports its result: " + copyMsg);
+  const logDl = await page.request.get(base + "/api/log?download=1");
+  check(logDl.status() === 200 && (logDl.headers()["content-disposition"] || "").includes("summit-log.txt"), "log download has a file name");
+  await shot("07b-log");
+  await page.click("#log-clear");
+  await page.waitForFunction(() => document.getElementById("log-text").value === "");
+  check((await (await page.request.get(base + "/api/log")).text()) === "", "clear empties the log");
+
   // Phone width
   await page.setViewportSize({ width: 390, height: 844 });
   await tab("firmware");
   await page.waitForTimeout(300);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   check(!overflow, "no horizontal scroll at 390 px");
-  const navVisible = await page.locator("nav button[data-tab=diagnostics]").isVisible();
-  const navBox = await page.locator("nav button[data-tab=diagnostics]").boundingBox();
+  const navVisible = await page.locator("nav button[data-tab=log]").isVisible();
+  const navBox = await page.locator("nav button[data-tab=log]").boundingBox();
   check(navVisible && navBox.x + navBox.width <= 390, "all tabs visible at 390 px");
   await shot("08-phone-firmware");
 } finally {

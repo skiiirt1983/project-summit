@@ -222,6 +222,7 @@ A single vanilla-JS page served gzipped from flash (`firmware/web/page/index.htm
 | Endpoint | Purpose |
 | --- | --- |
 | `GET /api/status` | firmware, hardware ID, Wi-Fi, battery, settings notice, update state |
+| `GET /api/log[?lines=N][&download=1]`, `POST /api/log/clear` | the console log as plain text (colour codes removed), kept in a 48 KB ring in memory; the Log tab has Copy, Download, Clear and a 2 s refresh |
 | `GET/POST /api/wifi` | status + scan results; save SSID + password (password is write-only) |
 | `GET /api/firmware` | version, channel, update stage/progress/error, available build + notes, catalog list |
 | `POST /api/firmware/check`, `/install`, `/reboot`, `/previous` | update commands (previous needs `{"confirm":true}`) |
@@ -288,7 +289,9 @@ The state store and event bus are the public API between services, panels and th
 | `input/double_tap` | event: bool, double-tap on the case | IMU service (LIS2DW12) | Recipes (next step / page) |
 | `input/activity` | event: bool, a touch on the screen | shell | power service (restarts the idle-sleep time) |
 | `sensor/face_down` | bool: lying face-down | IMU service (LIS2DW12) | power service (sleep after 30 s) |
-| `power/sleep_blocker` | string: why the device is not sleeping (active, keep_awake, updating, charging, ringing, due_soon, disabled); empty = going to sleep | power service | diagnostics |
+| `power/sleep_blocker` | string: why the device is not sleeping (active, keep_awake, updating, charging, face_down_usb, ringing, due_soon, disabled); empty = going to sleep | power service | diagnostics |
+| `power/dnd` | bool: face-down for 30 s; chimes muted, alarms and timers still ring | power service | audio service (hardware, later), diagnostics |
+| `power/screen_off` | bool: face-down for 30 s and nothing ringing; screen should be off | power service | display driver (hardware, later), diagnostics |
 | `power/wake_cause` | string: power_on, timer, motion, button | power service | shell / services (fast path after wake), diagnostics |
 | `recipes/cooking` | string: title of the open recipe; empty = none | Recipes panel | web UI, diagnostics |
 | `timers/start` | event: string "<seconds>\|<name>" | Recipes panel | timer service |
@@ -305,8 +308,12 @@ The state store and event bus are the public API between services, panels and th
 | `diag/warnings` | string: newline-separated warnings, e.g. a missing add-on; empty = none | health gate (add-on checks) | web UI diagnostics |
 | `system/settings_notice` | string; empty = none | boot (`app_main`), shell (clears after reset) | shell (toast + quick settings), web UI |
 | `notify/toast` | event: string | any service or panel | shell (toast) |
+| `ui/brightness_live` | event: int 0–100, the brightness slider while it is being dragged (not saved; the setting is saved when the finger lifts) | shell (quick settings) | display driver (backlight) |
+| `ui/volume_live` | event: int 0–100, the volume slider while it is being dragged (not saved) | shell (quick settings) | audio driver (not written yet) |
+| `notify/toast_link` | event: string "<screen id>\n<text>"; tapping the toast opens that screen, e.g. `recipes/open/<id>` | recipe web API (after a URL import) | shell (toast) |
+| `ui/open_request` | string: the screen the shell was asked to open by a tapped toast; the target panel clears it when it takes it | shell | the target panel (read when it is shown) |
 | `notify/toast_critical` | event: string | alarm, power service | shell (toast, shown even in full-screen) |
-| `ui/open_screen` | event: string screen id: "settings/updates", "settings/modules" | shell (update chip, quick settings) | shell (opens the screen) |
+| `ui/open_screen` | event: string screen id: "settings/updates", "settings/modules", "recipes/open/<id>" | shell (update chip, quick settings) | shell (opens the screen), recipes panel |
 | `settings/<key>` | event: the new value | settings (on every change) | shell (`settings/ui/page_order`), update engine (`settings/update/channel`: re-check), services |
 | `settings/reset` | event: bool | settings | services, UI |
 
@@ -356,10 +363,10 @@ USB web flasher ─▶ Flash over cable (full, or keep settings)
 
 ### Update catalog (format 1)
 
-One `catalog.json` per source, served over HTTPS from GitHub Pages. Stable and beta builds come from the `slopeform-home` catalog; alpha builds from the binaries-only public repo `summit-alpha`, fed by `project-summit` CI:
+One `catalog.json` per source, served over HTTPS from GitHub Pages. Stable and beta builds come from the `slopeform-home` catalog; alpha builds from the GitHub Pages of this repository (made public by Paul, 2026-11-22; replaces the separate `summit-alpha` repo), published by `.github/workflows/release.yml`:
 
 - Stable / beta: `https://skiiirt1983.github.io/slopeform-home/catalog.json`
-- Alpha: `https://skiiirt1983.github.io/summit-alpha/catalog.json`
+- Alpha: `https://skiiirt1983.github.io/project-summit/catalog.json` (OTA images under `/firmware/<version>/`; the `gh-pages` branch keeps every published version)
 
 ```json
 {
@@ -444,6 +451,9 @@ One panel per page, horizontal swipe. Home is always the first page; the order o
 
 ### Glance strip
 
+Motion for the pager, the sheet and the system screens is described in "Motion and controls" below.
+
+
 - Thin bar on the top edge of every panel, both orientations. Height = one size token (~6% of the short side, ~44 px). Panels get the content area below it and never draw under it.
 - Contents, left to right: time · next calendar event (title + countdown) · weather now (icon + temp) · printer progress (only while printing) · right side system icons: Wi-Fi, update available, rotation lock, battery % / charging.
 - Each item is a "glance chip" fed by a state-store topic. Panels can register a chip in their manifest, so new panels add chips without shell changes. A chip with no data is hidden.
@@ -452,6 +462,39 @@ One panel per page, horizontal swipe. Home is always the first page; the order o
 - System chip taps: time → Home; update → Settings → Updates; rotation lock → turns the lock off; Wi-Fi and battery → quick-settings sheet.
 - Notifications (print done, update available, etc.) briefly expand the strip as a toast, then collapse. Toasts wait while the strip is hidden, except critical ones (alarm, low battery), which show immediately even in full-screen. Duplicates merge into one; queued toasts expire after 10 min.
 - Hidden during: LyricFlash full-screen visuals, ringing alarm, night/ambient clock, update progress (tap reveals it for 3 s).
+
+### Motion and controls
+
+Designed 2026-11-16 at Paul's request; built for the simulator, **not yet seen on the panel** (frame rate and touch feel are Phase 1 items in HARDWARE_TODO.md). The aim is a phone-like feel: everything on screen answers the finger at once and moves the same way everywhere.
+
+**Rules**
+
+1. **The finger is in charge.** A dragged page sits under the finger, 1:1. Letting go continues from where it is at the finger's speed; nothing restarts or jumps.
+2. **Something always answers within 80 ms.** Every button and chip shrinks a little and lightens the moment it is touched, then relaxes.
+3. **Arrive soft, leave quick.** Things coming in decelerate into place; things going out take about a quarter less time and speed up as they go.
+4. **Move, don't fade.** Screens and sheets travel from where they live (the sheet from the strip, settings pages from the right), so it is clear where to send them back. Only cheap properties are animated (position and background opacity), never whole-screen opacity or scaling, so the software renderer can keep up.
+5. **One set of numbers.** All durations and curves are tokens in `summit/shell/motion.h` (pure, host-tested); the LVGL helpers are in `summit/shell/ui_motion.h`. Panels use the helpers instead of writing their own animations.
+
+**Tokens**
+
+| Token | Value | Used for |
+| --- | --- | --- |
+| Press / release | 80 ms / 200 ms | Buttons and chips: shrink by `space_s / 4` a side and lighten 20% |
+| Page settle | up to 320 ms, at least 140 ms | Page swipe and snap-back; a flick is shorter (2 × distance left ÷ finger speed) |
+| Sheet in / out | 300 ms / 220 ms | Quick settings drops from behind the strip while the page dims; goes back up |
+| Screen in / out | 320 ms / 240 ms | Updates and Modules are pushed in from the right and pulled back out |
+| Page dots | hold 1.2 s, fade 0.3 s | Which page of how many; shown while swiping and just after |
+| Enter curve | cubic-bezier(0.05, 0.7, 0.1, 1) | Anything arriving |
+| Exit curve | cubic-bezier(0.3, 0, 0.8, 0.15) | Anything leaving |
+| Standard curve | cubic-bezier(0.2, 0, 0, 1) | Moves that start and end on screen (dimming) |
+
+**Behaviour**
+
+- **Page swipe:** both pages travel together, edge to edge. Only one panel holds LVGL objects at a time, so the outgoing page leaves as a picture of itself (LVGL snapshot, about 1.7 MB in RGB565, freed when the move ends). If there is no memory for the picture the new page still slides in alone.
+- **Ends of the page list:** dragging past the first or last page stretches like a rubber band (about half the finger's travel at first, then less) and springs back.
+- **Chip taps and "go to panel"** use the same page move, in the direction of the target page.
+- **Buttons:** one primary action per screen in the accent colour; other actions on the chip colour; destructive actions in red text and never the first button of a dialog. Touch targets are at least one size token high.
+- **Not yet built** (next motion steps): recipe step change and library → recipe as moves, dialogs rising from the bottom, toast slide, rotation morph with cards sliding to their new places.
 
 ## Modules and Recipe reader
 
@@ -498,7 +541,7 @@ The web files are gzipped into the firmware image (about 510 KB for pdf.js) and 
 
 - In the web UI's Recipes tab, paste a recipe page's address. `POST /api/recipes/import-url` makes the **device** fetch the page and read its schema.org `Recipe` JSON-LD block (`firmware/panels/recipes/src/jsonld.cpp`, host-tested on the sample pages in `tests/fixtures/web/`).
 - Understood shapes: a plain `Recipe` object, one inside `@graph` or an array, `@type` as a list; `recipeYield` as a number, text or list; `recipeIngredient` lines (parsed into quantity / unit / item / note like the PDF import); `recipeInstructions` as text, `HowToStep` or `HowToSection`; `image` as a URL, list or `ImageObject`; `keywords` and `recipeCategory` become tags. HTML tags and entities are cleaned.
-- Result: a card-mode recipe (no pages) with `source = {type: "url", url}`, plus the main photo as `photo.jpg` when the page names one over https and it is a JPEG. It is saved directly (no edit screen yet).
+- Result: a card-mode recipe (no pages) with `source = {type: "url", url}`, plus the main photo as `photo.jpg` when the page names one over https and it is a JPEG. It is saved directly (no edit screen yet). After the import the web UI highlights the new recipe (with Edit). The device never jumps to it (someone may be cooking): it shows a short toast "New recipe: <title>" (`notify/toast_link`) and opens the recipe only if the toast is tapped.
 - Only public `https://` addresses are fetched: no IP addresses, `localhost`, single-label or `.local` / `.lan` names, ports or credentials; redirects are re-checked. Pages are capped at 2 MB.
 - The device-side fetcher (`firmware/panels/recipes/esp/url_fetch.cpp`) is written but **untested on hardware**; the simulator uses the sample pages instead of the internet.
 
@@ -567,7 +610,7 @@ Code: `firmware/panels/recipes` (`recipe.h`, `quantity.h`, `step_time.h`), host-
 On battery the device sleeps whenever nothing needs it (screen off, Wi-Fi off, ESP32-P4 deep sleep) and wakes itself in time for timers and alarms. The rules are pure code in `firmware/services/power/` (`summit/sleep.h`), host-tested in `tests/host/test_sleep.cpp`; the deep-sleep call sits behind `SleepPort` and is untested until Phase 1.
 
 - **Enter sleep:** no touch for the idle timeout (setting `power/idle_sleep_min`, default 5 min; 0 = never), or face-down for 30 s. `PowerService` (`summit/power_service.h`) checks once a second.
-- **Never while:** a recipe is open with the screen-on rule (`ui/keep_awake`), an update runs, a timer or alarm is ringing, or on USB power with "stay on when charging" on (setting `power/stay_on_charging`, default on). These hold face-down too. The screen-on rule itself ends after 30 minutes without a touch, so a forgotten open recipe cannot drain the battery.
+- **Never while:** a recipe is open with the screen-on rule (`ui/keep_awake`), an update runs, a timer or alarm is ringing, or on USB power with "stay on when charging" on (setting `power/stay_on_charging`, default on). These hold face-down too. **Face-down on USB** (any "stay on" setting, nothing ringing or updating): the screen turns off and sounds are muted (`power/screen_off`, `power/dnd`), but the device never deep-sleeps, so Wi-Fi and data stay fresh (blocker `face_down_usb`). On battery, face-down still sleeps after 30 s. The screen-on rule itself ends after 30 minutes without a touch, so a forgotten open recipe cannot drain the battery.
 - **Before sleeping:** running timers (name, length, time left) and the next alarm are written to RTC memory as one small blob (magic number + CRC-32, at most 1 KB; a damaged blob is ignored). The RTC timer is set for the earliest due item minus the wake margin (default 5 s, to be measured on the board). If something is due within the margin the device stays awake for it.
 - **Wake sources:** RTC timer (timer/alarm due), LIS2DW12 INT1 (pick-up / double-tap), power button. The cause is published as `power/wake_cause`.
 - **After wake, fast path:** timer/alarm wake → screen + audio and ring before Wi-Fi starts. Pick-up / button wake → the clock at once, Wi-Fi and data refresh in the background. Panels show the last data with its age rather than a blank page.
@@ -581,7 +624,7 @@ On battery the device sleeps whenever nothing needs it (screen off, Wi-Fi off, E
 | Pick-up wake | Accelerometer wake | Screen fades up before touch |
 | Morphing rotation | 4D change | Cards slide to new places |
 | Rotation lock | Long-press status bar | Pins orientation |
-| Face-down DND | 6D face-down | Screen off, chimes muted, alarms ring |
+| Face-down DND | 6D face-down | Screen off, chimes muted, alarms ring (on USB: no deep sleep) |
 | Tap the case | Double-tap | Snooze / play-pause visuals |
 | Sunrise alarm | 10 min before alarm | Warm colour ramp |
 | Night clock | After sunset | Dim red-amber clock |

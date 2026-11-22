@@ -12,6 +12,7 @@ const char *sleep_blocker_name(SleepBlocker b)
         case SleepBlocker::KeepAwake: return "keep_awake";
         case SleepBlocker::Updating: return "updating";
         case SleepBlocker::Charging: return "charging";
+        case SleepBlocker::FaceDownUsb: return "face_down_usb";
         case SleepBlocker::Ringing: return "ringing";
         case SleepBlocker::DueSoon: return "due_soon";
         case SleepBlocker::Disabled: return "disabled";
@@ -22,14 +23,18 @@ const char *sleep_blocker_name(SleepBlocker b)
 SleepDecision decide_sleep(const SleepInput &in)
 {
     SleepDecision d;
-    // Hard blockers first: these hold even when face-down.
+    const bool face_down_long =
+        in.face_down && in.now_ms >= in.face_down_since_ms && in.now_ms - in.face_down_since_ms >= kFaceDownSleepMs;
+    d.dnd = face_down_long;
+    d.screen_off = face_down_long && !in.ringing;
+    // Hard blockers first: these hold face-down too.
     if (in.updating) return d.blocker = SleepBlocker::Updating, d;
     if (in.ringing) return d.blocker = SleepBlocker::Ringing, d;
     if (in.keep_awake) return d.blocker = SleepBlocker::KeepAwake, d;
     if (in.on_usb_power && in.stay_on_when_charging) return d.blocker = SleepBlocker::Charging, d;
+    // Face-down on USB (any "stay on" setting): screen off and muted, never deep sleep.
+    if (in.on_usb_power && in.face_down) return d.blocker = SleepBlocker::FaceDownUsb, d;
 
-    const bool face_down_long =
-        in.face_down && in.now_ms >= in.face_down_since_ms && in.now_ms - in.face_down_since_ms >= kFaceDownSleepMs;
     const uint64_t idle_ms = in.now_ms >= in.last_activity_ms ? in.now_ms - in.last_activity_ms : 0;
     const bool idle_long =
         in.idle_sleep_min > 0 && idle_ms >= static_cast<uint64_t>(in.idle_sleep_min) * 60 * 1000;

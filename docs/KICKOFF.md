@@ -21,13 +21,19 @@ Updated after every merge so a new session can continue (D-009).
 | D-012 S2 | Power service on the bus, sleep settings, fake sleep/wake in the simulator, device deep-sleep port (compiled only) | done (#21) |
 | D-010 | "Delete recipes" button with count confirm (device + web UI); web UI lock withdrawn | done (#16) |
 | F1 | Edit a saved recipe in the web UI (also covers fixing URL imports) | done (#17) |
+| M1 | Motion and controls: motion tokens, page swipe with both pages moving, rubber band, sheet and screen moves, press feedback, page dots | done (simulator only) |
 | F2 | Library thumbnails (`thumb.jpg`) in the Recipes panel (simulator; device needs the JPEG decoder) | done (#18) |
 
 **All planned Recipe reader steps (R1–R7) are built for the simulator.** What is left, in suggested order:
 
 1. Nothing is waiting on Paul: D-010 answered the open items (R1-R3 defaults accepted). Defaults for R4-R7 are in `docs/OPEN_QUESTIONS.md` for review when convenient.
-2. No-hardware work is done. D-011 and D-012 are applied; the sleep defaults chosen are in `docs/OPEN_QUESTIONS.md` ("D-012 — Sleep") for review.
-3. Phase 1 on the board: everything in `docs/HARDWARE_TODO.md` (display/touch BSP and UI loop first; then SD card, Wi-Fi, JPEG decoder, double-tap, audio, deep sleep and the INT1 pin check).
+2. No-hardware work is done. D-011 and D-012 are applied; Paul's answers of 2026-11-14 are applied too (face-down on USB = screen off + mute, no deep sleep; URL import = web UI highlight + tappable "New recipe" device toast, never a jump). Remaining sleep defaults are in `docs/OPEN_QUESTIONS.md` ("D-012 — Sleep") for review.
+3. Optional before hardware: the remaining motion steps listed under "Not yet built" in ARCHITECTURE.md "Motion and controls" (recipe step moves, dialogs, toast slide, rotation morph).
+4. Boot screen (Slopeform Summit media kit, `firmware/boot`): shown over the shell for at least 2 s and until start-up is ready; simulator-tested, not yet seen on the panel (animation smoothness on the real display is a Phase 1 check).
+5. Wi-Fi, web Log tab, clock sync (SNTP) and the alpha update path are written (compiled only): see HARDWARE_TODO.md "Wi-Fi through the C6". To publish an update: Actions > "Release (alpha)" > Run workflow with a new SemVer version (needs Pages enabled once on the gh-pages branch); then flash-free updates via the web UI Firmware tab or the on-device Updates screen, which read `https://skiiirt1983.github.io/project-summit/catalog.json`.
+6. Phase 1 first light is written (display/touch BSP + UI loop with placeholder panels, `firmware/bsp`), compiled in CI only. Paul flashes the CI image and reports (the LyricFlash way); fix from the log. Then the rest of Phase 1: everything in `docs/HARDWARE_TODO.md` (display/touch BSP and UI loop first; then SD card, Wi-Fi, JPEG decoder, double-tap, audio, deep sleep and the INT1 pin check).
+
+Usage limits (Paul has a daily allowance, and a session can stop at any moment): commit and push after every small step; keep this file's table and "what is left" list current in the same commit; log anything half-decided in `docs/OPEN_QUESTIONS.md`; never leave the tree uncommitted or the tests red at the end of a step; run slow commands (full host tests, simulator build) once per step, not repeatedly.
 
 How to work here: branch `recipes/stepN-...` from `main`, `bash tests/run_tests.sh`, build the simulator (`firmware/sim/README.md`), run `summit_sim --selftest`, `node tests/web/e2e.mjs` and `node tests/web/e2e_recipes.mjs`, open a PR, merge when CI is green.
 

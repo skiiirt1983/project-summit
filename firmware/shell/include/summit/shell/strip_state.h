@@ -35,6 +35,7 @@ struct Toast {
     std::string icon;
     bool critical = false;  // alarm, low battery: shown at once, even when the strip is hidden
     uint32_t queued_ms = 0;
+    std::string action;     // optional: a screen id published on ui/open_screen when the toast is tapped
 };
 
 // Notifications briefly expand the strip, one at a time.

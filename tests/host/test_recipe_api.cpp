@@ -175,12 +175,26 @@ TEST(import_from_url)
     CHECK(r.post("/api/recipes/import-url", req).status == 501);  // no fetcher: not available
     MapFetcher f;
     r.recipes->set_fetcher(&f);
+    r.recipes->set_bus(&r.bus);
+    std::vector<std::string> links, toasts;
+    r.bus.subscribe("notify/toast_link", [&](const std::string &, const Value &v) { links.push_back(std::get<std::string>(v)); });
+    r.bus.subscribe("notify/toast", [&](const std::string &, const Value &v) { toasts.push_back(std::get<std::string>(v)); });
     Response ok = r.post("/api/recipes/import-url", req);
     CHECK(ok.status == 200 && ok.body.find("\"id\":\"web-pie\"") != std::string::npos && ok.body.find("\"photo\":true") != std::string::npos);
     Recipe saved;
     CHECK(r.store->load("web-pie", saved) && saved.servings == 6 && saved.source.type == "url" &&
           saved.source.url == "https://site.example.com/pie" && saved.ingredients[0].unit == "cup" && saved.steps.size() == 1);
     CHECK(r.sd->exists("/recipes/web-pie/photo.jpg"));
+    // The device gets one short toast that opens the recipe when tapped; nothing opens by itself.
+    r.bus.dispatch();
+    CHECK(links.size() == 1 && toasts.empty());
+    const std::string &link = links[0];
+    const size_t nl = link.find('\n');
+    CHECK(nl != std::string::npos && link.substr(0, nl) == "recipes/open/web-pie" &&
+          link.substr(nl + 1) == "New recipe: " + saved.title);
+    CHECK(r.post("/api/recipes/import-url", R"({"url":"https://site.example.com/article"})").status == 422);
+    r.bus.dispatch();
+    CHECK(links.size() == 1);  // a failed import shows no toast
     CHECK(r.post("/api/recipes/import-url", R"({"url":"https://site.example.com/article"})").status == 422);
     CHECK(r.post("/api/recipes/import-url", R"({"url":"https://site.example.com/missing"})").status == 502);
     // Addresses the device must never fetch are refused before any request is made.

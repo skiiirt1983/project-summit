@@ -16,6 +16,8 @@ namespace power_topics {
 constexpr const char *kActivity = "input/activity";         // event: a touch (published by the shell)
 constexpr const char *kFaceDown = "sensor/face_down";       // bool, IMU service
 constexpr const char *kSleepBlocker = "power/sleep_blocker";  // string: why the device is awake; "" = about to sleep
+constexpr const char *kDnd = "power/dnd";                  // bool: face-down, chimes muted (alarms still ring)
+constexpr const char *kScreenOff = "power/screen_off";      // bool: screen should be off (face-down, nothing ringing)
 constexpr const char *kWakeCause = "power/wake_cause";      // string: power_on | timer | motion | button
 constexpr const char *kIdleSleepMin = "power/idle_sleep_min";      // setting (system_settings.cpp)
 constexpr const char *kStayOnCharging = "power/stay_on_charging";  // setting

@@ -1,6 +1,7 @@
 #include "summit/shell/modules_screen.h"
 
 #include "summit/shell/shell.h"
+#include "summit/shell/ui_motion.h"
 #include "theme.h"
 
 namespace summit::shell {
@@ -61,6 +62,7 @@ void ModulesScreen::build(lv_obj_t *parent)
     close_btn_ = lv_button_create(header);
     lv_obj_set_style_bg_color(close_btn_, lv_color_hex(kChipBg), 0);
     lv_obj_set_style_shadow_width(close_btn_, 0, 0);
+    ui_motion::press_feedback(close_btn_);
     lv_obj_t *x = lv_label_create(close_btn_);
     lv_label_set_text(x, LV_SYMBOL_CLOSE);
     lv_obj_set_style_text_color(x, lv_color_hex(kText), 0);
@@ -88,12 +90,14 @@ void ModulesScreen::build(lv_obj_t *parent)
         lv_obj_set_flex_align(actions, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_END);
         r.button = lv_button_create(actions);
         lv_obj_set_style_shadow_width(r.button, 0, 0);
+        ui_motion::press_feedback(r.button);
         r.button_label = lv_label_create(r.button);
         lv_label_set_text(r.button_label, "Install");
         lv_obj_add_event_cb(r.button, event_cb, LV_EVENT_CLICKED, this);
         // Separate from Remove: deleting the module's data needs its own confirmed step.
         r.del = lv_button_create(actions);
         lv_obj_set_style_shadow_width(r.del, 0, 0);
+        ui_motion::press_feedback(r.del);
         lv_obj_set_style_bg_color(r.del, lv_color_hex(kChipBg), 0);
         r.del_label = lv_label_create(r.del);
         lv_label_set_text(r.del_label, "");
@@ -119,6 +123,7 @@ void ModulesScreen::build(lv_obj_t *parent)
         lv_obj_t *b = lv_button_create(confirm_buttons_);
         lv_obj_set_style_bg_color(b, lv_color_hex(bg), 0);
         lv_obj_set_style_shadow_width(b, 0, 0);
+        ui_motion::press_feedback(b);
         lv_obj_t *l = lv_label_create(b);
         lv_label_set_text(l, text);
         lv_obj_set_style_text_color(l, lv_color_hex(fg), 0);
@@ -178,17 +183,18 @@ void ModulesScreen::apply_layout(const Layout &l)
 
 void ModulesScreen::open()
 {
+    const bool was_open = open_;
     open_ = true;
     for (Row &r : rows_) r.message.clear();
-    lv_obj_remove_flag(root_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(root_);
+    if (!was_open) ui_motion::push_in(root_, lv_obj_get_width(root_));  // in from the right
     tick();
 }
 
 void ModulesScreen::close()
 {
     open_ = false;
-    lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN);
+    ui_motion::pull_out(root_, lv_obj_get_width(root_));
     lv_obj_add_flag(confirm_, LV_OBJ_FLAG_HIDDEN);
     confirm_id_.clear();
 }

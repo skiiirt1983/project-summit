@@ -7,7 +7,8 @@ SettingsSchema system_settings_schema()
     SettingsSchema s;
     s.version = kSystemSettingsVersion;
     s.defs = {
-        {"update/channel", std::string("stable"), {"stable", "beta", "alpha"}},
+        // "alpha" while the project is in alpha: only alpha builds exist. Change back to "stable" at 1.0.
+        {"update/channel", std::string("alpha"), {"stable", "beta", "alpha"}},
         {"ui/rotation_lock", std::string("off"), {"off", "landscape", "portrait"}},
         // Page order after Home (always first): comma-separated panel ids, set from the web config.
         {"ui/page_order", std::string(""), {}},

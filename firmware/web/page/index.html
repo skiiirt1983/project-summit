@@ -51,6 +51,7 @@ ul{margin:0;padding-left:18px}
   <button role="tab" data-tab="modules">Modules</button>
   <button role="tab" data-tab="settings">Settings</button>
   <button role="tab" data-tab="diagnostics">Diagnostics</button>
+  <button role="tab" data-tab="log">Log</button>
 </nav>
 <main>
 <section id="status" class="active">
@@ -157,6 +158,20 @@ ul{margin:0;padding-left:18px}
   <div class="card"><h2>Warnings</h2><ul id="diag-warnings"></ul><p class="muted" id="diag-none">None.</p></div>
   <div class="card"><h2>Details</h2><dl id="diag-dl"></dl><div class="row"><button class="btn" id="diag-refresh">Refresh</button></div></div>
 </section>
+
+<section id="log">
+  <div class="card"><h2>Console log</h2>
+    <p class="muted">What the device prints on its serial port, newest at the bottom. Copy it into a message, or download it as a file.</p>
+    <div class="row">
+      <button class="btn" id="log-copy">Copy</button>
+      <button class="btn" id="log-download">Download</button>
+      <button class="btn" id="log-refresh">Refresh</button>
+      <button class="btn danger" id="log-clear">Clear</button>
+      <label style="display:flex;gap:8px;align-items:center;color:var(--text)"><input type="checkbox" id="log-auto" checked> Update every 2 s</label>
+    </div>
+    <textarea id="log-text" readonly spellcheck="false" aria-label="Console log" style="width:100%;height:55vh;margin-top:12px;box-sizing:border-box;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--bg,#0f1317);color:var(--text);border:1px solid var(--border,#2a323b);border-radius:8px;padding:10px;resize:vertical;white-space:pre"></textarea>
+    <div class="msg" id="log-msg"></div></div>
+</section>
 </main>
 <script>
 "use strict";
@@ -188,6 +203,35 @@ function show(tab) {
   for (const s of document.querySelectorAll("main section")) s.classList.toggle("active", s.id === tab);
   loaders[tab]();
 }
+
+// ---- log
+async function logText() { const r = await fetch("/api/log?lines=1500"); if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); }
+loaders.log = async () => {
+  const box = $("log-text");
+  const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+  const text = await logText();
+  if (box.value !== text) { box.value = text; if (atBottom) box.scrollTop = box.scrollHeight; }
+};
+$("log-refresh").addEventListener("click", () => loaders.log().catch((e) => msg("log-msg", e.message, "err")));
+$("log-download").addEventListener("click", () => download("/api/log?download=1"));
+$("log-clear").addEventListener("click", async () => {
+  try { await api("/api/log/clear", { method: "POST", json: {} }); $("log-text").value = ""; msg("log-msg", "Cleared.", "ok"); }
+  catch (e) { msg("log-msg", e.message, "err"); }
+});
+$("log-copy").addEventListener("click", async () => {
+  const box = $("log-text");
+  try {
+    await loaders.log();
+    const text = box.value;
+    // The device is served over plain http on the LAN, where navigator.clipboard is unavailable: fall back to
+    // selecting the text and the old copy command.
+    let done = false;
+    if (navigator.clipboard && window.isSecureContext) { try { await navigator.clipboard.writeText(text); done = true; } catch (e) { done = false; } }
+    if (!done) { box.focus(); box.select(); if (!document.execCommand("copy")) throw new Error("Select the text and copy it by hand"); box.setSelectionRange(0, 0); }
+    msg("log-msg", "Copied " + (text ? text.split("\n").filter(Boolean).length : 0) + " lines.", "ok");
+  } catch (e) { msg("log-msg", e.message, "err"); }
+});
+setInterval(() => { if (current === "log" && $("log-auto").checked) loaders.log().catch(() => {}); }, 2000);
 
 // ---- status
 loaders.status = async () => {

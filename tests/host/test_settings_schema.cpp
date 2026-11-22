@@ -57,7 +57,7 @@ TEST(fresh_load_of_product_schema)
     FakeStorage st;
     Settings s(system_settings_schema(), st);
     CHECK(s.load() == LoadResult::Fresh);
-    CHECK(std::get<std::string>(s.get("update/channel")) == "stable");
+    CHECK(std::get<std::string>(s.get("update/channel")) == "alpha");
 }
 
 int main()

@@ -14,6 +14,35 @@ CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y
 
 # 32 MB in-package PSRAM
 CONFIG_SPIRAM=y
+# Large allocations (LVGL, framebuffers, snapshot pictures) go to PSRAM.
+CONFIG_SPIRAM_USE_MALLOC=y
+
+# waveshare/esp_lcd_hx8394 by default runs another board's I2C setup (its own bus on GPIO7/8, a chip at 0x45).
+# This board has no such chip, and that second bus took the pins from ours (touch then never answered).
+CONFIG_ESP_LCD_HX8394_SKIP_I2C_INIT=y
+
+# Wi-Fi: the P4 has none of its own. esp_wifi_remote sends the esp_wifi API over esp_hosted (SDIO, GPIO14-19,
+# C6 reset GPIO54) to the ESP32-C6. The Waveshare board uses the same C6 wiring as Espressif's P4 function board.
+CONFIG_ESP_HOSTED_ENABLED=y
+CONFIG_ESP_HOSTED_CP_TARGET_ESP32C6=y
+CONFIG_ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD=y
+CONFIG_ESP_WIFI_REMOTE_ENABLED=y
+
+# The setup access point must never be a way into the home network: no IP forwarding or NAPT between the
+# access point and the station interface.
+CONFIG_LWIP_IP_FORWARD=n
+CONFIG_LWIP_IPV4_NAPT=n
+
+# On-screen frame-rate / CPU readout (alpha builds; remove for release).
+CONFIG_LV_USE_SYSMON=y
+CONFIG_LV_USE_PERF_MONITOR=y
+
+# 1 ms RTOS tick: the UI loop sleeps in whole ticks (at the default 100 Hz a 5 ms delay rounded to 0 and starved
+# the idle task, which tripped the task watchdog).
+CONFIG_FREERTOS_HZ=1000
+
+# The UI loop runs in the main task (LVGL needs room).
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384
 
 CONFIG_COMPILER_OPTIMIZATION_PERF=y
 
@@ -28,3 +57,9 @@ CONFIG_LV_FONT_DEFAULT_MONTSERRAT_20=y
 
 # Recipes panel: QR code to the web UI for PDF conversion.
 CONFIG_LV_USE_QRCODE=y
+CONFIG_LV_USE_SNAPSHOT=y
+
+# LVGL uses the C library allocator (PSRAM-backed) rather than its fixed 64 KB pool, as in the simulator.
+CONFIG_LV_USE_CLIB_MALLOC=y
+CONFIG_LV_USE_CLIB_STRING=y
+CONFIG_LV_USE_CLIB_SPRINTF=y

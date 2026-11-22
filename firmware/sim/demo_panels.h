@@ -13,6 +13,7 @@ void register_demo_modules(summit::ModuleManager &modules);
 // Two sample recipes on the simulated SD card.
 void seed_recipes(summit::recipes::RecipeStore &store);
 // Placeholder glance data (time, next event, weather, printer, Wi-Fi, update, battery).
-void publish_placeholders(summit::StateStore &state);
+// with_network false on the device: the net service publishes the real Wi-Fi state.
+void publish_placeholders(summit::StateStore &state, bool with_network = true);
 
 }  // namespace sim

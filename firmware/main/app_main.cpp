@@ -2,16 +2,25 @@
 // Phase 0: framework wiring (bus, state, settings, panel registry) and the update
 // engine with its post-boot health gate. Shell and panels start once the display BSP lands.
 #include <memory>
+#include <string>
+#include <variant>
 
 #include "esp_app_desc.h"
 #include "esp_log.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "nvs_flash.h"
 
 #include "board_pins.h"
+#include "demo_panels.h"
 #include "hardware_id.h"
 #include "nvs_settings_storage.h"
+#include "summit/boot/splash.h"
+#include "summit/bsp/bsp.h"
 #include "summit/event_bus.h"
 #include "summit/modules.h"
+#include "summit/net/wifi_service.h"
 #include "summit/recipes/module.h"
 #include "summit/recipes/panel.h"
 #include "summit/recipes/store.h"
@@ -19,6 +28,7 @@
 #include "summit/recipes/web_api.h"
 #include "summit/registry.h"
 #include "summit/settings.h"
+#include "summit/shell/shell.h"
 #include "summit/sd_card.h"
 #include "summit/state_store.h"
 #include "summit/system_settings.h"
@@ -27,6 +37,7 @@
 #include "summit/timers.h"
 #include "summit/update/device.h"
 #include "summit/web/device.h"
+#include "summit/web/log_capture.h"
 
 static const char *TAG = "summit";
 
@@ -46,6 +57,7 @@ static const char *load_result_name(summit::LoadResult r)
 
 extern "C" void app_main(void)
 {
+    summit::web::log_capture_start();  // the web UI's Log tab shows everything printed from here on
     const esp_app_desc_t *desc = esp_app_get_description();
     ESP_LOGI(TAG, "Project Summit %s (%s) booting", desc->version, SUMMIT_HARDWARE_ID);
 
@@ -64,6 +76,9 @@ extern "C" void app_main(void)
     static summit::recipes::RecipeWebApi recipe_api(recipe_store, sd);
     static summit::recipes::HttpsPageFetcher page_fetcher;  // untested on hardware
     recipe_api.set_fetcher(&page_fetcher);
+    recipe_api.set_bus(&bus);
+    // First-light placeholder panels (home, calendar, weather, news, printer), shared with the simulator.
+    sim::register_demo_panels(registry);
     registry.add(std::make_unique<summit::recipes::RecipesPanel>(recipe_store));
 
     // Modules ship in the firmware but start uninstalled (ARCHITECTURE.md "Modules").
@@ -94,7 +109,9 @@ extern "C" void app_main(void)
     probes.settings_ok = r != summit::LoadResult::InvalidSchema;
     summit::update::ota_guard_start(probes, bus, state);
     summit::update::update_service_start({SUMMIT_HARDWARE_ID, SUMMIT_CHIP_REV_FAMILY}, bus, state, settings);
-    // Config portal; reachable once Wi-Fi is up (network service, Phase 1).
+    // Wi-Fi through the C6 (esp_hosted): runs in its own task and publishes net/* for the web UI and the strip.
+    summit::net::wifi_service_start(bus, state);
+    // Config portal; reachable once Wi-Fi is up.
     summit::web::web_server_start(bus, state, settings, &modules, &recipe_api, &sd);
 
     // Kitchen timers. They are ticked from the UI loop, which starts with the display BSP (Phase 1).
@@ -113,4 +130,61 @@ extern "C" void app_main(void)
     state.set("system/hardware_id", std::string(SUMMIT_HARDWARE_ID));
     state.set("system/firmware_version", std::string(desc->version));
     bus.dispatch();
+
+    // ---- Display, touch and the UI loop (Phase 1, first light; UNTESTED on hardware) ----
+    // The loop runs here, so the main task stack is raised in sdkconfig.defaults. Nothing but this task
+    // touches LVGL; other tasks only use the (thread-safe) event bus.
+    static summit::bsp::Handles hw;
+    if (!summit::bsp::start(hw)) {
+        ESP_LOGE(TAG, "display/touch failed to start: the update engine and web server keep running without a UI");
+        return;
+    }
+    summit::bsp::set_orientation(hw.display, summit::kLandscape);  // the shell starts landscape, until the accelerometer service exists
+    // The display slider (quick settings) sets the backlight; the saved value applies from the start.
+    auto brightness_of = [](const summit::Value &v, int fallback) {
+        const int64_t *i = std::get_if<int64_t>(&v);
+        return i ? static_cast<int>(*i) : fallback;
+    };
+    const int start_brightness = brightness_of(settings.get("display/brightness"), 80);
+    auto apply_brightness = [brightness_of](const std::string &, const summit::Value &v) {
+        summit::bsp::set_brightness(brightness_of(v, 80));
+    };
+    bus.subscribe("settings/display/brightness", apply_brightness);  // saved value (web UI, release)
+    bus.subscribe("ui/brightness_live", apply_brightness);           // while the slider is dragged
+    sim::publish_placeholders(state, false);                              // fake time, weather, battery... (placeholders)
+    static summit::shell::Shell shell(
+        summit::shell::Shell::Deps{bus, state, settings, registry, host, &modules},
+        [](summit::Orientation o) { summit::bsp::set_orientation(hw.display, o); });
+    auto now_ms = [] { return static_cast<uint32_t>(esp_timer_get_time() / 1000); };
+    std::string ui_error;
+    if (!shell.start(now_ms(), &ui_error)) {
+        ESP_LOGE(TAG, "shell start failed: %s", ui_error.c_str());
+        return;
+    }
+    if (hw.touch) shell.attach_input(hw.touch);
+    else ESP_LOGW(TAG, "no touch controller: the UI is display-only");
+    // Boot screen over the finished shell: at least 2 s, and until start-up is ready (nothing else to
+    // wait for yet; later, Wi-Fi and the first data fetch can set_status() and delay set_ready()).
+    static summit::boot::Splash splash;
+    // The boot screen is portrait (the panel's native orientation) unless the accelerometer reads landscape.
+    const summit::Value sensor = state.get("sensor/orientation");
+    const std::string *sensor_o = std::get_if<std::string>(&sensor);
+    const bool boot_portrait = !(sensor_o && *sensor_o == "landscape");
+    if (hw.touch) lv_indev_enable(hw.touch, false);    // no touch (or phantom touch) during the boot screen
+    splash.show(now_ms(), hw.display, boot_portrait);
+    splash.set_ready();
+    lv_timer_handler();                                // draw the first frame, then light the panel
+    summit::bsp::set_brightness(start_brightness);
+    ESP_LOGI(TAG, "UI running");
+    // PowerService::tick() is deliberately not called yet: deep sleep is untested and the device would
+    // sleep after 5 idle minutes. Timers and the shell run.
+    for (;;) {
+        const uint32_t now = now_ms();
+        bus.dispatch();
+        timers.tick(now);
+        shell.tick(now);
+        if (splash.tick(now) && hw.touch) lv_indev_enable(hw.touch, true);
+        lv_timer_handler();
+        vTaskDelay(1);  // one tick (1 ms at 1000 Hz): lets the idle task run and feed the watchdog
+    }
 }

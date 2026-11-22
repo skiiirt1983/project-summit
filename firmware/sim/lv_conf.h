@@ -24,6 +24,7 @@
 #define LV_FONT_DEFAULT &lv_font_montserrat_20
 
 #define LV_USE_QRCODE 1
+#define LV_USE_SNAPSHOT 1  // outgoing page during a swipe (shell_ui.cpp)
 
 // Recipe page images: files from the "SD card" folder, decoded with libjpeg-turbo.
 // (Device: hardware JPEG decoder, see docs/HARDWARE_TODO.md.)

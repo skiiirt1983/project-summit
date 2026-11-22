@@ -1,0 +1,5 @@
+dependencies:
+  # The P4 has no Wi-Fi of its own: esp_wifi_remote exposes the normal esp_wifi API and sends it over
+  # esp_hosted (SDIO) to the C6. esp_hosted is pinned to the 2.x line: the C6 on the board runs a 2.x slave.
+  espressif/esp_wifi_remote: "~1.6"
+  espressif/esp_hosted: "~2.13"

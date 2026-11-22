@@ -6,6 +6,7 @@
 
 #include "esp_app_desc.h"
 #include "esp_http_server.h"
+#include "summit/web/log_capture.h"
 #include "esp_idf_version.h"
 #include "esp_log.h"
 #include "esp_netif.h"
@@ -284,6 +285,8 @@ bool web_server_start(EventBus &bus, StateStore &state, Settings &settings, cons
     g->api = std::make_unique<WebApi>(bus, state, settings, g->control, g->wifi, g->facts);
     g->api->set_modules(modules);
     if (extension) g->api->add_extension(extension);
+    static LogApi log_api(device_log());  // GET /api/log, POST /api/log/clear
+    g->api->add_extension(&log_api);
     g->storage = storage;
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
     cfg.uri_match_fn = httpd_uri_match_wildcard;

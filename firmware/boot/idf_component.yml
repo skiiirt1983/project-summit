@@ -1,0 +1,3 @@
+dependencies:
+  # Same pin as firmware/shell.
+  lvgl/lvgl: "9.4.0"
