@@ -51,14 +51,6 @@ std::string nvs_read(const char *key, size_t cap)
     return out;
 }
 
-void nvs_write(const char *key, const std::string &value)
-{
-    nvs_handle_t h;
-    if (nvs_open("wifi", NVS_READWRITE, &h) != ESP_OK) return;
-    if (nvs_set_str(h, key, value.c_str()) == ESP_OK) nvs_commit(h);
-    nvs_close(h);
-}
-
 void set_state(bool connected, const std::string &ssid, const std::string &ip)
 {
     g_state->set("net/wifi_connected", connected);
@@ -281,7 +273,7 @@ bool wifi_service_start(EventBus &bus, StateStore &state)
     bus.subscribe("net/connect", [](const std::string &, const Value &) {
         if (g_task) xTaskNotify(g_task, kNotifyCredentials | kNotifyScan, eSetBits);
     });
-    xTaskCreate(task, "net", 6144, nullptr, 5, &g_task);
+    xTaskCreate(task, "net", 8192, nullptr, 5, &g_task);
     return true;
 }
 

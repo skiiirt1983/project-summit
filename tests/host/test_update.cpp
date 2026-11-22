@@ -296,6 +296,39 @@ TEST(catalog_install_happy_path)
     CHECK(r.engine.status().stage == Stage::ReadyToReboot && r.writer.finished && r.writer.flash == img);
 }
 
+TEST(install_picks_this_devices_entry_when_a_version_lists_both_chip_variants)
+{
+    // Live bug (2026-11-22): the release catalog has a rev3 and a rev1 entry under the same version. The device
+    // downloaded the last one (rev1) and the rev3 image check rejected it. Either order must pick the rev3 entry.
+    for (int rev1_first = 0; rev1_first < 2; ++rev1_first) {
+        Rig r;
+        auto img = image("0.2.0");
+        CatalogBuild mine = build("0.2.0", "stable", static_cast<int64_t>(img.size()));
+        mine.sha256 = sha(img);
+        mine.url = "https://skiiirt1983.github.io/slopeform-home/firmware/0.2.0/summit-0.2.0-rev3-ota.bin";
+        CatalogBuild other = build("0.2.0", "stable", static_cast<int64_t>(img.size()) - 7);
+        other.hardware_id = "waveshare-p4-wifi6-lcd5-rev1";
+        other.url = "https://skiiirt1983.github.io/slopeform-home/firmware/0.2.0/summit-0.2.0-rev1-ota.bin";
+        CHECK(r.engine.begin_check());
+        r.engine.catalog_received(catalog(rev1_first ? std::vector<CatalogBuild>{other, mine}
+                                                     : std::vector<CatalogBuild>{mine, other}));
+        const Candidate *c = r.engine.installable("0.2.0");
+        CHECK(c && c->build.url == mine.url && c->build.hardware_id == kHw);
+        CHECK(r.engine.start_install("0.2.0", ok_preflight()));
+        r.feed(img, 4096);
+        CHECK(r.engine.complete() && r.engine.status().stage == Stage::ReadyToReboot);
+        CHECK(r.engine.installable("9.9.9") == nullptr);
+    }
+    // Only the other chip's entry exists: refused, with the reason.
+    Rig r;
+    CatalogBuild other = build("0.2.0", "stable");
+    other.hardware_id = "waveshare-p4-wifi6-lcd5-rev1";
+    CHECK(r.engine.begin_check());
+    r.engine.catalog_received(catalog({other}));
+    CHECK(r.engine.installable("0.2.0") == nullptr && !r.engine.start_install("0.2.0", ok_preflight()));
+    CHECK(r.engine.status().stage == Stage::Failed);
+}
+
 TEST(catalog_install_rejects_bad_images_before_writing)
 {
     struct Case {
@@ -491,6 +524,7 @@ int main()
     RUN(channels_and_newest_update);
     RUN(preflight_rules);
     RUN(catalog_install_happy_path);
+    RUN(install_picks_this_devices_entry_when_a_version_lists_both_chip_variants);
     RUN(catalog_install_rejects_bad_images_before_writing);
     RUN(catalog_install_sha_mismatch_and_truncation);
     RUN(install_blocked_by_preflight_or_rejection);

@@ -197,8 +197,9 @@ void do_install(const std::string &version)
     std::string url;
     {
         std::lock_guard<std::mutex> lock(g->mu);
-        for (const Candidate &c : g->engine->candidates())
-            if (c.build.version == version) url = c.build.url;
+        // The same entry the engine will install (first live bug: the last entry with this version won here, the
+        // rev1 file, and was rejected by the rev3 image check: "different chip revision").
+        if (const Candidate *c = g->engine->installable(version)) url = c->build.url;
         bool ok = g->engine->start_install(version, preflight_now());
         publish_locked();
         if (!ok) return;

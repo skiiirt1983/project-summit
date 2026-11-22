@@ -97,7 +97,11 @@ bool panel_init()
     // field names), set by name: the vendor macro is C-only and does not compile as C++.
     esp_lcd_dpi_panel_config_t dpi = {};
     dpi.dpi_clk_src = MIPI_DSI_DPI_CLK_SRC_DEFAULT;
-    dpi.dpi_clock_freq_mhz = 58;
+    // Waveshare's value is 58 MHz (about 55 Hz refresh). The panel reads the frame buffer from PSRAM all the
+    // time; during Wi-Fi / flash / TLS traffic that bandwidth runs short and the panel flashes (blue flashes seen
+    // while the web UI loads and while an update downloads). 40 MHz is about 38 Hz and takes a third less
+    // bandwidth. EXPERIMENT: if the picture looks wrong, go back to 58.
+    dpi.dpi_clock_freq_mhz = 40;
     dpi.virtual_channel = 0;
     dpi.pixel_format = LCD_COLOR_PIXEL_FORMAT_RGB565;
     dpi.num_fbs = 1;
