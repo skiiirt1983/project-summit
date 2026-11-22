@@ -68,6 +68,10 @@ public:
     void check_failed(const std::string &error, int http_status = 0);
     const std::vector<Candidate> &candidates() const { return candidates_; }
     const Candidate *available() const;  // newest installable update, if any
+    // The entry to install for `version`: a catalog lists one entry per chip variant under the same version
+    // (rev1 and rev3), so only the installable one for THIS device counts, whatever the order in the catalog.
+    // nullptr if there is none.
+    const Candidate *installable(const std::string &version) const;
 
     // -- install. Returns false (and sets Failed / keeps state) if busy or pre-flight fails.
     bool start_install(const std::string &version, PreflightInput preflight_in);

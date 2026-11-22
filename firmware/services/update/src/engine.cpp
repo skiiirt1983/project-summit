@@ -65,17 +65,25 @@ const Candidate *UpdateEngine::available() const
     return available_index_ >= 0 ? &candidates_[available_index_] : nullptr;
 }
 
+const Candidate *UpdateEngine::installable(const std::string &version) const
+{
+    for (const Candidate &c : candidates_)
+        if (c.build.version == version && c.reject == Reject::None) return &c;
+    return nullptr;
+}
+
 bool UpdateEngine::start_install(const std::string &version, PreflightInput in)
 {
     if (busy()) return false;
+    if (const Candidate *c = installable(version)) {
+        in.from_network = true;
+        return start(Source::Catalog, c->build.size, version, c->build.sha256, in);
+    }
+    // Nothing installable: say why for the entry that matches best (the first one with this version).
     for (const Candidate &c : candidates_) {
         if (c.build.version != version) continue;
-        if (c.reject != Reject::None) {
-            set_failed(std::string("cannot install ") + version + ": " + reject_reason(c.reject));
-            return false;
-        }
-        in.from_network = true;
-        return start(Source::Catalog, c.build.size, version, c.build.sha256, in);
+        set_failed(std::string("cannot install ") + version + ": " + reject_reason(c.reject));
+        return false;
     }
     set_failed("version " + version + " is not in the catalog");
     return false;
