@@ -1,6 +1,7 @@
 // Project Summit firmware entry point.
 // Phase 0: framework wiring (bus, state, settings, panel registry) and the update
 // engine with its post-boot health gate. Shell and panels start once the display BSP lands.
+#include <atomic>
 #include <memory>
 #include <string>
 #include <variant>
@@ -139,7 +140,23 @@ extern "C" void app_main(void)
     // (Phase 1); until then a pending OTA image fails the gate and rolls back.
     // Fail-fast: a firmware bug on a new image rolls back at once instead of waiting 40 s.
     if (r == summit::LoadResult::InvalidSchema) summit::update::ota_init_failed("settings schema invalid");
+    // The gate samples every 2.5 s and needs 3 healthy samples in a row within 40 s of boot, so it starts
+    // now and reads values the UI side fills in later (before the UI is up the samples simply count as unhealthy).
+    static std::atomic<uint32_t> ui_last_tick_ms{0};
+    static std::atomic<bool> ui_touch_ok{false};
     summit::update::HealthProbes probes;
+    probes.ui_tick_age_ms = [] {
+        const uint32_t last = ui_last_tick_ms.load();
+        return last == 0 ? UINT32_MAX : static_cast<uint32_t>(esp_timer_get_time() / 1000) - last;
+    };
+    probes.frames_rendered = [] { return summit::bsp::frames_rendered(); };
+    probes.touch_ok = [] { return ui_touch_ok.load(); };
+    probes.i2c_scan = [] {
+        auto devs = summit::update::board_i2c_devices();
+        const uint8_t addr[4] = {0x5d, 0x18, 0x40, 0x19};  // same order as board_i2c_devices()
+        for (size_t i = 0; i < devs.size() && i < 4; ++i) devs[i].present = summit::bsp::i2c_present(addr[i]);
+        return devs;
+    };
     probes.settings_ok = r != summit::LoadResult::InvalidSchema;
     summit::update::ota_guard_start(probes, bus, state);
     summit::update::update_service_start({SUMMIT_HARDWARE_ID, SUMMIT_CHIP_REV_FAMILY}, bus, state, settings);
@@ -195,6 +212,7 @@ extern "C" void app_main(void)
         ESP_LOGE(TAG, "shell start failed: %s", ui_error.c_str());
         return;
     }
+    ui_touch_ok = hw.touch != nullptr;
     if (hw.touch) shell.attach_input(hw.touch);
     else ESP_LOGW(TAG, "no touch controller: the UI is display-only");
     // Boot screen over the finished shell: at least 2 s, and until start-up is ready (nothing else to
@@ -218,6 +236,7 @@ extern "C" void app_main(void)
     uint32_t next_services = 0, next_report = now_ms() + 30000;
     for (;;) {
         const uint32_t now = now_ms();
+        ui_last_tick_ms = now ? now : 1;
         if (static_cast<int32_t>(now - next_services) >= 0) {
             bus.dispatch();
             timers.tick(now);
