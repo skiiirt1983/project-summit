@@ -219,6 +219,14 @@ void do_install(const std::string &version)
                               return ok;
                           },
                           &error);
+    if (status == 200) {
+        // Show the "Writing update" screen and let the UI draw it before the flash burst (the display may stall).
+        {
+            std::lock_guard<std::mutex> lock(g->mu);
+            if (g->engine->begin_writing()) publish_locked();
+        }
+        vTaskDelay(pdMS_TO_TICKS(800));
+    }
     std::lock_guard<std::mutex> lock(g->mu);
     if (status == 200) {
         g->engine->complete();

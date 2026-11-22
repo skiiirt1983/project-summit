@@ -233,9 +233,12 @@ void UpdatesScreen::tick()
     show(progress_, installing);
     show(close_btn_, !installing);
     if (installing) {
-        set_text(progress_title_, "Installing " + str("update/target_version"));
-        if (lv_bar_get_value(bar_) != static_cast<int32_t>(pct)) lv_bar_set_value(bar_, static_cast<int32_t>(pct), LV_ANIM_OFF);
-        set_text(pct_, std::to_string(pct) + "%");
+        // "verifying" = download done, the image is being written to flash (a few seconds; the screen is kept static).
+        const bool writing = stage == "verifying";
+        set_text(progress_title_, (writing ? "Writing update " : "Installing ") + str("update/target_version"));
+        const int32_t shown = writing ? 100 : static_cast<int32_t>(pct);
+        if (lv_bar_get_value(bar_) != shown) lv_bar_set_value(bar_, shown, LV_ANIM_OFF);
+        set_text(pct_, writing ? std::string("Do not power off") : std::to_string(pct) + "%");
         return;
     }
 

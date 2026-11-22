@@ -161,9 +161,16 @@ bool UpdateEngine::data(const uint8_t *p, size_t len)
     return true;
 }
 
+bool UpdateEngine::begin_writing()
+{
+    if (status_.stage != Stage::Downloading || status_.bytes != status_.total) return false;
+    status_.stage = Stage::Verifying;
+    return true;
+}
+
 bool UpdateEngine::complete()
 {
-    if (status_.stage != Stage::Downloading) return false;
+    if (status_.stage != Stage::Downloading && status_.stage != Stage::Verifying) return false;
     if (status_.bytes != status_.total) {
         set_failed("incomplete image: " + std::to_string(status_.bytes) + " of " + std::to_string(status_.total) +
                    " bytes");
