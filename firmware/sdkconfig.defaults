@@ -26,6 +26,13 @@ CONFIG_ESP_LCD_HX8394_SKIP_I2C_INIT=y
 CONFIG_ESP_HOSTED_ENABLED=y
 CONFIG_ESP_HOSTED_CP_TARGET_ESP32C6=y
 CONFIG_ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD=y
+# The C6 on this board runs an OLD esp_hosted slave firmware (it reports version 0.0.0; the host is 2.13). The
+# default "streaming mode" needs a slave that supports it; with this one it crashed the host's sdio_read task
+# (illegal instruction, mcause 2) under heavy traffic, e.g. while an update downloads. Plain per-packet reads
+# work with any slave. The clock is also halved for margin (40 -> 20 MHz). Revert both once the C6 firmware has
+# been updated (HARDWARE_TODO.md).
+CONFIG_ESP_HOSTED_SDIO_OPTIMIZATION_RX_NONE=y
+CONFIG_ESP_HOSTED_SDIO_CLOCK_FREQ_KHZ=20000
 CONFIG_ESP_WIFI_REMOTE_ENABLED=y
 
 # The setup access point must never be a way into the home network: no IP forwarding or NAPT between the
