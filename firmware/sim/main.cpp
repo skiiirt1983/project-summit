@@ -1123,6 +1123,8 @@ int start_app(App &app, shell::Shell::ApplyOrientation apply)
     app.modules.set_data("recipes", app.recipe_data.get());
     for (const auto &d : app.registry.setting_defs()) schema.defs.push_back(d);
     for (const auto &d : app.modules.setting_defs()) schema.defs.push_back(d);
+    for (auto &d : schema.defs)  // the device default is "alpha" while in alpha; the simulator tests start on stable
+        if (d.key == "update/channel") d.default_value = std::string("stable");
     app.settings = std::make_unique<Settings>(schema, app.storage, &app.bus);
     app.settings->load();
     app.host = std::make_unique<PanelHost>(app.registry, app.bus, app.state, *app.settings);

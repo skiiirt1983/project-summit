@@ -2,12 +2,15 @@
 
 #include <algorithm>
 #include <cstring>
+#include <ctime>
 #include <string>
 #include <vector>
 
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_netif.h"
+#include "esp_netif_sntp.h"
+#include "esp_sntp.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
@@ -63,6 +66,38 @@ void set_state(bool connected, const std::string &ssid, const std::string &ip)
     g_state->set("net/ip", ip);
 }
 
+// Clock: the update pre-flight and the recipes' "recently cooked" need real time. SNTP starts once there is an
+// address; time/unix is published from the net task (UTC for now: a timezone setting comes later).
+bool g_sntp_started = false;
+
+void on_time_synced(struct timeval *)
+{
+    g_state->set("time/synced", true);
+    ESP_LOGI(TAG, "clock synced from the network");
+}
+
+void start_sntp()
+{
+    if (g_sntp_started) return;
+    esp_sntp_config_t cfg = ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");
+    cfg.sync_cb = on_time_synced;
+    if (esp_netif_sntp_init(&cfg) == ESP_OK) g_sntp_started = true;
+}
+
+void publish_time()
+{
+    const time_t now = time(nullptr);
+    if (now < 1700000000) return;  // not synced yet (before late 2023)
+    g_state->set("time/unix", static_cast<int64_t>(now));
+    struct tm t;
+    gmtime_r(&now, &t);
+    char hm[8], date[40];
+    strftime(hm, sizeof hm, "%H:%M", &t);
+    strftime(date, sizeof date, "%A %-d %B", &t);
+    g_state->set("time/now_text", std::string(hm));
+    g_state->set("time/date_text", std::string(date));
+}
+
 void on_event(void *, esp_event_base_t base, int32_t id, void *data)
 {
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
@@ -82,6 +117,7 @@ void on_event(void *, esp_event_base_t base, int32_t id, void *data)
         g_connected = true;
         set_state(true, reinterpret_cast<const char *>(ap.ssid), ip);
         ESP_LOGI(TAG, "connected to '%s', address %s, signal %d dBm", ap.ssid, ip, ap.rssi);
+        start_sntp();
     }
 }
 
@@ -188,8 +224,9 @@ void task(void *)
     if (!have_network) ap_start();
     for (;;) {
         uint32_t bits = 0;
-        xTaskNotifyWait(0, UINT32_MAX, &bits, pdMS_TO_TICKS(5000));
+        xTaskNotifyWait(0, UINT32_MAX, &bits, pdMS_TO_TICKS(2000));  // also the clock tick for time/*
         const int64_t now = esp_timer_get_time() / 1000;
+        publish_time();
         if (bits & kNotifyCredentials) {
             down_since = now;
             connect_saved();

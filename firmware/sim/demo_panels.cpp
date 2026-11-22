@@ -252,7 +252,7 @@ void publish_placeholders(StateStore &s, bool with_network)
     s.set("system/hardware_id", std::string("waveshare-p4-wifi6-lcd5-rev3"));
     s.set("power/usb_power", true);
     s.set("power/battery_pct", int64_t{85});
-    s.set("time/synced", true);
+    if (with_network) s.set("time/synced", true);  // the device sets it when the clock has synced
     s.set("update/previous_version", std::string("0.0.1-alpha.3"));
 }
 

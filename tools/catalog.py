@@ -7,6 +7,8 @@ catalog is rejected before any device sees it.
 
   catalog.py entry BUILD_INFO --url URL --channel stable|beta|alpha [--notes TEXT] [--released YYYY-MM-DD]
   catalog.py validate CATALOG_JSON
+  catalog.py build SITE_DIR --base-url URL --channel alpha   (writes SITE_DIR/catalog.json from every
+                                                              SITE_DIR/firmware/<ver>/build-info-<variant>.json)
 """
 import argparse
 import json
@@ -97,6 +99,35 @@ def validate(catalog):
     return errors
 
 
+def semver_key(v):
+    """Sort key for SemVer precedence (a release sorts above its own pre-releases)."""
+    m = SEMVER.match(v)
+    core = tuple(int(x) for x in m.group(1, 2, 3))
+    pre = m.group(4)
+    if pre is None:
+        return core, (1,)
+    return core, (0,) + tuple((0, int(p)) if p.isdigit() else (1, p) for p in pre.split("."))
+
+
+def build_site_catalog(site, base_url, channel, notes=""):
+    """The catalog for everything published under SITE/firmware/. Old versions stay (releases are immutable)."""
+    site = Path(site)
+    builds = []
+    for info_path in sorted((site / "firmware").glob("*/build-info-*.json")):
+        info = json.loads(info_path.read_text())
+        variant = info["hardware_id"].rsplit("-", 1)[1]
+        version = info["version"]
+        url = f"{base_url.rstrip('/')}/firmware/{version}/summit-{version}-{variant}-ota.bin"
+        builds.append(entry(info_path, url, channel, notes, info.get("released", "")))
+    builds.sort(key=lambda b: (semver_key(b["version"]), b["hardware_id"]), reverse=True)
+    cat = {"format": FORMAT, "project": PROJECT, "builds": builds}
+    errors = validate(cat)
+    if errors:
+        raise ValueError("; ".join(errors))
+    (site / "catalog.json").write_text(json.dumps(cat, indent=2) + "\n")
+    return cat
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -108,7 +139,16 @@ def main():
     e.add_argument("--released", default="")
     v = sub.add_parser("validate")
     v.add_argument("catalog")
+    b = sub.add_parser("build")
+    b.add_argument("site")
+    b.add_argument("--base-url", required=True)
+    b.add_argument("--channel", required=True, choices=CHANNELS)
+    b.add_argument("--notes", default="")
     args = ap.parse_args()
+    if args.cmd == "build":
+        cat = build_site_catalog(args.site, args.base_url, args.channel, args.notes)
+        print(f"PASS: catalog.json with {len(cat['builds'])} build(s)")
+        return 0
     if args.cmd == "entry":
         print(json.dumps(entry(args.build_info, args.url, args.channel, args.notes, args.released), indent=2))
         return 0

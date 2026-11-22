@@ -363,10 +363,10 @@ USB web flasher ─▶ Flash over cable (full, or keep settings)
 
 ### Update catalog (format 1)
 
-One `catalog.json` per source, served over HTTPS from GitHub Pages. Stable and beta builds come from the `slopeform-home` catalog; alpha builds from the binaries-only public repo `summit-alpha`, fed by `project-summit` CI:
+One `catalog.json` per source, served over HTTPS from GitHub Pages. Stable and beta builds come from the `slopeform-home` catalog; alpha builds from the GitHub Pages of this repository (made public by Paul, 2026-11-22; replaces the separate `summit-alpha` repo), published by `.github/workflows/release.yml`:
 
 - Stable / beta: `https://skiiirt1983.github.io/slopeform-home/catalog.json`
-- Alpha: `https://skiiirt1983.github.io/summit-alpha/catalog.json`
+- Alpha: `https://skiiirt1983.github.io/project-summit/catalog.json` (OTA images under `/firmware/<version>/`; the `gh-pages` branch keeps every published version)
 
 ```json
 {
