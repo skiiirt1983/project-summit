@@ -21,6 +21,13 @@ CONFIG_SPIRAM_USE_MALLOC=y
 # This board has no such chip, and that second bus took the pins from ours (touch then never answered).
 CONFIG_ESP_LCD_HX8394_SKIP_I2C_INIT=y
 
+# Wi-Fi: the P4 has none of its own. esp_wifi_remote sends the esp_wifi API over esp_hosted (SDIO, GPIO14-19,
+# C6 reset GPIO54) to the ESP32-C6. The Waveshare board uses the same C6 wiring as Espressif's P4 function board.
+CONFIG_ESP_HOSTED_ENABLED=y
+CONFIG_ESP_HOSTED_CP_TARGET_ESP32C6=y
+CONFIG_ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD=y
+CONFIG_ESP_WIFI_REMOTE_ENABLED=y
+
 # On-screen frame-rate / CPU readout (alpha builds; remove for release).
 CONFIG_LV_USE_SYSMON=y
 CONFIG_LV_USE_PERF_MONITOR=y

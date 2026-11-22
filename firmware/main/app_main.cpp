@@ -20,6 +20,7 @@
 #include "summit/bsp/bsp.h"
 #include "summit/event_bus.h"
 #include "summit/modules.h"
+#include "summit/net/wifi_service.h"
 #include "summit/recipes/module.h"
 #include "summit/recipes/panel.h"
 #include "summit/recipes/store.h"
@@ -36,6 +37,7 @@
 #include "summit/timers.h"
 #include "summit/update/device.h"
 #include "summit/web/device.h"
+#include "summit/web/log_capture.h"
 
 static const char *TAG = "summit";
 
@@ -55,6 +57,7 @@ static const char *load_result_name(summit::LoadResult r)
 
 extern "C" void app_main(void)
 {
+    summit::web::log_capture_start();  // the web UI's Log tab shows everything printed from here on
     const esp_app_desc_t *desc = esp_app_get_description();
     ESP_LOGI(TAG, "Project Summit %s (%s) booting", desc->version, SUMMIT_HARDWARE_ID);
 
@@ -106,7 +109,9 @@ extern "C" void app_main(void)
     probes.settings_ok = r != summit::LoadResult::InvalidSchema;
     summit::update::ota_guard_start(probes, bus, state);
     summit::update::update_service_start({SUMMIT_HARDWARE_ID, SUMMIT_CHIP_REV_FAMILY}, bus, state, settings);
-    // Config portal; reachable once Wi-Fi is up (network service, Phase 1).
+    // Wi-Fi through the C6 (esp_hosted): runs in its own task and publishes net/* for the web UI and the strip.
+    summit::net::wifi_service_start(bus, state);
+    // Config portal; reachable once Wi-Fi is up.
     summit::web::web_server_start(bus, state, settings, &modules, &recipe_api, &sd);
 
     // Kitchen timers. They are ticked from the UI loop, which starts with the display BSP (Phase 1).
@@ -146,7 +151,7 @@ extern "C" void app_main(void)
     };
     bus.subscribe("settings/display/brightness", apply_brightness);  // saved value (web UI, release)
     bus.subscribe("ui/brightness_live", apply_brightness);           // while the slider is dragged
-    sim::publish_placeholders(state);                              // fake time, weather, battery... (placeholders)
+    sim::publish_placeholders(state, false);                              // fake time, weather, battery... (placeholders)
     static summit::shell::Shell shell(
         summit::shell::Shell::Deps{bus, state, settings, registry, host, &modules},
         [](summit::Orientation o) { summit::bsp::set_orientation(hw.display, o); });

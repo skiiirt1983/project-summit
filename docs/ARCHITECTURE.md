@@ -222,6 +222,7 @@ A single vanilla-JS page served gzipped from flash (`firmware/web/page/index.htm
 | Endpoint | Purpose |
 | --- | --- |
 | `GET /api/status` | firmware, hardware ID, Wi-Fi, battery, settings notice, update state |
+| `GET /api/log[?lines=N][&download=1]`, `POST /api/log/clear` | the console log as plain text (colour codes removed), kept in a 48 KB ring in memory; the Log tab has Copy, Download, Clear and a 2 s refresh |
 | `GET/POST /api/wifi` | status + scan results; save SSID + password (password is write-only) |
 | `GET /api/firmware` | version, channel, update stage/progress/error, available build + notes, catalog list |
 | `POST /api/firmware/check`, `/install`, `/reboot`, `/previous` | update commands (previous needs `{"confirm":true}`) |

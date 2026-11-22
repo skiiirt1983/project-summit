@@ -235,7 +235,7 @@ void seed_recipes(recipes::RecipeStore &store)
     store.save("tomato-soup", r);
 }
 
-void publish_placeholders(StateStore &s)
+void publish_placeholders(StateStore &s, bool with_network)
 {
     s.set("time/now_text", std::string("09:41"));
     s.set("time/date_text", std::string("Saturday 7 November"));
@@ -243,7 +243,7 @@ void publish_placeholders(StateStore &s)
     s.set("weather/now_text", std::string("4\xC2\xB0" "C Cloudy"));
     s.set("printer/progress_text", std::string("Enclosure v2 \xE2\x80\xA2 42%"));
     s.set("printer/progress_pct", int64_t{42});
-    s.set("net/wifi_connected", true);
+    if (with_network) s.set("net/wifi_connected", true);  // the device has the real Wi-Fi state
     s.set("update/available", true);
     s.set("power/battery_text", std::string("85%"));
     s.set("power/battery_icon", std::string(LV_SYMBOL_BATTERY_3));

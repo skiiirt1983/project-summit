@@ -4,6 +4,15 @@ Each entry: the question, the choice made, why. Newest first. Say if any should 
 
 **D-010 (2026-11-13): Paul accepted all R1-R3 defaults below and the SD wiring guesses (still to be checked on the board, see HARDWARE_TODO.md).**
 
+## Wi-Fi, web log and updates (2026-11-22)
+
+Paul asked for Wi-Fi, web UI Wi-Fi settings, a copyable log and updates from GitHub. Built in this step: the Wi-Fi service, the setup access point, the Log tab. Choices to review:
+
+- **Setup access point.** With no saved network (or none reachable for 45 s) the device starts "Slopeform-XXXX" with a random WPA2 password, generated once and kept in NVS. For now the password is printed in the serial log and the web Log; the on-screen QR code of the architecture doc is not built yet, so for the first set-up read the password from the serial console. Never an open network.
+- **Log tab.** The log lives in memory only (48 KB, newest kept) and is lost on reboot; crash dumps still go to the coredump partition. Colour codes are removed so a pasted log is clean.
+- **Updates from GitHub (next step, not built).** Until the Wi-Fi link is proven on the board there is nothing to build against. Plan: after Wi-Fi works, the **Firmware tab upload already installs an `-ota.bin` image from a browser, so the full USB flash is only needed once**. For "update from GitHub" the repository is private, so the device needs a read-only token (a fine-grained personal access token with Contents: read, stored as a secret setting, never exported) to read the releases API and download the `rev3-ota.bin` asset; a CI step would publish a release for each build. A public repository or a separate public releases repository would not need a token. Needs Paul's choice.
+- **Time.** No SNTP yet, so the Home clock is still the placeholder.
+
 ## First flash feedback (2026-11-22)
 
 From Paul's test on the board (touch, boot screen and shell work):

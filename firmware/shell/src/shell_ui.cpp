@@ -893,11 +893,15 @@ void Shell::strip_long_press_cb(lv_event_t *e)
 {
     // Diagnostic (first-flash bug: "Rotation locked / unlocked" toasts at start-up with no finger on the
     // panel): say when and where this long-press came from. Goes to the serial console on the device.
+    // Found from the diagnostic: the toasts came from slow pull-downs. LVGL sends a long-press after 400 ms
+    // even if the finger has moved, so a pull-down to open quick settings also toggled the rotation lock.
+    // A long-press only counts when the finger has stayed where it went down.
+    auto *self = static_cast<Shell *>(lv_event_get_user_data(e));
     lv_point_t p = {-1, -1};
     if (lv_indev_t *indev = lv_indev_active()) lv_indev_get_point(indev, &p);
-    std::printf("shell: long-press on the top bar at x=%d y=%d, t=%u ms: toggling rotation lock\n", static_cast<int>(p.x),
-                static_cast<int>(p.y), static_cast<unsigned>(lv_tick_get()));
-    static_cast<Shell *>(lv_event_get_user_data(e))->toggle_rotation_lock();
+    const int32_t slop = self->layout_.tokens.space_m;
+    if (std::abs(p.x - self->press_.x) > slop || std::abs(p.y - self->press_.y) > slop) return;
+    self->toggle_rotation_lock();
 }
 
 void Shell::sheet_event_cb(lv_event_t *e)

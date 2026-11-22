@@ -32,6 +32,7 @@
 #include "summit/recipes/panel.h"
 #include "summit/recipes/store.h"
 #include "summit/boot/splash.h"
+#include "summit/web/log_buffer.h"
 #include "summit/recipes/web_api.h"
 #include "summit/storage.h"
 #include "summit/system_settings.h"
@@ -1267,6 +1268,10 @@ int run_web(int port)
     recipe_api.set_fetcher(&fetcher);
     recipe_api.set_bus(&app.bus);
     api.add_extension(&recipe_api);
+    static web::LogBuffer sim_log;  // sample console text for the web UI's Log tab
+    sim_log.append("I (1854) main_task: Calling app_main()\nI (1860) summit: Project Summit 0.0.1 booting\nI (2532) bsp: GT911 touch found at 0x5d (attempt 1)\nI (2646) summit: UI running\nE (5117) sdmmc_common: sdmmc_init_ocr: send_op_cond (1) returned 0x107\n");
+    static web::LogApi sim_log_api(sim_log);
+    api.add_extension(&sim_log_api);
     sim::HttpSim http(api, SUMMIT_WEB_ROOT, app.sd.get());
     if (!http.listen(port)) {
         std::printf("cannot listen on 127.0.0.1:%d\n", port);
