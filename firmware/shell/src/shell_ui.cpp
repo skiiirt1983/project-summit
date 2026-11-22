@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstdio>
 #include <cstdlib>
 
 #include "summit/shell/shell.h"
@@ -890,6 +891,12 @@ void Shell::strip_gesture_cb(lv_event_t *e)
 
 void Shell::strip_long_press_cb(lv_event_t *e)
 {
+    // Diagnostic (first-flash bug: "Rotation locked / unlocked" toasts at start-up with no finger on the
+    // panel): say when and where this long-press came from. Goes to the serial console on the device.
+    lv_point_t p = {-1, -1};
+    if (lv_indev_t *indev = lv_indev_active()) lv_indev_get_point(indev, &p);
+    std::printf("shell: long-press on the top bar at x=%d y=%d, t=%u ms: toggling rotation lock\n", static_cast<int>(p.x),
+                static_cast<int>(p.y), static_cast<unsigned>(lv_tick_get()));
     static_cast<Shell *>(lv_event_get_user_data(e))->toggle_rotation_lock();
 }
 
