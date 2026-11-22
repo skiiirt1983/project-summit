@@ -21,6 +21,9 @@ bool start(Handles &out);
 // Panel strips drawn since boot (health gate: "the display is being driven").
 uint32_t frames_rendered();
 
+// Display pixel clock in MHz (shown in the diagnostics).
+uint32_t pixel_clock_mhz();
+
 // True if a device answers at this 7-bit I2C address (health gate; safe to call from any task).
 bool i2c_present(uint8_t addr);
 
