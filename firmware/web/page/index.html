@@ -251,7 +251,7 @@ loaders.status = async () => {
 // ---- wifi
 loaders.wifi = async () => {
   const w = await api("/api/wifi");
-  fillDl($("wifi-dl"), [["Status", w.connected ? "connected" : "not connected"], ["Network", w.ssid || w.configured_ssid], ["IP address", w.ip]]);
+  fillDl($("wifi-dl"), [["Status", w.connected ? "connected" : "not connected"], ["Network", w.ssid || w.configured_ssid], ["IP address", w.ip], ["Last problem", w.error]]);
   const tb = $("wifi-networks"); tb.replaceChildren();
   for (const n of w.networks) {
     const tr = el("tr"); const name = el("td", n.ssid); const sig = el("td", (n.rssi !== undefined ? n.rssi + " dBm" : "") + (n.secure === false ? ", open" : ""), "muted");

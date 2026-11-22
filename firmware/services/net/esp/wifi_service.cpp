@@ -94,9 +94,25 @@ void on_event(void *, esp_event_base_t base, int32_t id, void *data)
 {
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
         const auto *d = static_cast<wifi_event_sta_disconnected_t *>(data);
-        ESP_LOGW(TAG, "disconnected (reason %d)", d ? d->reason : -1);
+        const int reason = d ? d->reason : -1;
+        ESP_LOGW(TAG, "disconnected (reason %d)", reason);
         g_connected = false;
         set_state(false, "", "");
+        // Say why, in words, in the quick settings and the web UI (the usual: a wrong password or name).
+        const char *why = "Connection failed";
+        switch (reason) {
+            case WIFI_REASON_AUTH_FAIL:
+            case WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT:
+            case WIFI_REASON_HANDSHAKE_TIMEOUT:
+            case WIFI_REASON_AUTH_EXPIRE: why = "Wrong password?"; break;
+            case WIFI_REASON_NO_AP_FOUND: why = "Network not found (name wrong, or out of range)"; break;
+            case WIFI_REASON_BEACON_TIMEOUT: why = "Lost the signal"; break;
+            case WIFI_REASON_ASSOC_FAIL: why = "The router refused the connection"; break;
+            default: break;
+        }
+        char text[96];
+        snprintf(text, sizeof text, "%s (code %d)", why, reason);
+        g_state->set("net/last_error", std::string(text));
         if (g_task) xTaskNotify(g_task, kNotifyDisconnected, eSetBits);
     } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_CONNECTED) {
         ESP_LOGI(TAG, "associated, waiting for an address");
@@ -107,6 +123,7 @@ void on_event(void *, esp_event_base_t base, int32_t id, void *data)
         wifi_ap_record_t ap = {};
         esp_wifi_sta_get_ap_info(&ap);
         g_connected = true;
+        g_state->set("net/last_error", std::string());
         set_state(true, reinterpret_cast<const char *>(ap.ssid), ip);
         ESP_LOGI(TAG, "connected to '%s', address %s, signal %d dBm", ap.ssid, ip, ap.rssi);
         start_sntp();
@@ -269,6 +286,7 @@ bool wifi_service_start(EventBus &bus, StateStore &state)
     set_state(false, "", "");
     state.set("net/scan", std::string("[]"));
     state.set("net/ap_active", false);
+    state.set("net/last_error", std::string());
     // The web UI publishes net/connect when it has saved a network (runs on the UI loop's bus dispatch).
     bus.subscribe("net/connect", [](const std::string &, const Value &) {
         if (g_task) xTaskNotify(g_task, kNotifyCredentials | kNotifyScan, eSetBits);

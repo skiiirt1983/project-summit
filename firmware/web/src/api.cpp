@@ -284,6 +284,7 @@ Response WebApi::wifi_get()
     w.begin_object().key("configured_ssid").value(wifi_.ssid());
     w.key("connected").value(state_.get("net/wifi_connected"));
     w.key("ssid").value(str("net/ssid")).key("ip").value(str("net/ip"));
+    w.key("error").value(str("net/last_error"));  // why the last attempt failed, in words ("" when fine)
     w.key("networks").raw(json_array_or_empty(str("net/scan"))).end_object();
     return json(200, w.str());
 }
