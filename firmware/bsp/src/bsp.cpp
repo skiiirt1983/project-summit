@@ -42,6 +42,8 @@ constexpr int kBufLines = 20;
 constexpr ledc_channel_t kLedcChannel = LEDC_CHANNEL_1;
 constexpr ledc_timer_t kLedcTimer = LEDC_TIMER_1;
 
+// Experiment (0.0.2-alpha.9): 30 MHz (about 28 Hz refresh) against the screen flashing; was 40, 58 before.
+constexpr uint32_t kPixelClockMhz = 30;
 esp_lcd_panel_handle_t g_panel = nullptr;
 i2c_master_bus_handle_t g_i2c = nullptr;
 std::atomic<uint32_t> g_frames{0};
@@ -108,7 +110,7 @@ bool panel_init()
     // time; during Wi-Fi / flash / TLS traffic that bandwidth runs short and the panel flashes (blue flashes seen
     // while the web UI loads and while an update downloads). 40 MHz is about 38 Hz and takes a third less
     // bandwidth. EXPERIMENT: if the picture looks wrong, go back to 58.
-    dpi.dpi_clock_freq_mhz = 40;
+    dpi.dpi_clock_freq_mhz = kPixelClockMhz;
     dpi.virtual_channel = 0;
     dpi.pixel_format = LCD_COLOR_PIXEL_FORMAT_RGB565;
     dpi.num_fbs = 1;
@@ -343,4 +345,8 @@ void set_orientation(lv_display_t *display, Orientation o)
 namespace summit::bsp {
 uint32_t frames_rendered() { return g_frames.load(std::memory_order_relaxed); }
 bool i2c_present(uint8_t addr) { return g_i2c && i2c_master_probe(g_i2c, addr, 50) == ESP_OK; }
+}  // namespace summit::bsp
+
+namespace summit::bsp {
+uint32_t pixel_clock_mhz() { return kPixelClockMhz; }
 }  // namespace summit::bsp
