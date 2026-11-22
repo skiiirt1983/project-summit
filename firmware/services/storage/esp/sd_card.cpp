@@ -62,12 +62,15 @@ void task(void *)
             mounted = true;
             failures = 0;
         } else if (!mounted) {
-            if (failures == 0) ESP_LOGW(TAG, "no SD card (checking again every few seconds, then every minute)");
+            if (failures == 0) ESP_LOGW(TAG, "no SD card (checking again a few times, then every 5 minutes)");
             if (failures < 100) ++failures;
         }
         g_storage->set_present(mounted);
         publish_storage_state(*g_storage, *g_state);
-        const uint32_t wait_ms = mounted || failures < 3 ? kPollMs : (failures < 6 ? 15000u : 60000u);
+        // No card is the normal case here. Every failed mount touches the SDMMC controller that the Wi-Fi link to the
+        // C6 also uses, and a crash in the link's sdio_read task has been seen under load, so after the first few
+        // tries a missing card is only looked for every 5 minutes (while a card is mounted, kPollMs as before).
+        const uint32_t wait_ms = mounted || failures < 3 ? kPollMs : 300000u;
         vTaskDelay(pdMS_TO_TICKS(wait_ms));
     }
 }
