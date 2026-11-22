@@ -37,3 +37,4 @@ Code here compiles in CI but has never run on the device. Do not treat it as wor
 | RTC memory snapshot across deep sleep | `encode_snapshot` / `decode_snapshot` host-tested; RTC memory storage untested | Sleep with 8 timers, wake, compare; pull the battery and confirm the stale blob is ignored |
 
 | Health gate on a real update | Probes wired (UI tick, panel strips drawn, touch, I2C 0x5d/0x18/0x40). Install an update; expect "new image confirmed" about 10 s after boot and no rollback. | not yet tested |
+| Log survives restarts | Last 16 KB of log kept in noinit RAM; shown at the top of the web Log tab after a crash/rollback/restart ("log from before the last restart"). Lost on power cut (no spare partition; SD copy possible later). | not yet tested |
