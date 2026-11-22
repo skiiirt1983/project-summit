@@ -327,6 +327,7 @@ void Shell::build_quick_settings()
     lv_obj_add_flag(notice_row_, LV_OBJ_FLAG_HIDDEN);
     for (lv_obj_t *o : {brightness_, volume_}) {
         lv_obj_add_event_cb(o, sheet_event_cb, LV_EVENT_RELEASED, this);  // persist once, on release
+        lv_obj_add_event_cb(o, sheet_event_cb, LV_EVENT_VALUE_CHANGED, this);  // live value while dragging
         lv_obj_set_style_bg_color(o, lv_color_hex(kAccent), LV_PART_INDICATOR);
         lv_obj_set_style_bg_color(o, lv_color_hex(kAccent), LV_PART_KNOB);
     }
@@ -902,9 +903,12 @@ void Shell::sheet_event_cb(lv_event_t *e)
     } else if (t == self->sheet_ && code == LV_EVENT_GESTURE) {
         if (lv_indev_get_gesture_dir(lv_indev_active()) == LV_DIR_TOP) self->close_quick_settings();
     } else if (t == self->brightness_) {
-        self->d_.settings.set("display/brightness", int64_t{lv_slider_get_value(t)});
+        // While dragging the value goes out live (not saved); the finger lifting saves it once.
+        if (code == LV_EVENT_VALUE_CHANGED) self->d_.bus.publish("ui/brightness_live", int64_t{lv_slider_get_value(t)});
+        else self->d_.settings.set("display/brightness", int64_t{lv_slider_get_value(t)});
     } else if (t == self->volume_) {
-        self->d_.settings.set("audio/volume", int64_t{lv_slider_get_value(t)});
+        if (code == LV_EVENT_VALUE_CHANGED) self->d_.bus.publish("ui/volume_live", int64_t{lv_slider_get_value(t)});
+        else self->d_.settings.set("audio/volume", int64_t{lv_slider_get_value(t)});
     } else if (t == self->rotation_buttons_) {
         uint32_t i = lv_buttonmatrix_get_selected_button(t);
         if (i < 3) {

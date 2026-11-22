@@ -198,11 +198,21 @@ bool trans_done_cb(esp_lcd_panel_handle_t, esp_lcd_dpi_panel_event_data_t *, voi
 void touch_read_cb(lv_indev_t *, lv_indev_data_t *data)
 {
     static bool was_down = false;
+    static bool armed = false;  // a touch only counts after the screen has been seen released once
     static int logged = 0;
     uint16_t x[1], y[1];
     uint8_t n = 0;
     esp_lcd_touch_read_data(g_touch);
     if (esp_lcd_touch_get_coordinates(g_touch, x, y, nullptr, &n, 1) && n > 0) {
+        if (!armed) {  // "pressed" from the very first read: stuck or phantom, not a finger. Wait for a release.
+            static bool said = false;
+            if (!said) {
+                said = true;
+                ESP_LOGW(TAG, "touch reported pressed before any release (x=%d y=%d): ignored until released", x[0], y[0]);
+            }
+            data->state = LV_INDEV_STATE_RELEASED;
+            return;
+        }
         data->point.x = x[0];
         data->point.y = y[0];
         data->state = LV_INDEV_STATE_PRESSED;
@@ -213,6 +223,8 @@ void touch_read_cb(lv_indev_t *, lv_indev_data_t *data)
         was_down = true;
     } else {
         data->state = LV_INDEV_STATE_RELEASED;
+        armed = true;
+        if (was_down && logged < 40) ESP_LOGI(TAG, "touch up (t=%u ms)", static_cast<unsigned>(tick_ms()));
         was_down = false;
     }
 }

@@ -141,9 +141,11 @@ extern "C" void app_main(void)
         return i ? static_cast<int>(*i) : fallback;
     };
     const int start_brightness = brightness_of(settings.get("display/brightness"), 80);
-    bus.subscribe("settings/display/brightness", [brightness_of](const std::string &, const summit::Value &v) {
+    auto apply_brightness = [brightness_of](const std::string &, const summit::Value &v) {
         summit::bsp::set_brightness(brightness_of(v, 80));
-    });
+    };
+    bus.subscribe("settings/display/brightness", apply_brightness);  // saved value (web UI, release)
+    bus.subscribe("ui/brightness_live", apply_brightness);           // while the slider is dragged
     sim::publish_placeholders(state);                              // fake time, weather, battery... (placeholders)
     static summit::shell::Shell shell(
         summit::shell::Shell::Deps{bus, state, settings, registry, host, &modules},

@@ -307,6 +307,8 @@ The state store and event bus are the public API between services, panels and th
 | `diag/warnings` | string: newline-separated warnings, e.g. a missing add-on; empty = none | health gate (add-on checks) | web UI diagnostics |
 | `system/settings_notice` | string; empty = none | boot (`app_main`), shell (clears after reset) | shell (toast + quick settings), web UI |
 | `notify/toast` | event: string | any service or panel | shell (toast) |
+| `ui/brightness_live` | event: int 0–100, the brightness slider while it is being dragged (not saved; the setting is saved when the finger lifts) | shell (quick settings) | display driver (backlight) |
+| `ui/volume_live` | event: int 0–100, the volume slider while it is being dragged (not saved) | shell (quick settings) | audio driver (not written yet) |
 | `notify/toast_link` | event: string "<screen id>\n<text>"; tapping the toast opens that screen, e.g. `recipes/open/<id>` | recipe web API (after a URL import) | shell (toast) |
 | `ui/open_request` | string: the screen the shell was asked to open by a tapped toast; the target panel clears it when it takes it | shell | the target panel (read when it is shown) |
 | `notify/toast_critical` | event: string | alarm, power service | shell (toast, shown even in full-screen) |
