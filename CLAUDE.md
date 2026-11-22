@@ -32,3 +32,42 @@ Private alpha repo `project-summit`; public release at 1.0 as `slopeform-home`. 
 - Small steps. Stop after each step and show what changed.
 - Host-side tests for all pure logic (as LyricFlash does in `tests/`).
 - Paul prefers concise, direct updates.
+
+## Current state and handoff (updated 2026-11-22)
+Read this section first when taking over. Phase 1 (real hardware) is under way; Paul flashes builds and pastes results. The repo is public.
+
+### Working agreements with Paul
+- Paul has a limited daily allowance: commit and push after every small step, keep `docs/KICKOFF.md`, `docs/OPEN_QUESTIONS.md` and `docs/HARDWARE_TODO.md` current, never leave the tree red or uncommitted.
+- Standing permission: do the GitHub work yourself (open PR, subscribe, merge when CI is green, dispatch the release workflow). After each merged PR restart the dev branch: `git fetch && git checkout -B claude/admiring-tesla-1y0clg origin/main`.
+- Paul flashes and reports back (the LyricFlash way); he has no git. USB flash: CI artifact `summit-firmware-rev3-<sha>` contains `summit-<ver>-rev3-full.bin` (write at 0x0). Over-the-air: `-ota.bin` via the catalog. CI builds are version 0.0.1; only the release workflow (Actions > "Release (alpha)", input a new SemVer) builds the real version and publishes to GitHub Pages (`gh-pages`, catalog at https://skiiirt1983.github.io/project-summit/catalog.json). Releases are immutable: always use a new version.
+- Say plainly what was and was not tested on hardware. Do not change two things at once when chasing a hardware bug.
+- Paul wants minimal log pasting: report with the web UI Diagnostics tab or one `diag:` log line (see below). The log from before a restart is kept at the top of the web Log tab.
+- Never put Paul's email or personal details into outside requests.
+
+### What works on the board (confirmed by Paul)
+Display (HX8394 720x1280, 40 MHz pixel clock), GT911 touch (polled, INT/RST not connected), boot screen (media kit, portrait by default), shell with swipe/pull-down motion (25-45 fps), live brightness slider, orientation buttons, Wi-Fi through the ESP32-C6 (esp_hosted over SDIO), SNTP clock, web UI (Wi-Fi settings, Log tab with copy/download, Diagnostics), setup access point `Summit-Setup` / `summit123` (isolated: no IP forwarding/NAPT), update check over TLS from GitHub Pages, update download and install (no more crash), idle CPU low (LVGL ~0-3%).
+
+### Open problems, in priority order
+1. **Update rolled back after ~30 s** (alpha.6 to 0.0.1): the OTA health gate had no real probes. Fixed in PR #28 (probes: UI tick age, panel strips drawn, touch present, I2C 0x5d/0x18/0x40). Release `0.0.2-alpha.7` was flashed by USB; `0.0.2-alpha.8` (same code) was queued to test a real update. NEXT: Paul runs Updates > Check > Install on the device; expect "new image confirmed" about 10 s after boot and an "Updated to 0.0.2-alpha.8" toast. If it still rolls back, read the "log from before the last restart" and the gate warnings.
+2. **Screen flashing** during Wi-Fi traffic and update stages (also blue flashes at restart and when the Log tab loads) is NOT solved. The redundant-invalidate fix and the 40 MHz clock did not cure it. Hypotheses: DPI underrun from memory-bandwidth contention (next experiment, alone: 30 MHz pixel clock in `firmware/bsp/src/bsp.cpp`), SDIO/DMA2D bus contention. Ask Paul for the `diag:` line during a flash.
+3. **C6 co-processor firmware is old** (reports 0.0.0, esp_hosted "version mismatch" warning; streaming SDIO mode is in use, plain mode broke HTTPS). Future: update it over the existing link from the host (esp_hosted slave OTA), no soldering or jumpers (Paul's hard requirement). Needs CI to build the esp_hosted slave for esp32c6, a web UI "Update Wi-Fi chip" button, and Paul's go-ahead. Then restore plain/fast link settings.
+4. **SD card untested.** After the first clean update Paul powers off, inserts a FAT32 card, and reports the `sd_card` log lines; then verify recipes. SD retries every 5 min after 3 failed mounts.
+5. Decisions waiting for Paul (see `docs/OPEN_QUESTIONS.md`): show the neighbouring page while dragging a swipe, plus the remaining defaults listed there.
+6. Minor: scan right after connect gives ESP_ERR_WIFI_STATE (harmless); a 404 on the stable channel should read friendlier; volume slider does nothing (no audio driver yet); battery/USB values are placeholders; timezone is UTC only; PowerService::tick is not called (no sleep yet); the log kept across restarts lives in RAM and is lost on a power cut (a permanent copy could go to the SD card, the partition table cannot change).
+
+### Diagnostics (so Paul does not paste logs)
+`diag/metrics` (state topic, documented in ARCHITECTURE.md) is refreshed every 5 s by the UI loop in `firmware/main/app_main.cpp`: LVGL busy %, peak fps, panel strips/s, worst LVGL pass ms, internal heap and lowest ever, PSRAM free, uptime, pending_verify, reset reason. It shows on the web Diagnostics tab and as one `diag:` log line every 30 s. When you want a new measurement, add a key there and document it rather than asking for full logs. On boot the log also prints "RESTARTED after: ..." and `CRASH DETAILS` (task, pc, ra, sp, mcause, mtval) after a crash; `tools/ci_build.sh` prints addr2line for `tools/crash_addrs.txt`.
+
+### Hardware and build gotchas learned
+- ESP-IDF 5.5.4, LVGL 9.4, esp_hosted 2.13.x, esp_wifi_remote 1.6.x (pinned in `firmware/services/net/esp/idf_component.yml`; a Kconfig shim defines the esp_hosted 3.x manifest symbols).
+- Vendor C macros (`HX8394_*_DPI_CONFIG`, `ESP_LCD_TOUCH_IO_I2C_GT911_CONFIG`) do not compile in C++: set struct fields by hand. The HX8394 driver must skip its own I2C init (`CONFIG_ESP_LCD_HX8394_SKIP_I2C_INIT=y`) or it steals GPIO7/8 from the touch bus.
+- `uint32_t` is `long` on RISC-V: cast to `unsigned` for `%u` (CI uses -Werror=format). RISC-V core dumps have no backtrace array.
+- FreeRTOS tick is 1 ms (`CONFIG_FREERTOS_HZ=1000`); `vTaskDelay(pdMS_TO_TICKS(x))` can round to 0 at coarser ticks and starve the idle task.
+- LVGL: `lv_obj_add_flag/remove_flag(HIDDEN)` and similar invalidate on every call (guard with `ui_motion::set_hidden`); `lv_layer_top()` cannot be un-hidden (use opacity); the DMA2D done callback calls `lv_display_flush_ready`.
+- Internal RAM is tight: LVGL draw buffers are 20 lines in internal DMA RAM, small allocations go to PSRAM (`CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=2048`); low internal heap made the esp_hosted `sdio_read` task abort.
+- The update engine must pick the catalog entry for this chip revision (`Engine::installable`); a version lists both rev1 and rev3 builds.
+- `docs/ARCHITECTURE.md` "State topics" must list every state topic used (contract test `tests/test_state_topics_contract.py`).
+- Host tests: `bash tests/run_tests.sh` (takes a few minutes; run in the background). Simulator: `firmware/sim/README.md`; self-test `summit_sim --selftest`, web e2e `node tests/web/e2e.mjs`.
+
+### Where we are going
+Finish Phase 1 in this order: confirm a clean OTA update (1) then fix flashing (2) then SD card and recipes (4) then C6 firmware update without soldering (3) then audio, accelerometer rotation, battery/charge readings, JPEG decoder for recipe pages and thumbnails, double-tap, deep sleep, INT1 pin check (`docs/HARDWARE_TODO.md`). Then real data panels (weather, calendar, printer client; PrintSphere code only after its licence is confirmed GPL-3.0 compatible), then 1.0 and public release as `slopeform-home`.
