@@ -7,6 +7,7 @@
 
 #include "esp_app_desc.h"
 #include "esp_log.h"
+#include "esp_system.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -60,6 +61,16 @@ extern "C" void app_main(void)
     summit::web::log_capture_start();  // the web UI's Log tab shows everything printed from here on
     const esp_app_desc_t *desc = esp_app_get_description();
     ESP_LOGI(TAG, "Project Summit %s (%s) booting", desc->version, SUMMIT_HARDWARE_ID);
+    {
+        const esp_reset_reason_t rr = esp_reset_reason();
+        const char *why = rr == ESP_RST_POWERON ? "power on" : rr == ESP_RST_SW ? "software restart" :
+                          rr == ESP_RST_PANIC ? "CRASH (panic)" : rr == ESP_RST_INT_WDT ? "interrupt watchdog" :
+                          rr == ESP_RST_TASK_WDT ? "task watchdog" : rr == ESP_RST_WDT ? "other watchdog" :
+                          rr == ESP_RST_BROWNOUT ? "brown-out (power dip)" : rr == ESP_RST_DEEPSLEEP ? "deep sleep wake" :
+                          rr == ESP_RST_EXT ? "reset pin" : "other";
+        if (rr == ESP_RST_POWERON || rr == ESP_RST_SW) ESP_LOGI(TAG, "reset reason: %s (%d)", why, static_cast<int>(rr));
+        else ESP_LOGW(TAG, "RESTARTED after: %s (%d)", why, static_cast<int>(rr));
+    }
 
     // NVS is never erased automatically: on failure settings run read-only on defaults.
     esp_err_t err = nvs_flash_init();

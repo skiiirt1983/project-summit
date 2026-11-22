@@ -182,6 +182,8 @@ private:
     lv_obj_t *toast_label_ = nullptr;
     lv_obj_t *backdrop_ = nullptr;
     lv_obj_t *sheet_ = nullptr;
+    lv_obj_t *wifi_label_ = nullptr;   // quick settings: network name, address, or how to join the setup network
+    std::string wifi_text_;
     lv_obj_t *brightness_ = nullptr;
     lv_obj_t *volume_ = nullptr;
     lv_obj_t *rotation_buttons_ = nullptr;

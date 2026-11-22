@@ -49,6 +49,8 @@ bool mount()
 void task(void *)
 {
     bool mounted = false;
+    int failures = 0;  // consecutive failed mounts. No card in the slot is normal, so the retries back off:
+                       // every failed attempt touches the SDMMC controller that the Wi-Fi link to the C6 also uses.
     for (;;) {
         if (mounted && sdmmc_get_status(g_card) != ESP_OK) {
             ESP_LOGW(TAG, "card removed");
@@ -58,10 +60,15 @@ void task(void *)
         } else if (!mounted && mount()) {
             ESP_LOGI(TAG, "card mounted");
             mounted = true;
+            failures = 0;
+        } else if (!mounted) {
+            if (failures == 0) ESP_LOGW(TAG, "no SD card (checking again every few seconds, then every minute)");
+            if (failures < 100) ++failures;
         }
         g_storage->set_present(mounted);
         publish_storage_state(*g_storage, *g_state);
-        vTaskDelay(pdMS_TO_TICKS(kPollMs));
+        const uint32_t wait_ms = mounted || failures < 3 ? kPollMs : (failures < 6 ? 15000u : 60000u);
+        vTaskDelay(pdMS_TO_TICKS(wait_ms));
     }
 }
 

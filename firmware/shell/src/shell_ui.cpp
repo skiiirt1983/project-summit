@@ -276,6 +276,13 @@ void Shell::build_quick_settings()
         lv_obj_set_style_text_color(l, lv_color_hex(kMuted), 0);
         return r;
     };
+    // Wi-Fi: so the device's address never has to be looked up on the router.
+    wifi_label_ = lv_label_create(row("Wi-Fi"));
+    lv_label_set_long_mode(wifi_label_, LV_LABEL_LONG_MODE_WRAP);
+    lv_obj_set_width(wifi_label_, lv_pct(62));
+    lv_obj_set_style_text_align(wifi_label_, LV_TEXT_ALIGN_RIGHT, 0);
+    lv_obj_set_style_text_color(wifi_label_, lv_color_hex(kText), 0);
+    lv_label_set_text(wifi_label_, "");
     brightness_ = lv_slider_create(row("Brightness"));
     lv_slider_set_range(brightness_, 5, 100);
     volume_ = lv_slider_create(row("Volume"));
@@ -758,6 +765,25 @@ void Shell::sync_quick_settings()
         const int64_t *i = std::get_if<int64_t>(&v);
         return i ? static_cast<int32_t>(*i) : fallback;
     };
+    {
+        auto text = [this](const char *key) {
+            Value v = d_.state.get(key);
+            const std::string *s = std::get_if<std::string>(&v);
+            return s ? *s : std::string();
+        };
+        std::string t;
+        if (state_bool(d_.state, "net/wifi_connected")) {
+            t = text("net/ssid") + "\nhttp://" + text("net/ip");
+        } else if (state_bool(d_.state, "net/ap_active")) {
+            t = "Not connected. Join Wi-Fi \"Summit-Setup\" (password summit123),\nthen open http://192.168.4.1";
+        } else {
+            t = "Not connected";
+        }
+        if (t != wifi_text_) {
+            wifi_text_ = t;
+            lv_label_set_text(wifi_label_, t.c_str());
+        }
+    }
     if (!lv_obj_has_state(brightness_, LV_STATE_PRESSED))
         lv_slider_set_value(brightness_, get_int("display/brightness", 80), LV_ANIM_OFF);
     if (!lv_obj_has_state(volume_, LV_STATE_PRESSED))

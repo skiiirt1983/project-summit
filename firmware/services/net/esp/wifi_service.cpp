@@ -137,14 +137,14 @@ void connect_saved()
     ESP_LOGI(TAG, "connecting to '%s': %s", ssid.c_str(), esp_err_to_name(err));
 }
 
-void scan()
+bool scan()
 {
     wifi_scan_config_t cfg = {};
     cfg.show_hidden = false;
     esp_err_t err = esp_wifi_scan_start(&cfg, true);  // blocks this task, not the UI
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "scan failed: %s", esp_err_to_name(err));
-        return;
+        return false;
     }
     uint16_t n = 0;
     esp_wifi_scan_get_ap_num(&n);
@@ -165,6 +165,7 @@ void scan()
     w.end_array();
     g_state->set("net/scan", w.str());
     ESP_LOGI(TAG, "scan: %u networks", static_cast<unsigned>(n));
+    return true;
 }
 
 // Setup access point. Paul's choice for now (easy set-up, no blocks): a fixed name and a short password.
@@ -187,6 +188,7 @@ void ap_start()
     esp_wifi_set_mode(WIFI_MODE_APSTA);
     esp_err_t err = esp_wifi_set_config(WIFI_IF_AP, &c);
     g_ap_on = err == ESP_OK;
+    g_state->set("net/ap_active", g_ap_on);
     ESP_LOGW(TAG, "SETUP WI-FI: join '%s' (password '%s'), then open http://192.168.4.1  (%s)", kApSsid, kApPassword,
              esp_err_to_name(err));
 }
@@ -196,6 +198,7 @@ void ap_stop()
     if (!g_ap_on) return;
     esp_wifi_set_mode(WIFI_MODE_STA);
     g_ap_on = false;
+    g_state->set("net/ap_active", false);
     ESP_LOGI(TAG, "setup access point off");
 }
 
@@ -220,6 +223,8 @@ void task(void *)
     const bool have_network = !nvs_read("ssid", 33).empty();
     int64_t down_since = esp_timer_get_time() / 1000;
     int64_t last_scan = -kScanEveryDownMs;
+    // Scan first: a scan cannot run while a connection attempt is in progress (it fails with ESP_ERR_WIFI_STATE).
+    if (scan()) last_scan = esp_timer_get_time() / 1000;
     connect_saved();
     if (!have_network) ap_start();
     for (;;) {
@@ -243,8 +248,7 @@ void task(void *)
             ap_start();  // nothing reachable: let the web UI be reached directly
         }
         if (bits & kNotifyScan || now - last_scan > (g_connected ? kScanEveryUpMs : kScanEveryDownMs)) {
-            last_scan = now;
-            scan();
+            last_scan = scan() ? now : now - (g_connected ? kScanEveryUpMs : kScanEveryDownMs) + 8000;  // failed: again in 8 s
         }
     }
 }
@@ -272,6 +276,7 @@ bool wifi_service_start(EventBus &bus, StateStore &state)
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, on_event, nullptr);
     set_state(false, "", "");
     state.set("net/scan", std::string("[]"));
+    state.set("net/ap_active", false);
     // The web UI publishes net/connect when it has saved a network (runs on the UI loop's bus dispatch).
     bus.subscribe("net/connect", [](const std::string &, const Value &) {
         if (g_task) xTaskNotify(g_task, kNotifyCredentials | kNotifyScan, eSetBits);
