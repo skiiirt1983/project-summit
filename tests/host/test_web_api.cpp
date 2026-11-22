@@ -158,7 +158,7 @@ TEST(firmware_commands_go_through_the_update_engine)
     Rig r;
     r.state.set("update/catalog", std::string(R"([{"version":"0.2.0","installable":true}])"));
     Json f(r.get("/api/firmware").body);
-    CHECK(cJSON_GetArraySize(f.at("catalog")) == 1 && f.s("channel") == "stable");
+    CHECK(cJSON_GetArraySize(f.at("catalog")) == 1 && f.s("channel") == "alpha");
     CHECK(r.post("/api/firmware/check", "{}").status == 202);
     CHECK(r.post("/api/firmware/install", R"({"version":"0.2.0"})").status == 202);
     CHECK(r.post("/api/firmware/install", R"({"version":"0.2.0;rm"})").status == 400);
