@@ -76,11 +76,14 @@ extern "C" void app_main(void)
             if (esp_core_dump_image_check() == ESP_OK) {
                 auto *s = static_cast<esp_core_dump_summary_t *>(calloc(1, sizeof(esp_core_dump_summary_t)));
                 if (s && esp_core_dump_get_summary(s) == ESP_OK) {
-                    ESP_LOGW(TAG, "CRASH DETAILS: task '%s', pc=0x%08x, call depth %u", s->exc_task,
-                             static_cast<unsigned>(s->exc_pc), static_cast<unsigned>(s->exc_bt_info.depth));
-                    for (uint32_t i = 0; i < s->exc_bt_info.depth && i < 16; ++i)
-                        ESP_LOGW(TAG, "CRASH DETAILS: backtrace[%u] = 0x%08x", static_cast<unsigned>(i),
-                                 static_cast<unsigned>(s->exc_bt_info.bt[i]));
+                    // RISC-V has no on-device backtrace: the task, the failing address and the registers are enough to
+                    // find the cause with the build's ELF file (mcause 2 = illegal instruction, 5 = bad load,
+                    // 7 = bad store; mtval is the bad address).
+                    ESP_LOGW(TAG, "CRASH DETAILS: task '%s', pc=0x%08x, ra=0x%08x, sp=0x%08x", s->exc_task,
+                             static_cast<unsigned>(s->exc_pc), static_cast<unsigned>(s->ex_info.ra),
+                             static_cast<unsigned>(s->ex_info.sp));
+                    ESP_LOGW(TAG, "CRASH DETAILS: mcause=%u mtval=0x%08x", static_cast<unsigned>(s->ex_info.mcause),
+                             static_cast<unsigned>(s->ex_info.mtval));
                 } else {
                     ESP_LOGW(TAG, "CRASH DETAILS: the saved crash dump could not be read");
                 }
