@@ -7,10 +7,12 @@
 #include <atomic>
 #include <cstdlib>
 #include <cstring>
+#include <string>
 
 #include "driver/gpio.h"
 #include "driver/i2c_master.h"
 #include "driver/ledc.h"
+#include "esp_cache.h"
 #include "esp_heap_caps.h"
 #include "esp_ldo_regulator.h"
 #include "esp_lcd_hx8394.h"
@@ -47,6 +49,10 @@ constexpr uint32_t kPixelClockMhz = 30;
 esp_lcd_panel_handle_t g_panel = nullptr;
 i2c_master_bus_handle_t g_i2c = nullptr;
 std::atomic<uint32_t> g_frames{0};
+enum FlushMode { kFlushNormal = 0, kFlushCpuCopy = 1, kFlushSkip = 2 };
+std::atomic<int> g_flush_mode{kFlushNormal};
+std::atomic<bool> g_backlight_full{false};
+std::atomic<int> g_brightness{0};
 esp_lcd_touch_handle_t g_touch = nullptr;
 void *g_rotate_buf = nullptr;
 bool g_backlight_ready = false;
@@ -198,6 +204,23 @@ void flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px)
     // The copy into the frame buffer runs by DMA2D; the panel driver calls trans_done_cb when it has finished
     // and only then may LVGL reuse the buffer (flush_ready). Calling it here made the next strip start too
     // early ("previous draw operation is not finished", flicker).
+    const int mode = g_flush_mode.load();
+    if (mode == kFlushSkip) {
+        lv_display_flush_ready(disp);
+        return;
+    }
+    if (mode == kFlushCpuCopy) {
+        void *fb = nullptr;
+        if (esp_lcd_dpi_panel_get_frame_buffer(g_panel, 1, &fb) == ESP_OK && fb) {
+            const size_t w_bytes = static_cast<size_t>(out.x2 - out.x1 + 1) * 2;
+            uint8_t *base = static_cast<uint8_t *>(fb) + (static_cast<size_t>(out.y1) * kHRes + out.x1) * 2;
+            for (int32_t y = 0; y <= out.y2 - out.y1; ++y)
+                memcpy(base + static_cast<size_t>(y) * kHRes * 2, px + static_cast<size_t>(y) * w_bytes, w_bytes);
+            esp_cache_msync(fb, static_cast<size_t>(kHRes) * kVRes * 2, ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_UNALIGNED);
+        }
+        lv_display_flush_ready(disp);
+        return;
+    }
     if (esp_lcd_panel_draw_bitmap(g_panel, out.x1, out.y1, out.x2 + 1, out.y2 + 1, px) != ESP_OK)
         lv_display_flush_ready(disp);  // not started: do not hang LVGL
 }
@@ -331,6 +354,8 @@ void set_brightness(int percent)
     if (!g_backlight_ready) return;
     if (percent < 0) percent = 0;
     if (percent > 100) percent = 100;
+    g_brightness = percent;
+    if (g_backlight_full.load() && percent > 0) percent = 100;
     ledc_set_duty(LEDC_LOW_SPEED_MODE, kLedcChannel, static_cast<uint32_t>(1023 * percent / 100));
     ledc_update_duty(LEDC_LOW_SPEED_MODE, kLedcChannel);
 }
@@ -349,4 +374,19 @@ bool i2c_present(uint8_t addr) { return g_i2c && i2c_master_probe(g_i2c, addr, 5
 
 namespace summit::bsp {
 uint32_t pixel_clock_mhz() { return kPixelClockMhz; }
+}  // namespace summit::bsp
+
+namespace summit::bsp {
+void set_debug_flush(const char *mode)
+{
+    const std::string m = mode ? mode : "";
+    g_flush_mode = m == "skip" ? kFlushSkip : m == "cpu_copy" ? kFlushCpuCopy : kFlushNormal;
+    ESP_LOGI(TAG, "debug flush mode: %s", m.c_str());
+}
+void set_debug_backlight_full(bool full)
+{
+    g_backlight_full = full;
+    set_brightness(g_brightness.load());
+    ESP_LOGI(TAG, "debug backlight: %s", full ? "full (no PWM)" : "pwm");
+}
 }  // namespace summit::bsp
