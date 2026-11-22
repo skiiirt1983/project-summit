@@ -281,7 +281,7 @@ bool wifi_service_start(EventBus &bus, StateStore &state)
     bus.subscribe("net/connect", [](const std::string &, const Value &) {
         if (g_task) xTaskNotify(g_task, kNotifyCredentials | kNotifyScan, eSetBits);
     });
-    xTaskCreate(task, "net", 6144, nullptr, 5, &g_task);
+    xTaskCreate(task, "net", 8192, nullptr, 5, &g_task);
     return true;
 }
 

@@ -6,6 +6,7 @@
 #include <variant>
 
 #include "esp_app_desc.h"
+#include "esp_core_dump.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_timer.h"
@@ -70,6 +71,24 @@ extern "C" void app_main(void)
                           rr == ESP_RST_EXT ? "reset pin" : "other";
         if (rr == ESP_RST_POWERON || rr == ESP_RST_SW) ESP_LOGI(TAG, "reset reason: %s (%d)", why, static_cast<int>(rr));
         else ESP_LOGW(TAG, "RESTARTED after: %s (%d)", why, static_cast<int>(rr));
+        // After a crash the core dump in flash names the task and the code address that failed: paste these lines.
+        if (rr == ESP_RST_PANIC || rr == ESP_RST_INT_WDT || rr == ESP_RST_TASK_WDT || rr == ESP_RST_WDT) {
+            if (esp_core_dump_image_check() == ESP_OK) {
+                auto *s = static_cast<esp_core_dump_summary_t *>(calloc(1, sizeof(esp_core_dump_summary_t)));
+                if (s && esp_core_dump_get_summary(s) == ESP_OK) {
+                    ESP_LOGW(TAG, "CRASH DETAILS: task '%s', pc=0x%08x, call depth %u", s->exc_task,
+                             static_cast<unsigned>(s->exc_pc), static_cast<unsigned>(s->exc_bt_info.depth));
+                    for (uint32_t i = 0; i < s->exc_bt_info.depth && i < 16; ++i)
+                        ESP_LOGW(TAG, "CRASH DETAILS: backtrace[%u] = 0x%08x", static_cast<unsigned>(i),
+                                 static_cast<unsigned>(s->exc_bt_info.bt[i]));
+                } else {
+                    ESP_LOGW(TAG, "CRASH DETAILS: the saved crash dump could not be read");
+                }
+                free(s);
+            } else {
+                ESP_LOGW(TAG, "CRASH DETAILS: no crash dump saved");
+            }
+        }
     }
 
     // NVS is never erased automatically: on failure settings run read-only on defaults.

@@ -84,7 +84,7 @@ Storage &sd_card_start(StateStore &state)
     ldo.ldo_chan_id = kLdoChannel;
     if (sd_pwr_ctrl_new_on_chip_ldo(&ldo, &g_pwr) != ESP_OK) ESP_LOGW(TAG, "SD power LDO not available");
     publish_storage_state(*g_storage, state);
-    xTaskCreate(task, "sd_card", 4096, nullptr, tskIDLE_PRIORITY + 1, nullptr);
+    xTaskCreate(task, "sd_card", 8192, nullptr, tskIDLE_PRIORITY + 1, nullptr);
     return *g_storage;
 }
 
