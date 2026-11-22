@@ -309,7 +309,11 @@ void selftest_boot(App &app)
     splash.set_status("STARTING");
     splash.set_ready();
     uint32_t t0 = g_ms;
-    run_ms(app, 900);
+    run_ms(app, 150);
+    shot(g_hw.w() > g_hw.h() ? "52-landscape-boot-grow-early" : "53-portrait-boot-grow-early");
+    run_ms(app, 250);
+    shot(g_hw.w() > g_hw.h() ? "54-landscape-boot-grow-mid" : "55-portrait-boot-grow-mid");
+    run_ms(app, 500);
     splash.tick(g_ms);
     shot(g_hw.w() > g_hw.h() ? "50-landscape-boot" : "51-portrait-boot");
     EXPECT(splash.active(), "still showing after 0.9 s although start-up is ready");

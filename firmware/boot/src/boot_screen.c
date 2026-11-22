@@ -22,6 +22,7 @@ static lv_timer_t *dot_timer;
 
 static void rot_cb(void *o, int32_t v)   { lv_image_set_rotation(o, v); }
 static void scale_cb(void *o, int32_t v) { lv_image_set_scale(o, v); }
+static void opa_cb(void *o, int32_t v)   { lv_obj_set_style_image_opa(o, (lv_opa_t)v, 0); }
 
 static void dot_tick(lv_timer_t *t)
 {
@@ -43,6 +44,33 @@ static void anim(lv_obj_t *o, lv_anim_exec_xcb_t cb, int32_t a, int32_t b, uint3
     if (back) lv_anim_set_playback_duration(&an, ms / 2);
     lv_anim_set_repeat_count(&an, LV_ANIM_REPEAT_INFINITE);
     lv_anim_set_path_cb(&an, path);
+    lv_anim_start(&an);
+}
+
+/* Slopeform Summit addition: the grow-in from the media kit video. The spark scales up from nothing on
+ * the peak (with a small overshoot) while it fades in and starts to spin; when it has landed it settles
+ * into the pulse below. Rays fade in a little later. */
+#define GROW_MS 550
+#define GROW_FROM_SCALE 8
+
+static void grow_done(lv_anim_t *a)
+{
+    (void)a;
+    if (spark) anim(spark, scale_cb, 215, 297, LOOP_MS, true, lv_anim_path_ease_in_out);
+}
+
+static void one_shot(lv_obj_t *o, lv_anim_exec_xcb_t cb, int32_t a, int32_t b, uint32_t ms, uint32_t delay,
+                     lv_anim_path_cb_t path, lv_anim_completed_cb_t done)
+{
+    lv_anim_t an;
+    lv_anim_init(&an);
+    lv_anim_set_var(&an, o);
+    lv_anim_set_exec_cb(&an, cb);
+    lv_anim_set_values(&an, a, b);
+    lv_anim_set_duration(&an, ms);
+    lv_anim_set_delay(&an, delay);
+    lv_anim_set_path_cb(&an, path);
+    if (done) lv_anim_set_completed_cb(&an, done);
     lv_anim_start(&an);
 }
 
@@ -74,7 +102,13 @@ lv_obj_t *boot_screen_show(void)
     lv_image_set_pivot(spark, boot_spark.header.w / 2, boot_spark.header.h / 2);
     lv_obj_set_pos(spark, lx + SUMMIT_X - (int32_t)boot_spark.header.w / 2, ly + SUMMIT_Y - (int32_t)boot_spark.header.h / 2);
     anim(spark, rot_cb, 0, 900, LOOP_MS, false, lv_anim_path_linear);
-    anim(spark, scale_cb, 215, 297, LOOP_MS, true, lv_anim_path_ease_in_out);  /* 256 = 1.0x */
+    /* Grow in (256 = 1.0x), then the pulse 0.84x..1.16x starts from grow_done(). */
+    lv_image_set_scale(spark, GROW_FROM_SCALE);
+    lv_obj_set_style_image_opa(spark, LV_OPA_TRANSP, 0);
+    one_shot(spark, scale_cb, GROW_FROM_SCALE, 215, GROW_MS, 0, lv_anim_path_overshoot, grow_done);
+    one_shot(spark, opa_cb, LV_OPA_TRANSP, LV_OPA_COVER, GROW_MS / 2, 0, lv_anim_path_ease_out, NULL);
+    lv_obj_set_style_image_opa(rays, LV_OPA_TRANSP, 0);
+    one_shot(rays, opa_cb, LV_OPA_TRANSP, LV_OPA_COVER, GROW_MS, GROW_MS / 3, lv_anim_path_ease_out, NULL);
 
     /* LOADING + three stepping dots */
     lv_obj_t *row = lv_obj_create(scr);
