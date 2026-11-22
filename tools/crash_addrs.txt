@@ -1,0 +1,5 @@
+# Addresses from "CRASH DETAILS" lines on the board (pc, ra). CI prints the function and the code around each
+# one into the job log (tools/ci_build.sh). Seen 2026-11-22: task 'sdio_read', mcause=2 (illegal instruction), twice,
+# the same pc: the crash is deterministic.
+0x4ff2a694
+0x4ff2a64e
