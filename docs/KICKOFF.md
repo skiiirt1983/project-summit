@@ -1,5 +1,7 @@
 # Next steps (handoff — read this first)
 
+**Phase 1 is under way on the real board. The current state, open problems and gotchas are in `CLAUDE.md` ("Current state and handoff"); start there.** The text below is older.
+
 Updated after every merge so a new session can continue (D-009).
 
 - **Phase 0 (steps 1–6): done and merged.** Phase 1 waits for hardware.
