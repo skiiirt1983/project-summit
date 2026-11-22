@@ -14,6 +14,7 @@
 #include "demo_panels.h"
 #include "hardware_id.h"
 #include "nvs_settings_storage.h"
+#include "summit/boot/splash.h"
 #include "summit/bsp/bsp.h"
 #include "summit/event_bus.h"
 #include "summit/modules.h"
@@ -144,6 +145,11 @@ extern "C" void app_main(void)
     }
     if (hw.touch) shell.attach_input(hw.touch);
     else ESP_LOGW(TAG, "no touch controller: the UI is display-only");
+    // Boot screen over the finished shell: at least 2 s, and until start-up is ready (nothing else to
+    // wait for yet; later, Wi-Fi and the first data fetch can set_status() and delay set_ready()).
+    static summit::boot::Splash splash;
+    splash.show(now_ms());
+    splash.set_ready();
     lv_timer_handler();                                // draw the first frame, then light the panel
     summit::bsp::set_brightness(80);
     ESP_LOGI(TAG, "UI running");
@@ -154,6 +160,7 @@ extern "C" void app_main(void)
         bus.dispatch();
         timers.tick(now);
         shell.tick(now);
+        splash.tick(now);
         lv_timer_handler();
         vTaskDelay(1);  // one tick (1 ms at 1000 Hz): lets the idle task run and feed the watchdog
     }

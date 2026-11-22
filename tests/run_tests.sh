@@ -17,7 +17,7 @@ up=firmware/services/update
 wb=firmware/web
 rc=firmware/panels/recipes
 tm=firmware/services/timers
-cxx="${CXX:-g++} -std=c++17 -Wall -Wextra -Werror -pedantic -g -fsanitize=address,undefined -pthread -I$fw/include -I$sh/include -I$up/include -I$wb/include -I$rc/include -I$tm/include -Ifirmware/services/power/include -Ithird_party/cjson -Itests/host"
+cxx="${CXX:-g++} -std=c++17 -Wall -Wextra -Werror -pedantic -g -fsanitize=address,undefined -pthread -I$fw/include -I$sh/include -I$up/include -I$wb/include -I$rc/include -I$tm/include -Ifirmware/services/power/include -Ifirmware/boot/include -Ithird_party/cjson -Itests/host"
 srcs="$fw/src/value.cpp $fw/src/event_bus.cpp $fw/src/state_store.cpp $fw/src/settings.cpp $fw/src/registry.cpp $fw/src/system_settings.cpp $fw/src/json_writer.cpp $fw/src/modules.cpp $fw/src/storage.cpp"
 shell_srcs="$sh/src/layout.cpp $sh/src/glance.cpp $sh/src/strip_state.cpp $sh/src/rotation.cpp $sh/src/pager.cpp $sh/src/motion.cpp"
 update_srcs="$up/src/version.cpp $up/src/catalog.cpp $up/src/preflight.cpp $up/src/image_check.cpp $up/src/engine.cpp $up/src/health_gate.cpp $up/src/status_topics.cpp"

@@ -31,6 +31,7 @@
 #include "summit/recipes/module.h"
 #include "summit/recipes/panel.h"
 #include "summit/recipes/store.h"
+#include "summit/boot/splash.h"
 #include "summit/recipes/web_api.h"
 #include "summit/storage.h"
 #include "summit/system_settings.h"
@@ -294,6 +295,31 @@ void selftest_orientation(App &app, const char *tag)
     const bool ev = has_chip(app, "next_event"), wx = has_chip(app, "weather"), pr = has_chip(app, "printer");
     EXPECT((!pr || wx) && (!wx || ev), "drop order printer>weather>next_event violated: %s", list.c_str());
     EXPECT(!has_chip(app, "rotation_lock"), "lock chip hidden while unlocked");
+}
+
+// The boot screen (media kit) over the shell: shown, held for at least 2 s, then the shell is back.
+void selftest_boot(App &app)
+{
+    boot::Splash splash;
+    lv_obj_t *main_screen = lv_screen_active();
+    EXPECT(!splash.active(), "no boot screen yet");
+    splash.show(g_ms);
+    EXPECT(splash.active() && lv_screen_active() != main_screen, "boot screen is the active screen");
+    EXPECT(lv_obj_get_style_opa(lv_layer_top(), LV_PART_MAIN) == LV_OPA_TRANSP, "the shell's strip is hidden behind it");
+    splash.set_status("STARTING");
+    splash.set_ready();
+    uint32_t t0 = g_ms;
+    run_ms(app, 900);
+    splash.tick(g_ms);
+    shot(g_hw.w() > g_hw.h() ? "50-landscape-boot" : "51-portrait-boot");
+    EXPECT(splash.active(), "still showing after 0.9 s although start-up is ready");
+    run_ms(app, 1000);
+    run_ms(app, 200);
+    const bool ended = !splash.active() || splash.tick(g_ms);
+    EXPECT(ended && g_ms - t0 >= boot::kSplashMinMs, "boot screen ends after the 2 s minimum");
+    EXPECT(lv_screen_active() == main_screen && lv_obj_get_style_opa(lv_layer_top(), LV_PART_MAIN) == LV_OPA_COVER,
+           "the shell's screen and strip are back");
+    run_ms(app, 100);
 }
 
 void selftest(App &app)
@@ -945,6 +971,7 @@ void selftest(App &app)
     run_ms(app, 200);
     EXPECT(g_hw.w() == 720 && g_hw.h() == 1280, "rotated after debounce");
     run_ms(app, 400);  // morph
+    selftest_boot(app);
     selftest_orientation(app, "portrait");
     shot("06-portrait-home");
 

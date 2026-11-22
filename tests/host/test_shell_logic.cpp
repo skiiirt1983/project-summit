@@ -5,6 +5,7 @@
 
 #include "check.h"
 #include "summit/registry.h"
+#include "summit/boot/splash_timer.h"
 #include "summit/shell/glance.h"
 #include "summit/shell/layout.h"
 #include "summit/shell/pager.h"
@@ -287,6 +288,23 @@ TEST(motion_rubber_band_settle_and_dots)
     CHECK(kSheetOutMs < kSheetInMs && kScreenOutMs < kScreenInMs && kPressMs < kReleaseMs);
 }
 
+TEST(splash_timer_min_time_and_ready)
+{
+    using summit::boot::SplashTimer;
+    using summit::boot::kSplashMinMs;
+    SplashTimer t;
+    CHECK(!t.done(100000));                       // never started
+    t.start(1000);
+    CHECK(!t.done(1000 + kSplashMinMs + 5000));   // not ready: keeps showing however long it takes
+    t.set_ready();
+    CHECK(!t.done(1000 + kSplashMinMs - 1));      // ready early: still held to the minimum
+    CHECK(t.done(1000 + kSplashMinMs));
+    SplashTimer w;                                // millisecond counter wrapping
+    w.start(0xFFFFFF00u);
+    w.set_ready();
+    CHECK(!w.done(0xFFFFFF00u + 1000) && w.done(0xFFFFFF00u + kSplashMinMs));
+}
+
 int main()
 {
     RUN(tokens_are_6_percent_of_short_side_and_orientation_independent);
@@ -299,6 +317,7 @@ int main()
     RUN(toasts_wait_while_hidden_and_expire_after_10_min);
     RUN(critical_toasts_show_immediately_even_when_hidden);
     RUN(link_toast_keeps_its_action);
+    RUN(splash_timer_min_time_and_ready);
     RUN(motion_rubber_band_settle_and_dots);
     RUN(page_order_home_first_then_setting_then_rest);
     RUN(rotation_debounces_400ms);
