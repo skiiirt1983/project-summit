@@ -288,6 +288,19 @@ TEST(motion_rubber_band_settle_and_dots)
     CHECK(kSheetOutMs < kSheetInMs && kScreenOutMs < kScreenInMs && kPressMs < kReleaseMs);
 }
 
+TEST(startup_wait_wifi_then_clock_with_limits)
+{
+    using summit::boot::startup_wait;
+    using summit::boot::StartupWait;
+    CHECK(startup_wait(false, false, false, 1000) == StartupWait::Wifi);
+    CHECK(startup_wait(true, false, false, 1000) == StartupWait::Clock);
+    CHECK(startup_wait(true, true, false, 1000) == StartupWait::Done);
+    CHECK(startup_wait(false, false, true, 1000) == StartupWait::Done);        // setup AP: nothing to wait for
+    CHECK(startup_wait(false, false, false, 19999) == StartupWait::Wifi);
+    CHECK(startup_wait(false, false, false, 20000) == StartupWait::Done);      // never stuck on the boot screen
+    CHECK(startup_wait(true, false, false, 20000) == StartupWait::Done);
+}
+
 TEST(splash_timer_min_time_and_ready)
 {
     using summit::boot::SplashTimer;
@@ -317,6 +330,7 @@ int main()
     RUN(toasts_wait_while_hidden_and_expire_after_10_min);
     RUN(critical_toasts_show_immediately_even_when_hidden);
     RUN(link_toast_keeps_its_action);
+    RUN(startup_wait_wifi_then_clock_with_limits);
     RUN(splash_timer_min_time_and_ready);
     RUN(motion_rubber_band_settle_and_dots);
     RUN(page_order_home_first_then_setting_then_rest);
