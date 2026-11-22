@@ -273,10 +273,10 @@ extern "C" void app_main(void)
                      "lvgl_busy_pct=%u\nfps_peak_5s=%u\npanel_strips_per_s_peak=%u\nworst_lvgl_pass_ms=%u\n"
                      "heap_internal_kb=%u\nheap_internal_lowest_kb=%u\npsram_free_kb=%u\nui_pixel_clock_mhz=40\n"
                      "uptime_s=%u\npending_verify=%s\nreset=%s\n",
-                     100u - lv_timer_get_idle(), fps_peak, strips_peak, worst_ms,
+                     (unsigned)(100u - lv_timer_get_idle()), (unsigned)fps_peak, (unsigned)strips_peak, (unsigned)worst_ms,
                      static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
                      static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL) / 1024),
-                     static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024), now / 1000,
+                     static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024), (unsigned)(now / 1000),
                      summit::update::ota_pending_verify() ? "yes" : "no", reset_name);
             state.set("diag/metrics", std::string(m));
             fps_peak = strips_peak = worst_ms = 0;
