@@ -16,7 +16,12 @@ public:
 private:
     const esp_partition_t *target_ = nullptr;
     esp_ota_handle_t handle_ = 0;
-    bool open_ = false;
+    bool open_ = false, flash_open_ = false;
+    // The whole image is collected in PSRAM while it downloads and written to flash in one burst at the end, so the
+    // display only suffers flash stalls for those few seconds. Null = streaming fallback (no buffer available).
+    uint8_t *buf_ = nullptr;
+    size_t buf_len_ = 0, buf_size_ = 0;
+    bool open_flash(std::string *error);
 };
 
 class MbedSha256 : public Hasher {
