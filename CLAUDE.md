@@ -71,3 +71,5 @@ Display (HX8394 720x1280, 40 MHz pixel clock), GT911 touch (polled, INT/RST not 
 
 ### Where we are going
 Finish Phase 1 in this order: confirm a clean OTA update (1) then fix flashing (2) then SD card and recipes (4) then C6 firmware update without soldering (3) then audio, accelerometer rotation, battery/charge readings, JPEG decoder for recipe pages and thumbnails, double-tap, deep sleep, INT1 pin check (`docs/HARDWARE_TODO.md`). Then real data panels (weather, calendar, printer client; PrintSphere code only after its licence is confirmed GPL-3.0 compatible), then 1.0 and public release as `slopeform-home`.
+
+Agreed with Paul (2026-11-23), in this order before 1.0: the **recipe card redesign** (`docs/RECIPE_CARD.md`: bigger centred title, card photo chosen from images pulled out of the recipe, description text, title-only fallback; same card size), then the **firmware polish** he parked for last (list in `docs/KICKOFF.md`, item 8). Day-to-day, the alpha path is: PR, CI green, merge, dispatch the release workflow with a new version.
