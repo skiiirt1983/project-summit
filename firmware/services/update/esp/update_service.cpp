@@ -193,13 +193,13 @@ void do_check()
     ESP_LOGI(TAG, "check: %s %s", stage_name(g->engine->status().stage), g->engine->status().error.c_str());
 }
 
-// update/write_display: "lit" keeps the Writing screen on during the flash write (needs flash auto suspend to keep the
-// panel fed); "pulse" switches the panel off during the stalls and lights it between slices.
+// update/write_display: "pulse" (default) switches the panel off during the flash stalls and lights it between slices;
+// "lit" keeps the Writing screen on during the write and glitches (flash auto suspend crashed the boot on this board).
 bool write_display_pulse()
 {
     const Value v = g->settings->get("update/write_display");
     const std::string *s = std::get_if<std::string>(&v);
-    return s && *s == "pulse";
+    return !(s && *s == "lit");  // pulse unless explicitly set to lit
 }
 
 void do_install(const std::string &version)
