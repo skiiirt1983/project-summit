@@ -30,10 +30,13 @@ SettingsSchema system_settings_schema()
                    "(the screen freezes; if it still flashes, drawing is not the cause)."),
         SettingDef("debug/backlight", std::string("pwm"), {"pwm", "full"}, "Debug: backlight",
                    "pwm = brightness slider (PWM). full = constant full brightness, no PWM (slider ignored)."),
-        // Additive key (no version bump). Flash auto suspend experiment (0.0.2-alpha.24).
-        SettingDef("update/write_display", std::string("lit"), {"lit", "pulse"}, "Screen while an update is written",
-                   "lit = the Writing screen stays on (needs flash auto suspend to work on this device). "
-                   "pulse = the screen is switched off during the flash writes and lit briefly between them."),
+        // Additive key (no version bump), released in alpha.24/25 and so never removed. Flash auto suspend was tried
+        // for a lit install screen and made the firmware panic at boot on this board (CONFIG_SPI_FLASH_AUTO_SUSPEND
+        // must stay off): the default is therefore pulse.
+        SettingDef("update/write_display", std::string("pulse"), {"pulse", "lit"}, "Screen while an update is written",
+                   "pulse = the screen is switched off during the flash writes and lit briefly between them with the "
+                   "progress (default; the flash writes glitch a lit screen). lit = keep the screen on while writing: "
+                   "expect glitching."),
     };
     // v1 is the first schema: no migrations yet. Add {from, apply} per version bump.
     s.migrations = {};
