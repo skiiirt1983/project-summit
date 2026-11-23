@@ -6,7 +6,11 @@
 #include <string>
 #include <variant>
 
+#include <cstdio>
+
 #include "esp_app_desc.h"
+#include "esp_flash.h"
+#include "esp_ota_ops.h"
 #include "esp_core_dump.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -229,6 +233,27 @@ extern "C" void app_main(void)
     bus.subscribe("settings/display/brightness", apply_brightness);  // saved value (web UI, release)
     bus.subscribe("ui/brightness_live", apply_brightness);           // while the slider is dragged
     sim::publish_placeholders(state, false);                              // fake time, weather, battery... (placeholders)
+    // The placeholders above also contain fake device facts (version "0.0.1", hardware id, previous version): put the
+    // real ones back (they showed on the Updates screen, quick settings and web UI until alpha.27).
+    state.set("system/firmware_version", std::string(desc->version));
+    state.set("system/hardware_id", std::string(SUMMIT_HARDWARE_ID));
+    summit::update::update_service_republish_facts();
+    {
+        char sha[9] = {};
+        esp_app_get_elf_sha256(sha, sizeof(sha));  // first 8 hex digits of the image hash
+        const esp_partition_t *running = esp_ota_get_running_partition();
+        // The flash chip's JEDEC id and size: tells whether it can do flash auto suspend (which crashed the boot in
+        // alpha.24/25), without anyone having to read a log.
+        uint32_t flash_id = 0, flash_size = 0;
+        const bool id_ok = esp_flash_read_id(nullptr, &flash_id) == ESP_OK;
+        esp_flash_get_size(nullptr, &flash_size);
+        char flash_text[48];
+        snprintf(flash_text, sizeof(flash_text), "Flash %s%06x, %u MB", id_ok ? "id " : "id unreadable ",
+                 id_ok ? static_cast<unsigned>(flash_id) : 0u, static_cast<unsigned>(flash_size >> 20));
+        ESP_LOGI(TAG, "%s", flash_text);
+        state.set("system/build_info", std::string(desc->date) + " " + desc->time + "\n" +
+                                           (running ? running->label : "?") + "  " + sha + "\n" + flash_text);
+    }
     static summit::shell::Shell shell(
         summit::shell::Shell::Deps{bus, state, settings, registry, host, &modules},
         [](summit::Orientation o) { summit::bsp::set_orientation(hw.display, o); });

@@ -283,6 +283,17 @@ void Shell::build_quick_settings()
         const Value fv = d_.state.get("system/firmware_version");
         const std::string *fvs = std::get_if<std::string>(&fv);
         lv_label_set_text(version_label, fvs && !fvs->empty() ? fvs->c_str() : "unknown");
+        // Build date and time, the slot it runs from and the image hash: enough to tell two builds apart.
+        const Value bv = d_.state.get("system/build_info");
+        const std::string *bvs = std::get_if<std::string>(&bv);
+        if (bvs && !bvs->empty()) {
+            lv_obj_t *build_label = lv_label_create(row("Build"));
+            lv_label_set_long_mode(build_label, LV_LABEL_LONG_MODE_WRAP);
+            lv_obj_set_width(build_label, lv_pct(62));
+            lv_obj_set_style_text_align(build_label, LV_TEXT_ALIGN_RIGHT, 0);
+            lv_obj_set_style_text_color(build_label, lv_color_hex(kText), 0);
+            lv_label_set_text(build_label, bvs->c_str());
+        }
     }
     // Wi-Fi: so the device's address never has to be looked up on the router.
     wifi_label_ = lv_label_create(row("Wi-Fi"));
