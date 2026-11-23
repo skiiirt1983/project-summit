@@ -24,14 +24,32 @@ to fill), the title (`text_m`), and a small muted line ("Steps + N pages  #tags"
    | no | yes | title, then the **description** text |
    | no | no | the **title alone, centred in the whole card, as big as will fit** |
 
-## Questions for Paul (answers needed before building)
-1. Photo **and** description both exist: photo wins ("photo underneath by default")? Or a per-recipe choice in the web UI
-   ("show: photo / description")? Proposed: photo wins, with that choice available.
-2. Description length: a limit (for example 140 characters) and how many lines may show on the card?
-3. The "has pages" (book mode) badge and the tags disappear from the card. Tags stay for the library filter chips; is any
-   small indicator for "has page images" still wanted?
-4. Photo crop: fill the area and crop (as the thumbnail does now), or fit the whole image?
-5. Title-only card: wrap long titles over several lines, and shrink to fit?
+## Paul's answers (2026-11-23), now decisions
+1. **Photo wins** when a recipe has both a photo and a description (no per-recipe switch).
+2. **Description: short, "less is more", not a whole sentence, and in a bigger font than today's small text.** Decided by
+   Claude within that: at most about 60 characters and 2 lines on the card (the web UI box shows a counter and stops there;
+   longer text is kept in the recipe but cut on the card). Paul can change the number.
+3. **Page-count badge:** a small **red circle attached to the card's top-right corner, like a notification badge, showing the
+   number of pages in the recipe** (his sketch has a "3"). Not a speech bubble. Shown only when the recipe has page images.
+   It overlaps the corner (half on the card, half off) so the grid needs a little padding so it is never clipped at the
+   screen edge. The tags and the old "Steps" text are gone from the card.
+4. **Photo: cropped to fill** the area under the title, as in his drawing: a rectangle inside the card with a small margin,
+   **no extra border or frame** (the card keeps its own rounded outline). The thin line in the sketch only marks where the
+   photo goes.
+5. **Title: wrap over several lines and shrink to fit**; with no photo and no description it fills the whole card, centred,
+   as large as it can be.
+
+## Layout (from Paul's sketch)
+```
+   ___________________      (3)  <- red page-count badge on the corner
+  |      TITLE        |
+  |  ___________________  |
+  | |                 | |
+  | |      photo      | |
+  | |_________________| |
+  |___________________|
+```
+Title big, bold, centred at the top; the photo (or the short description) fills the rest of the card; same card size as now.
 
 ## How it can be built (notes, not decisions)
 - **Images:** in the browser while importing a PDF, pdf.js can list the embedded images of each page (operator list) and
