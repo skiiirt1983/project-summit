@@ -290,10 +290,24 @@ void do_install(const std::string &version)
         g->bus->publish("display/blank", false);
     }
     ESP_LOGI(TAG, "install timing: light back on at %u ms", ms());
-    std::lock_guard<std::mutex> lock(g->mu);
-    publish_locked();
-    if (g->engine->status().stage == Stage::ReadyToReboot) {
-        g->bus->publish("notify/toast", std::string("Update ready: restart to finish"));
+    bool restart = false;
+    {
+        std::lock_guard<std::mutex> lock(g->mu);
+        publish_locked();
+        if (g->engine->status().stage == Stage::ReadyToReboot) {
+            const Value ar = g->settings->get("update/auto_restart");
+            const bool *on = std::get_if<bool>(&ar);
+            restart = !on || *on;  // on by default
+            g->state->set("update/restart_pending", restart);
+            g->bus->publish("notify/toast", std::string(restart ? "Update installed: restarting" : "Update ready: restart to finish"));
+        }
+    }
+    if (restart) {
+        // Paul's request (alpha.29: the screen said "restart" and a tap on the X plus a reset left the update unfinished).
+        // A few seconds so the screen can show it; the new image is already selected for the next boot.
+        ESP_LOGI(TAG, "update installed: restarting in 5 s");
+        vTaskDelay(pdMS_TO_TICKS(5000));
+        esp_restart();
     }
 }
 

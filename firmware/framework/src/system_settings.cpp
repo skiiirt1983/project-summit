@@ -30,6 +30,10 @@ SettingsSchema system_settings_schema()
                    "(the screen freezes; if it still flashes, drawing is not the cause)."),
         SettingDef("debug/backlight", std::string("pwm"), {"pwm", "full"}, "Debug: backlight",
                    "pwm = brightness slider (PWM). full = constant full brightness, no PWM (slider ignored)."),
+        // Additive key (no version bump).
+        SettingDef("update/auto_restart", true, {}, "Restart automatically after an update",
+                   "On: the device restarts by itself a few seconds after an update from the Updates screen is installed. "
+                   "Off: press Restart on the Updates screen."),
         // Additive key (no version bump), released in alpha.24/25 and so never removed. Flash auto suspend was tried
         // for a lit install screen and made the firmware panic at boot on this board (CONFIG_SPI_FLASH_AUTO_SUSPEND
         // must stay off): the default is therefore pulse.

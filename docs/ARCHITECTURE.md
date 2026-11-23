@@ -269,6 +269,8 @@ The state store and event bus are the public API between services, panels and th
 | `update/progress_pct` | int 0–100 | update engine | Updates screen, web UI |
 | `update/write_pct` | int 0–100: how much of the image is in flash while the stage is `verifying` ("Writing update"); the screen is lit only between flash stalls | update service | Updates screen |
 | `update/write_display` | setting: string `pulse` (default: panel off during the flash writes, lit briefly between slices with the progress) or `lit` (screen kept on while writing: glitches; flash auto suspend crashed the boot on this board, so it is not an option); additive, no schema bump | settings (web UI) | update service |
+| `update/auto_restart` | setting: bool, default true: restart by itself 5 s after an update from the Updates screen is installed (web uploads still wait for the Restart button); additive, no schema bump | settings (web UI) | update service |
+| `update/restart_pending` | bool: the device is about to restart by itself after an install | update service | Updates screen |
 | `update/error` | string: readable reason (incl. HTTP status, TLS / socket errors) | update engine | Updates screen, web UI |
 | `update/target_version` | string: version being installed | update engine | Updates screen, web UI |
 | `update/available_version` | string; empty = none | update engine | Updates screen, web UI |

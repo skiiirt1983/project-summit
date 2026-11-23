@@ -265,7 +265,12 @@ void UpdatesScreen::tick()
     else if (stage == "available") status = "An update is available.";
     else if (stage == "check_failed") status = "Could not check for updates: " + error;
     else if (stage == "failed") status = "Update failed: " + error;
-    else if (stage == "ready_to_reboot") status = "Update " + str("update/target_version") + " is ready. Restart to finish.";
+    else if (stage == "ready_to_reboot") {
+        Value rp = state_.get("update/restart_pending");
+        const bool restarting = std::get_if<bool>(&rp) && std::get<bool>(rp);
+        status = "Update " + str("update/target_version") +
+                 (restarting ? " is installed. The device restarts by itself in a few seconds." : " is ready. Restart to finish.");
+    }
     else status = "Check for updates to see what's new.";
     set_text(status_, status);
     const lv_color_t status_color = lv_color_hex(stage == "failed" || stage == "check_failed" ? kError : kText);
