@@ -7,7 +7,9 @@
 // still be only the heading: a sentence that starts with the word is not one.
 const HEAD_TAIL = String.raw`(?:\s*[:\-\u2013\u2014]?\s*(?:\([^)]{0,40}\)|(?:serves|servings?|makes|yields?|for)\s*:?\s*\d{1,3}(?:\s*servings?)?|\d{1,3}\s*servings?))?\s*:?`;
 const ING_HEADING = new RegExp(
-  "^(?:ingredients?(?:\\s+list)?|what you(?:['\\u2019]ll|\\s+will)?\\s+need|you(?:['\\u2019]ll|\\s+will)\\s+need|for the [\\w ,'\\u2019-]{1,40})" + HEAD_TAIL + "$", "i");
+  "^(?:ingredients?(?:\\s+list)?|what you(?:['\\u2019]ll|\\s+will)?\\s+need|you(?:['\\u2019]ll|\\s+will)\\s+need)" + HEAD_TAIL + "$", "i");
+// "For the Muffins:", "Optional Icing:": a sub-heading inside the ingredients (not a new recipe, and not an ingredient).
+const SUB_HEADING = /^[^\d:]{2,40}:$/;
 const METHOD_HEADING = new RegExp(
   "^(?:method|directions?|instructions?|cooking instructions?|steps?|preparation(?:\\s+steps?)?|how to make(?: it)?)" + HEAD_TAIL + "$", "i");
 const SERVINGS = /\b(serves|servings|makes|yields?)\s*:?\s*(\d{1,3})\b/i;
@@ -96,10 +98,30 @@ function splitInlineHeadings(lines) {
   return out;
 }
 
+// "Prep Time Cook Time Total Time Servings" followed by "10 minutes 20 minutes 30 minutes 18 muffins" (the table printed web
+// recipes start with) -> "Prep Time: 10 minutes", ..., "Servings: 18 muffins". Left alone when the values do not line up.
+const TABLE_LABEL = /prep(?:aration)? time|cook(?:ing)? time|total time|ready in|active time|servings?|yields?|makes|serves/gi;
+function readTimeTables(lines) {
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const labels = lines[i].match(TABLE_LABEL);
+    if (labels && labels.length >= 2 && lines[i].replace(TABLE_LABEL, "").replace(/[\s|:]+/g, "") === "" && i + 1 < lines.length) {
+      const values = lines[i + 1].match(/\d+(?:[./]\d+)?(?:\s*-\s*\d+)?\s+[A-Za-z]+/g);
+      if (values && values.length === labels.length) {
+        labels.forEach((l, k) => out.push(l.replace(/^./, (c) => c.toUpperCase()) + ": " + values[k]));
+        i++;
+        continue;
+      }
+    }
+    out.push(lines[i]);
+  }
+  return out;
+}
+
 // lines: the document's text lines in reading order. Returns one draft per recipe
 // found (a page can hold several). found=false: no ingredients heading, so no card.
 export function parseRecipeText(inputLines, fallbackTitle = "Recipe") {
-  const lines = splitInlineHeadings(clean(inputLines));
+  const lines = splitInlineHeadings(readTimeTables(clean(inputLines)));
   const heads = [];
   lines.forEach((l, i) => { if (ING_HEADING.test(l)) heads.push(i); });
   if (!heads.length) {
@@ -137,7 +159,7 @@ export function parseRecipeText(inputLines, fallbackTitle = "Recipe") {
     return {
       title: title.slice(0, 120),
       servings: servingsLine ? +servingsLine[2] : 0,
-      ingredients: ingLines.filter((l) => !SERVINGS.test(l)).map(parseIngredient),
+      ingredients: ingLines.filter((l) => !SERVINGS.test(l) && !SUB_HEADING.test(l.replace(BULLET, '').trim())).map(parseIngredient),
       steps: parseSteps(stepLines),
       found: true,
     };
@@ -148,6 +170,8 @@ export function parseRecipeText(inputLines, fallbackTitle = "Recipe") {
 // with Ingredients on the left and Method on the right) is read column by column instead of line by line across them.
 const GAP_PT = 24;           // a horizontal gap this wide inside a row starts a new segment
 const COLUMN_APART_PT = 100; // column starts at least this far apart are columns; closer ones are table cells
+const SPACE_EM = 0.15;  // a gap wider than this (in font sizes) is a space; pieces of one word touch (kerning, "lem"+"on")
+const TABLE_HEAD = /^(?:prep(?:aration)?(?: time)?|cook(?:ing)?(?: time)?|total(?: time)?|ready in|active time|servings?|yields?|makes|serves)$/i;
 export function itemsToLines(items) {
   const rows = [];
   for (const it of items) {
@@ -157,7 +181,7 @@ export function itemsToLines(items) {
     const w = it.width > 0 ? it.width : it.str.length * size * 0.5;
     let row = rows.find((r) => Math.abs(r.y - y) < 3);
     if (!row) { row = { y, parts: [] }; rows.push(row); }
-    row.parts.push({ x, w, str: it.str });
+    row.parts.push({ x, w, size, str: it.str });
   }
   rows.sort((a, b) => b.y - a.y);
   for (const r of rows) {
@@ -165,19 +189,32 @@ export function itemsToLines(items) {
     r.segs = [];
     for (const p of r.parts) {
       const last = r.segs[r.segs.length - 1];
-      if (last && p.x - last.end <= GAP_PT) { last.text += " " + p.str; last.end = p.x + p.w; }
-      else r.segs.push({ x: p.x, end: p.x + p.w, text: p.str });
+      const gap = last ? p.x - last.end : 0;
+      if (last && gap <= GAP_PT) {
+        const space = gap > SPACE_EM * p.size && !/\s$/.test(last.text) && !/^\s/.test(p.str);
+        last.text += (space ? " " : "") + p.str;
+        last.end = p.x + p.w;
+      } else r.segs.push({ x: p.x, end: p.x + p.w, text: p.str });
+    }
+  }
+  // "Prep Time | Cook Time | Total Time | Servings" over "10 minutes | 20 minutes | 30 minutes | 18 muffins" (printed web
+  // recipes): turn each pair into "Servings: 18 muffins" so the servings are found.
+  for (let i = 0; i + 1 < rows.length; i++) {
+    const h = rows[i], v = rows[i + 1];
+    if (h.segs.length >= 2 && h.segs.length === v.segs.length && h.segs.every((g) => TABLE_HEAD.test(g.text.trim()))) {
+      h.segs = [{ x: h.segs[0].x, end: 0, text: h.segs.map((g, k) => g.text.trim() + ": " + v.segs[k].text.trim()).join("  |  ") }];
+      rows.splice(i + 1, 1);
     }
   }
   const clean = (t) => t.replace(/\s+/g, " ").trim();
   const cols = columnStarts(rows);
-  if (cols.length < 2) return rows.map((r) => clean(r.segs.map((g) => g.text).join(" ")));
+  if (cols.length < 2) return rows.flatMap((r) => r.segs.map((g) => g.text).join(" ").split("  |  ").map(clean));
   const colOf = (x) => { let c = 0; for (let i = 0; i < cols.length; i++) if (x >= cols[i] - 10) c = i; return c; };
   const perCol = cols.map(() => []);
   for (const r of rows) {
     const byCol = new Map();
     for (const g of r.segs) { const c = colOf(g.x); byCol.set(c, (byCol.get(c) ? byCol.get(c) + " " : "") + g.text); }
-    for (const [c, t] of byCol) perCol[c].push(clean(t));
+    for (const [c, t] of byCol) perCol[c].push(...t.split("  |  ").map(clean));
   }
   return perCol.flat().filter(Boolean);
 }
