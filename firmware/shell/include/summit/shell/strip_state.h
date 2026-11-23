@@ -52,6 +52,8 @@ public:
     // Returns the toast to show now, or nullptr. `strip_visible` false: only a
     // critical toast is returned (the shell then shows the strip for it).
     const Toast *current(uint32_t now_ms, bool strip_visible);
+    // Drops queued and showing toasts that are not critical (start-up noise hidden behind the boot screen).
+    void clear_non_critical();
     size_t pending() const { return queue_.size(); }
 
 private:

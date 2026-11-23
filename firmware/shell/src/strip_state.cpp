@@ -29,6 +29,12 @@ bool StripVisibility::visible(uint32_t now_ms) const
     return revealed_ && before(now_ms, reveal_until_);
 }
 
+void ToastQueue::clear_non_critical()
+{
+    for (auto it = queue_.begin(); it != queue_.end();) it = it->critical ? it + 1 : queue_.erase(it);
+    showing_ = false;  // a critical one still waiting is shown again from the start
+}
+
 void ToastQueue::push(Toast t, uint32_t now_ms)
 {
     t.queued_ms = now_ms;

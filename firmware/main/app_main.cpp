@@ -246,9 +246,9 @@ extern "C" void app_main(void)
     const bool boot_portrait = !(sensor_o && *sensor_o == "landscape");
     if (hw.touch) lv_indev_enable(hw.touch, false);    // no touch (or phantom touch) during the boot screen
     splash.show(now_ms(), hw.display, boot_portrait);
-    // The boot screen stays until Wi-Fi is connected and the clock is set (or the setup AP is on, or 20 s have passed).
+    // The boot screen covers the start-up work (clock sync, first updates, start-up toasts): at least 5 s, and while a
+    // saved network is being joined until the clock is set (15 s at most). It never waits for Wi-Fi on a new setup.
     const uint32_t splash_start = now_ms();
-    summit::boot::StartupWait last_wait = summit::boot::StartupWait::Done;
     bool splash_ready = false;
     lv_timer_handler();                                // draw the first frame, then light the panel
     summit::bsp::set_brightness(start_brightness);
@@ -277,17 +277,16 @@ extern "C" void app_main(void)
                     const bool *b = std::get_if<bool>(&v);
                     return b && *b;
                 };
-                const auto w = summit::boot::startup_wait(flag("net/wifi_connected"), flag("time/synced"),
-                                                          flag("net/ap_active"), now - splash_start);
-                if (w == summit::boot::StartupWait::Done) {
+                if (summit::boot::startup_done(flag("net/wifi_connected"), flag("time/synced"), flag("net/ap_active"),
+                                               now - splash_start)) {
                     splash.set_ready();
                     splash_ready = true;
-                } else if (w != last_wait) {
-                    last_wait = w;
-                    splash.set_status(w == summit::boot::StartupWait::Wifi ? "CONNECTING WI-FI" : "SETTING THE CLOCK");
                 }
             }
-            if (splash.tick(now) && hw.touch) lv_indev_enable(hw.touch, true);
+            if (splash.tick(now)) {
+                shell.drop_startup_toasts();  // what fired while the boot screen was up (rotation, clock...) is not shown
+                if (hw.touch) lv_indev_enable(hw.touch, true);
+            }
             const bool moving = lv_anim_count_running() > 0 || (hw.touch && lv_indev_get_state(hw.touch) == LV_INDEV_STATE_PRESSED);
             next_services = now + (moving ? 4 : 20);
         }
