@@ -31,7 +31,8 @@ constexpr uint32_t kNotifyCredentials = 1u << 0;  // web UI saved a network: (re
 constexpr uint32_t kNotifyDisconnected = 1u << 1;
 constexpr uint32_t kNotifyScan = 1u << 2;
 constexpr uint32_t kNotifyProbe = 1u << 3;  // web UI: try the Wi-Fi chip update handshake
-constexpr int64_t kApAfterMs = 45 * 1000;      // no connection for this long: bring the setup AP up (Paul's decision, 2026-11-22)
+constexpr int64_t kApAfterMs = 45 * 1000;             // no network saved and no connection for this long: setup AP (Paul, 2026-11-22)
+constexpr int64_t kApAfterSavedMs = 5 * 60 * 1000;    // a saved network is unreachable this long: setup AP (Paul, 2026-11-23: a router restart is shorter)
 constexpr int64_t kScanEveryDownMs = 30 * 1000;
 constexpr int64_t kScanEveryUpMs = 180 * 1000;
 
@@ -292,7 +293,7 @@ void task(void *)
         if (g_connected) {
             down_since = now;
             if (g_ap_on) ap_stop();
-        } else if (now - down_since > kApAfterMs) {
+        } else if (now - down_since > (nvs_read("ssid", 33).empty() ? kApAfterMs : kApAfterSavedMs)) {
             ap_start();  // nothing reachable: let the web UI be reached directly
         }
         if (!wait && (bits & kNotifyScan || now - last_scan > (g_connected ? kScanEveryUpMs : kScanEveryDownMs))) {

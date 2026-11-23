@@ -3,7 +3,7 @@
 // and, once the clock has synced over the network (SNTP, UTC for now): time/synced, time/unix, time/now_text,
 // time/date_text.
 // The web UI saves credentials in NVS namespace "wifi" (keys ssid, pass) and publishes net/connect.
-// With no network saved, or none reachable for about 45 s, it also runs a setup access point
+// With no network saved (at once), or a saved network unreachable for 5 minutes, it also runs a setup access point
 // ("Summit-Setup", WPA2, password "summit123": Paul's choice for now) so the web UI can be reached at
 // http://192.168.4.1 to enter the home network. It is isolated: nothing is forwarded to the home network.
 #pragma once
