@@ -13,7 +13,7 @@ const METHOD_HEADING = new RegExp(
 const SERVINGS = /\b(serves|servings|makes|yields?)\s*:?\s*(\d{1,3})\b/i;
 const FOOTER = /^(-\s*\d+\s*-|page\s+\d+(\s+of\s+\d+)?|\d+)$/i;
 const NUMBERED = /^(?:step\s+)?(\d{1,2})\s*[.):]\s+/i;
-const BULLET = /^[•‣◦⁃∙*\-–]\s+/;
+const BULLET = /^[•‣◦⁃∙*\-–\uF0B7\uF0A7\uF076\uF0D8\u25AA\u25CF\u2022]\s*/;  // incl. the private-use bullets Word exports
 
 const VULGAR = { "½": 0.5, "¼": 0.25, "¾": 0.75, "⅓": 1 / 3, "⅔": 2 / 3, "⅛": 0.125 };
 const UNITS = {
@@ -83,10 +83,23 @@ function clean(lines) {
   return lines.map((l) => l.replace(/\s+/g, " ").trim()).filter((l) => l && !FOOTER.test(l));
 }
 
+// "Ingredients 2 slices bread, butter" -> "Ingredients" and "2 slices bread, butter". Only when what follows starts with a
+// quantity: "Ingredients are cheap" is a sentence, not a heading.
+function splitInlineHeadings(lines) {
+  const out = [];
+  for (const l of lines) {
+    if (ING_HEADING.test(l)) { out.push(l); continue; }  // already a whole heading ("Ingredients - 4 servings")
+    const m = l.match(/^(ingredients?)\s*[:\-\u2013\u2014]?\s+((?:\d|[\u00BD\u00BC\u00BE\u2153\u2154\u215B]).*)$/i);
+    if (m) out.push(m[1], m[2]);
+    else out.push(l);
+  }
+  return out;
+}
+
 // lines: the document's text lines in reading order. Returns one draft per recipe
 // found (a page can hold several). found=false: no ingredients heading, so no card.
 export function parseRecipeText(inputLines, fallbackTitle = "Recipe") {
-  const lines = clean(inputLines);
+  const lines = splitInlineHeadings(clean(inputLines));
   const heads = [];
   lines.forEach((l, i) => { if (ING_HEADING.test(l)) heads.push(i); });
   if (!heads.length) {
@@ -131,18 +144,58 @@ export function parseRecipeText(inputLines, fallbackTitle = "Recipe") {
   });
 }
 
-// pdf.js text items of one page -> lines, top to bottom, left to right.
+// pdf.js text items of one page -> lines, top to bottom, left to right. A page laid out in two or more columns (a recipe
+// with Ingredients on the left and Method on the right) is read column by column instead of line by line across them.
+const GAP_PT = 24;           // a horizontal gap this wide inside a row starts a new segment
+const COLUMN_APART_PT = 100; // column starts at least this far apart are columns; closer ones are table cells
 export function itemsToLines(items) {
   const rows = [];
   for (const it of items) {
     if (!it.str || !it.str.trim()) continue;
     const y = it.transform[5], x = it.transform[4];
+    const size = Math.hypot(it.transform[0], it.transform[1]) || 10;
+    const w = it.width > 0 ? it.width : it.str.length * size * 0.5;
     let row = rows.find((r) => Math.abs(r.y - y) < 3);
     if (!row) { row = { y, parts: [] }; rows.push(row); }
-    row.parts.push({ x, str: it.str });
+    row.parts.push({ x, w, str: it.str });
   }
   rows.sort((a, b) => b.y - a.y);
-  return rows.map((r) => r.parts.sort((a, b) => a.x - b.x).map((p) => p.str).join(" ").replace(/\s+/g, " ").trim());
+  for (const r of rows) {
+    r.parts.sort((a, b) => a.x - b.x);
+    r.segs = [];
+    for (const p of r.parts) {
+      const last = r.segs[r.segs.length - 1];
+      if (last && p.x - last.end <= GAP_PT) { last.text += " " + p.str; last.end = p.x + p.w; }
+      else r.segs.push({ x: p.x, end: p.x + p.w, text: p.str });
+    }
+  }
+  const clean = (t) => t.replace(/\s+/g, " ").trim();
+  const cols = columnStarts(rows);
+  if (cols.length < 2) return rows.map((r) => clean(r.segs.map((g) => g.text).join(" ")));
+  const colOf = (x) => { let c = 0; for (let i = 0; i < cols.length; i++) if (x >= cols[i] - 10) c = i; return c; };
+  const perCol = cols.map(() => []);
+  for (const r of rows) {
+    const byCol = new Map();
+    for (const g of r.segs) { const c = colOf(g.x); byCol.set(c, (byCol.get(c) ? byCol.get(c) + " " : "") + g.text); }
+    for (const [c, t] of byCol) perCol[c].push(clean(t));
+  }
+  return perCol.flat().filter(Boolean);
+}
+
+// The x positions where columns start, or [] when the page is a single column. A column is a start position shared by at
+// least 3 segments, and columns must be COLUMN_APART_PT apart (a quantity next to its ingredient is a table, not columns).
+function columnStarts(rows) {
+  const multi = rows.filter((r) => r.segs.length >= 2);
+  if (multi.length < 2) return [];
+  const xs = rows.flatMap((r) => r.segs.map((g) => g.x)).sort((a, b) => a - b);
+  const clusters = [];
+  for (const x of xs) {
+    const c = clusters[clusters.length - 1];
+    if (c && x - c.last <= 10) { c.count++; c.last = x; } else clusters.push({ x, last: x, count: 1 });
+  }
+  const starts = [];
+  for (const c of clusters.filter((k) => k.count >= 3)) if (!starts.length || c.x - starts[starts.length - 1] >= COLUMN_APART_PT) starts.push(c.x);
+  return starts.length >= 2 ? starts : [];
 }
 
 // Edit-screen text areas -> the recipe object the device accepts (recipe.json format 1).

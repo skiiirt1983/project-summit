@@ -49,6 +49,19 @@ std::string LogBuffer::tail(size_t lines) const
     return buf_;
 }
 
+void LogBuffer::prepend(const std::string &older)
+{
+    std::lock_guard<std::mutex> lock(mu_);
+    std::string text = older;
+    if (text.size() + buf_.size() > capacity_) {
+        const size_t room = capacity_ > buf_.size() ? capacity_ - buf_.size() : 0;
+        text = text.size() > room ? text.substr(text.size() - room) : text;
+        const size_t nl = text.find('\n');  // start at a line boundary
+        text = nl == std::string::npos ? std::string() : text.substr(nl + 1);
+    }
+    buf_.insert(0, text);
+}
+
 void LogBuffer::clear()
 {
     std::lock_guard<std::mutex> lock(mu_);
@@ -85,13 +98,6 @@ bool LogApi::handle(const Request &req, Response &out)
         out.content_type = "text/plain; charset=utf-8";
         out.body = lines ? log_.tail(lines) : log_.text();
         if (download) out.filename = "summit-log.txt";
-        return true;
-    }
-    if (req.path == "/api/log/clear" && req.method == "POST") {
-        log_.clear();
-        out.status = 200;
-        out.content_type = "application/json";
-        out.body = "{\"ok\":true}";
         return true;
     }
     return false;

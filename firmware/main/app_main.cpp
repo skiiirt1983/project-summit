@@ -113,6 +113,7 @@ extern "C" void app_main(void)
     summit::SettingsSchema schema = summit::system_settings_schema();
     // microSD card (untested on hardware): publishes storage/sd_present, storage/sd_free_mb.
     static summit::Storage &sd = summit::sd_card_start(state);
+    summit::web::log_mirror_start(sd);  // the log also goes to the card (rolling files), so a reset or power cut keeps it
     static summit::recipes::RecipeStore recipe_store(sd);
     static summit::recipes::RecipeWebApi recipe_api(recipe_store, sd);
     static summit::recipes::HttpsPageFetcher page_fetcher;  // untested on hardware

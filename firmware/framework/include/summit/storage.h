@@ -46,6 +46,15 @@ public:
     virtual std::unique_ptr<StorageWriter> begin_write(const std::string &path) = 0;
     virtual int64_t size(const std::string &path) = 0;  // -1 if not a file
     virtual bool read_chunk(const std::string &path, int64_t offset, size_t max_bytes, std::string &out) = 0;
+    // Appends to a file (created, with parent folders, if missing). The default reads and rewrites the file.
+    virtual bool append(const std::string &path, const std::string &data)
+    {
+        std::string old;
+        if (exists(path) && !read(path, old, 64 * 1024 * 1024)) return false;
+        return write(path, old + data);
+    }
+    // Deletes one file. Never a folder. Default: not supported.
+    virtual bool remove_file(const std::string &) { return false; }
     // Renames a file within the card (parents of `to` created). Fails if `to` exists.
     virtual bool move(const std::string &from, const std::string &to) = 0;
     // Deletes a folder and everything in it. Only ever called for an explicit, confirmed
@@ -72,6 +81,8 @@ public:
     int64_t size(const std::string &path) override;
     bool read_chunk(const std::string &path, int64_t offset, size_t max_bytes, std::string &out) override;
     bool move(const std::string &from, const std::string &to) override;
+    bool append(const std::string &path, const std::string &data) override;
+    bool remove_file(const std::string &path) override;
     bool remove_tree(const std::string &dir) override;
     // Host file name for a card path ("" if invalid), e.g. for LVGL's file system driver.
     std::string host_path(const std::string &path) const;

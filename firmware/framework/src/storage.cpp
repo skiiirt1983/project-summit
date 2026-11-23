@@ -221,6 +221,26 @@ bool PosixStorage::read_chunk(const std::string &path, int64_t offset, size_t ma
     return true;
 }
 
+bool PosixStorage::append(const std::string &path, const std::string &data)
+{
+    const std::string p = host_path(path);
+    if (!present() || p.empty() || path == "/") return false;
+    if (!make_dir(path.substr(0, std::max<size_t>(1, path.rfind('/'))))) return false;
+    FILE *f = fopen(p.c_str(), "ab");
+    if (!f) return false;
+    const bool ok = (data.empty() || fwrite(data.data(), 1, data.size(), f) == data.size()) && fflush(f) == 0;
+    fclose(f);
+    return ok;
+}
+
+bool PosixStorage::remove_file(const std::string &path)
+{
+    const std::string p = host_path(path);
+    struct stat st;
+    if (!present() || p.empty() || stat(p.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) return false;
+    return ::remove(p.c_str()) == 0;
+}
+
 bool PosixStorage::move(const std::string &from, const std::string &to)
 {
     const std::string a = host_path(from), b = host_path(to);

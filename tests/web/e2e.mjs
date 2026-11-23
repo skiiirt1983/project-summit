@@ -198,9 +198,8 @@ try {
   const logDl = await page.request.get(base + "/api/log?download=1");
   check(logDl.status() === 200 && (logDl.headers()["content-disposition"] || "").includes("summit-log.txt"), "log download has a file name");
   await shot("07b-log");
-  await page.click("#log-clear");
-  await page.waitForFunction(() => document.getElementById("log-text").value === "");
-  check((await (await page.request.get(base + "/api/log")).text()) === "", "clear empties the log");
+  check((await page.$("#log-clear")) === null, "the log has no clear button");
+  check((await page.request.post(base + "/api/log/clear", { data: {} })).status() >= 400, "the log cannot be cleared through the API");
 
   // Phone width
   await page.setViewportSize({ width: 390, height: 844 });
