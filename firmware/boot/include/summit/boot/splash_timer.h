@@ -13,14 +13,16 @@ constexpr uint32_t kSplashMinMs = 2000;  // one full loop of the animation
 // screen ends after the settle time.
 constexpr uint32_t kStartupSettleMs = 5000;
 constexpr uint32_t kStartupMaxMs = 15000;
+constexpr uint32_t kAfterConfirmMs = 2000;  // boot screen stays this long after the new image is confirmed
 
 // `verifying`: this is the first boot of a new image and the health gate has not confirmed it yet; confirming writes
 // to flash (a short dark moment), which should happen behind the boot screen.
-inline bool startup_done(bool wifi_connected, bool time_synced, bool ap_active, bool verifying, uint32_t elapsed_ms)
+inline bool startup_done(bool wifi_connected, bool time_synced, bool ap_active, bool verifying,
+                         uint32_t ms_since_confirm, uint32_t elapsed_ms)
 {
     if (elapsed_ms < kStartupSettleMs) return false;
     if (elapsed_ms >= kStartupMaxMs) return true;
-    if (verifying) return false;
+    if (verifying || ms_since_confirm < kAfterConfirmMs) return false;  // ms_since_confirm: UINT32_MAX = no confirm on this boot
     return ap_active || (wifi_connected && time_synced);
 }
 
