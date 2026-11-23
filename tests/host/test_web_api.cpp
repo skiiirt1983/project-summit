@@ -288,6 +288,23 @@ TEST(wifi_chip_probe_is_a_command_and_its_answer_shows_in_diagnostics)
     CHECK(Json(r.get("/api/diagnostics").body).s("wifi_chip") == "update begin: ESP_ERR_TIMEOUT");
 }
 
+TEST(test_sound_route)
+{
+    Rig r;
+    std::string seen;
+    r.bus.subscribe("audio/play", [&](const std::string &, const Value &v) {
+        if (const std::string *s = std::get_if<std::string>(&v)) seen = *s;
+    });
+    CHECK(r.get("/api/audio/test").status == 405);  // only POST
+    CHECK(r.post("/api/audio/test", R"({"sound":"chime"})").status == 202);
+    r.bus.dispatch();
+    CHECK(seen == "chime");
+    seen.clear();
+    for (const char *bad : {"{}", R"({"sound":"klaxon"})", R"({"sound":3})", "nope"}) CHECK(r.post("/api/audio/test", bad).status == 400);
+    r.bus.dispatch();
+    CHECK(seen.empty());
+}
+
 TEST(import_is_validated_first_and_refused_cleanly)
 {
     Rig r;
@@ -452,6 +469,7 @@ int main()
     RUN(settings_reset_and_unreadable_export);
     RUN(diagnostics_lists_addon_warnings);
     RUN(wifi_chip_probe_is_a_command_and_its_answer_shows_in_diagnostics);
+    RUN(test_sound_route);
     RUN(import_is_validated_first_and_refused_cleanly);
     RUN(secrets_left_out_of_exports_unless_asked);
     RUN(modules_list_install_remove);

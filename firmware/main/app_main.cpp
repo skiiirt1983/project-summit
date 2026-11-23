@@ -42,6 +42,7 @@
 #include "summit/system_settings.h"
 #include "summit/deep_sleep.h"
 #include "summit/power_service.h"
+#include "summit/audio_esp.h"
 #include "summit/timers.h"
 #include "summit/update/device.h"
 #include "summit/web/device.h"
@@ -197,6 +198,7 @@ extern "C" void app_main(void)
         ESP_LOGE(TAG, "display/touch failed to start: the update engine and web server keep running without a UI");
         return;
     }
+    summit::audio_service_start(bus, state, settings, summit::bsp::i2c_bus_handle());  // speaker: timers ring, volume slider ticks
     summit::bsp::set_orientation(hw.display, summit::kLandscape);  // the shell starts landscape, until the accelerometer service exists
     // The display slider (quick settings) sets the backlight; the saved value applies from the start.
     auto brightness_of = [](const summit::Value &v, int fallback) {

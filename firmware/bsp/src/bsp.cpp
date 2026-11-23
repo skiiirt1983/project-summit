@@ -371,6 +371,8 @@ void set_orientation(lv_display_t *display, Orientation o)
 
 namespace summit::bsp {
 uint32_t frames_rendered() { return g_frames.load(std::memory_order_relaxed); }
+void *i2c_bus_handle() { return g_i2c; }
+
 bool i2c_present(uint8_t addr) { return g_i2c && i2c_master_probe(g_i2c, addr, 50) == ESP_OK; }
 }  // namespace summit::bsp
 

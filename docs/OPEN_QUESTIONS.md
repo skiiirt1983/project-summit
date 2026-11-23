@@ -135,3 +135,5 @@ Paul asked for the front-end feel to be designed (buttons, phone-like transition
 - **Where an installed module's page goes.** Choice: appended after the existing pages unless `ui/page_order` lists it. Why: matches the existing page-order rule.
 - **SD card state topics.** Choice: `storage/sd_present` (bool) and `storage/sd_free_mb` (int), published by the storage service. Install re-checks requirements at the moment of install only; a module stays installed if the card is removed later (panel shows "Insert the SD card", per D-008).
 - **Module enabled flag key.** Choice: `modules/<id>/installed` (bool, default false), additive, no schema bump.
+
+- **Alarm volume (2026-11-23, Claude's default, to confirm).** A ringing kitchen timer plays at no less than 40% even if the volume slider is at 0, and rings through do-not-disturb (as ARCHITECTURE.md says for alarms). Chimes and the slider preview tick follow the slider; the chime is muted by do-not-disturb. Say if a timer should be silent at volume 0.

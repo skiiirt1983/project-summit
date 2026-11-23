@@ -27,6 +27,9 @@ uint32_t pixel_clock_mhz();
 // True if a device answers at this 7-bit I2C address (health gate; safe to call from any task).
 bool i2c_present(uint8_t addr);
 
+// The shared I2C bus (SDA 7 / SCL 8) as an i2c_master_bus_handle_t, for the audio codec; null before start().
+void *i2c_bus_handle();
+
 // Debug switches (settings debug/display_flush and debug/backlight), changeable at run time.
 // mode: "normal" (DMA2D), "cpu_copy" (CPU copy into the frame buffer), "skip" (nothing is drawn).
 void set_debug_flush(const char *mode);
