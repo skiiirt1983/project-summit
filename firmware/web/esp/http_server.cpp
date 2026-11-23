@@ -305,9 +305,7 @@ bool web_server_start(EventBus &bus, StateStore &state, Settings &settings, cons
     g->storage = storage;
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
     cfg.uri_match_fn = httpd_uri_match_wildcard;
-    // 16 KB: importing a recipe from a website opens an HTTPS connection (TLS needs several KB of stack) inside this
-    // task, and the deep call chain made the 8 KB default a suspect for the crash seen in alpha.29 (device went offline).
-    cfg.stack_size = 16384;
+    cfg.stack_size = 8192;  // (a 16 KB stack was considered for the website import; the real failure was the Wi-Fi link, not a crash)
     cfg.lru_purge_enable = true;
     httpd_handle_t server = nullptr;
     if (httpd_start(&server, &cfg) != ESP_OK) {
