@@ -7,6 +7,8 @@
 #include <vector>
 
 #include "esp_event.h"
+#include "esp_hosted.h"
+#include "esp_hosted_ota.h"
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_netif_sntp.h"
@@ -28,6 +30,7 @@ const char *TAG = "net";
 constexpr uint32_t kNotifyCredentials = 1u << 0;  // web UI saved a network: (re)connect now
 constexpr uint32_t kNotifyDisconnected = 1u << 1;
 constexpr uint32_t kNotifyScan = 1u << 2;
+constexpr uint32_t kNotifyProbe = 1u << 3;  // web UI: try the Wi-Fi chip update handshake
 constexpr int64_t kApAfterMs = 45 * 1000;      // no connection for this long: bring the setup AP up
 constexpr int64_t kScanEveryDownMs = 30 * 1000;
 constexpr int64_t kScanEveryUpMs = 180 * 1000;
@@ -216,6 +219,25 @@ void ap_stop()
     ESP_LOGI(TAG, "setup access point off");
 }
 
+// Wi-Fi chip (ESP32-C6) update probe: asks the co-processor to open and close an OTA session WITHOUT sending any
+// firmware, to learn whether the firmware it runs understands update commands at all (it reports version 0.0.0, so it
+// is old). Flashes nothing and never calls activate. Runs in the net task: the RPC can block for several seconds and Wi-Fi
+// may drop briefly. The answer goes to the web UI Diagnostics tab (state net/wifi_chip_probe).
+void wifi_chip_probe()
+{
+    g_state->set("net/wifi_chip_probe", std::string("running..."));
+    esp_hosted_coprocessor_fwver_t ver = {};
+    const int ver_rc = esp_hosted_get_coprocessor_fwversion(&ver);
+    const esp_err_t begin = esp_hosted_slave_ota_begin();
+    esp_err_t end = ESP_ERR_INVALID_STATE;
+    if (begin == ESP_OK) end = esp_hosted_slave_ota_end();  // close the session again: nothing was written
+    char text[160];
+    snprintf(text, sizeof text, "version call returned %d; update begin: %s; update end: %s", ver_rc,
+             esp_err_to_name(begin), begin == ESP_OK ? esp_err_to_name(end) : "not tried");
+    ESP_LOGW(TAG, "wifi chip probe: %s", text);
+    g_state->set("net/wifi_chip_probe", std::string(text));
+}
+
 void task(void *)
 {
     wifi_init_config_t init = WIFI_INIT_CONFIG_DEFAULT();
@@ -254,6 +276,7 @@ void task(void *)
             retry.attempted(now);
             last_scan = now - kScanEveryDownMs;  // look again soon
         }
+        if (bits & kNotifyProbe) wifi_chip_probe();
         if (bits & kNotifyDisconnected) retry.disconnected(now, g_last_reason);
         if (retry.due(now, g_connected)) {  // paced: never cancels an attempt that is still in progress
             connect_saved(false);
@@ -299,6 +322,11 @@ bool wifi_service_start(EventBus &bus, StateStore &state)
     // The web UI publishes net/connect when it has saved a network (runs on the UI loop's bus dispatch).
     bus.subscribe("net/connect", [](const std::string &, const Value &) {
         if (g_task) xTaskNotify(g_task, kNotifyCredentials | kNotifyScan, eSetBits);
+    });
+    state.set("net/wifi_chip_probe", std::string());
+    bus.subscribe("net/wifi_chip_command", [](const std::string &, const Value &v) {
+        const std::string *cmd = std::get_if<std::string>(&v);
+        if (cmd && *cmd == "probe" && g_task) xTaskNotify(g_task, kNotifyProbe, eSetBits);
     });
     xTaskCreate(task, "net", 8192, nullptr, 5, &g_task);
     return true;

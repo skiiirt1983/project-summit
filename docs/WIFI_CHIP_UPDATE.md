@@ -30,6 +30,17 @@ flashed only after Paul says so for that specific step.
 - The host-API job printed nothing useful: my command was quoted twice by the CI action. Replaced by
   `tools/wifi_chip_api.sh` (run again after this change merges).
 
+## API (read from the esp_hosted 2.13.1 host headers, 2026-11-23)
+`esp_hosted_ota.h`: `esp_hosted_slave_ota_begin(void)`, `esp_hosted_slave_ota_write(uint8_t *data, uint32_t len)`,
+`esp_hosted_slave_ota_end(void)`, `esp_hosted_slave_ota_activate(void)` (reboots the co-processor). `esp_hosted.h`:
+`int esp_hosted_get_coprocessor_fwversion(esp_hosted_coprocessor_fwver_t *)`. `esp_hosted_misc.h`:
+`esp_hosted_get_coprocessor_app_desc(esp_hosted_app_desc_t *)`. The old URL based `esp_hosted_slave_ota()` is deprecated.
+
+## Step 2 (this change): the probe
+Web UI, Diagnostics tab, button "Probe Wi-Fi chip": the net service calls `esp_hosted_slave_ota_begin()` and, if it
+answers OK, `esp_hosted_slave_ota_end()` with no data. It never writes firmware and never calls activate. The answer shows
+as "Wi-Fi chip probe" in Diagnostics (state `net/wifi_chip_probe`). Wi-Fi may drop for a few seconds while the chip answers.
+
 ## Steps
 1. CI: manual workflow `.github/workflows/wifi-chip.yml` builds the C6 slave image (artifact) and prints the host-side
    update API from the real headers. *(this change)*

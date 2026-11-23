@@ -261,6 +261,8 @@ The state store and event bus are the public API between services, panels and th
 | `net/ap_active` | bool: the setup access point (Summit-Setup) is on | net service | quick-settings sheet (shows how to join it) |
 | `net/scan` | string: JSON array of {ssid, rssi, secure} | net service | web UI (Wi-Fi page) |
 | `net/connect` | event: SSID just saved (the password stays in the Wi-Fi store) | web UI | net service |
+| `net/wifi_chip_command` | event: string, `probe` = try the Wi-Fi chip update handshake (flashes nothing) | web UI (Diagnostics tab) | net service |
+| `net/wifi_chip_probe` | string: the probe's answer ("running...", or what the co-processor replied) | net service | web UI (Diagnostics tab) |
 | `update/available` | bool | update engine | glance strip (update chip), Updates screen |
 | `update/in_progress` | bool: downloading or verifying | update engine | shell (hides strip), Updates screen (full-screen progress) |
 | `update/stage` | string: idle, checking, up_to_date, available, check_failed, downloading, verifying, ready_to_reboot, failed | update engine | Updates screen, web UI |

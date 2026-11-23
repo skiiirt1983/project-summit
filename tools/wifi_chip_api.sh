@@ -16,3 +16,6 @@ echo "== the header that declares esp_hosted_slave_ota_begin =="
 h=$(grep -rl "esp_hosted_slave_ota_begin" "$d" --include=*.h | head -1)
 echo "${h:-not found}"
 [ -n "$h" ] && sed -n '1,200p' "$h" | grep -n -E "esp_hosted_slave_ota|esp_hosted_get_coprocessor|typedef|struct|#include|@brief|@param|@return" | head -80 || true
+echo "== co-processor version and app desc structs =="
+grep -n -B8 "esp_hosted_coprocessor_fwver_t;" "$d/host/api/include/esp_hosted_api_types.h" | head -30 || true
+grep -rn -B12 "} esp_hosted_app_desc_t" "$d/host" --include=*.h | head -30 || true

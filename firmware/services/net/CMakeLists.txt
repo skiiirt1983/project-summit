@@ -4,5 +4,5 @@ idf_component_register(
     SRCS "esp/wifi_service.cpp"
     INCLUDE_DIRS "include"
     REQUIRES framework
-    PRIV_REQUIRES esp_wifi esp_netif esp_event nvs_flash esp_timer)
+    PRIV_REQUIRES esp_wifi esp_netif esp_event nvs_flash esp_timer espressif__esp_hosted)
 target_compile_options(${COMPONENT_LIB} PRIVATE -std=gnu++17)
