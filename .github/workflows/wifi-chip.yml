@@ -1,0 +1,96 @@
+name: Wi-Fi chip firmware
+
+# Builds the ESP32-C6 co-processor firmware (the esp_hosted "slave", from espressif/esp-hosted-mcu) that matches the
+# esp_hosted host component the P4 firmware uses (2.13.x), and prints the host-side update API so the device code can
+# be written against the real headers. Manual only: it is not part of the normal CI, and nothing is published here.
+# A green run is NOT hardware proof (CLAUDE.md hard rule 8). The image is never flashed to the C6 without Paul's
+# explicit go-ahead for that step: a bad Wi-Fi chip image can leave the device without Wi-Fi.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "esp-hosted-mcu tag to build (empty = the newest 2.13.x)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  slave:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Pick the esp-hosted-mcu tag (same 2.13 line as the host component)
+        id: tag
+        env:
+          WANT: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          url=https://github.com/espressif/esp-hosted-mcu.git
+          git ls-remote --tags --refs "$url" | sed 's#.*refs/tags/##' | sort -V | tail -15 | sed 's/^/known tag: /'
+          if [ -z "$WANT" ]; then
+            WANT=$(git ls-remote --tags --refs "$url" | sed 's#.*refs/tags/##' | grep -E '^v?2\.13\.[0-9]+$' | sort -V | tail -1 || true)
+          fi
+          if [ -z "$WANT" ]; then echo "no 2.13.x tag found: pass one as the input" >&2; exit 1; fi
+          echo "using tag $WANT"
+          echo "tag=$WANT" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch the slave project
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch "$TAG" https://github.com/espressif/esp-hosted-mcu.git slave-src
+          ls slave-src
+          ls slave-src/slave
+          (cd slave-src/slave && ls sdkconfig.defaults* 2>/dev/null || true)
+
+      - name: Build the ESP32-C6 slave (SDIO)
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.4
+          target: esp32c6
+          path: slave-src/slave
+          command: idf.py build
+
+      - name: Package
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          ls -l slave-src/slave/build/*.bin
+          cp slave-src/slave/build/network_adapter.bin "out/wifi-chip-$TAG.bin"
+          (cd out && sha256sum "wifi-chip-$TAG.bin" | tee "wifi-chip-$TAG.bin.sha256")
+          ls -l out
+          grep -E 'CONFIG_(ESP_HOSTED_SDIO_HOST_INTERFACE|ESP_HOSTED_SDIO_SLAVE|SLAVE_|ESP_SDIO|IDF_TARGET)[A-Z_0-9]*=' slave-src/slave/sdkconfig | head -40 || true
+
+      - name: Upload the image
+        uses: actions/upload-artifact@v4
+        with:
+          name: wifi-chip-${{ steps.tag.outputs.tag }}-${{ github.sha }}
+          path: out/
+          if-no-files-found: error
+
+  host-api:
+    # What the P4 firmware can call: the esp_hosted host headers for the co-processor version and the slave OTA.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Resolve the P4 project's components and print the update API
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.4
+          target: esp32p4
+          path: firmware
+          command: >-
+            bash -c 'idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.rev3" reconfigure
+            && d=managed_components/espressif__esp_hosted
+            && echo "== esp_hosted version ==" && grep -m1 -E "^version" $d/idf_component.yml
+            && echo "== OTA and version API ==" && grep -rn -E "esp_hosted_slave_ota|esp_hosted_get_coprocessor|esp_hosted_coprocessor_fwver" $d --include=*.h
+            && echo "== OTA example files ==" && ls $d/examples 2>/dev/null; true'
