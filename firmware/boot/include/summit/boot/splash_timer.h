@@ -14,11 +14,14 @@ constexpr uint32_t kSplashMinMs = 2000;  // one full loop of the animation
 constexpr uint32_t kStartupSettleMs = 5000;
 constexpr uint32_t kStartupMaxMs = 15000;
 
-inline bool startup_done(bool wifi_connected, bool time_synced, bool ap_active, uint32_t elapsed_ms)
+// `verifying`: this is the first boot of a new image and the health gate has not confirmed it yet; confirming writes
+// to flash (a short dark moment), which should happen behind the boot screen.
+inline bool startup_done(bool wifi_connected, bool time_synced, bool ap_active, bool verifying, uint32_t elapsed_ms)
 {
     if (elapsed_ms < kStartupSettleMs) return false;
-    if (ap_active || elapsed_ms >= kStartupMaxMs) return true;
-    return wifi_connected && time_synced;
+    if (elapsed_ms >= kStartupMaxMs) return true;
+    if (verifying) return false;
+    return ap_active || (wifi_connected && time_synced);
 }
 
 class SplashTimer {

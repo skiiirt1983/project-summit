@@ -291,14 +291,17 @@ TEST(motion_rubber_band_settle_and_dots)
 TEST(startup_done_settles_first_then_waits_for_the_clock_with_limits)
 {
     using summit::boot::startup_done;
-    CHECK(!startup_done(true, true, false, 4999));                 // always at least the settle time
-    CHECK(startup_done(true, true, false, 5000));                  // network up and clock set
-    CHECK(!startup_done(false, false, false, 6000));               // a saved network is still being joined
-    CHECK(!startup_done(true, false, false, 6000));                // joined, clock not set yet
-    CHECK(startup_done(false, false, true, 5000));                 // new setup: setup AP is on, nothing to wait for
-    CHECK(!startup_done(false, false, true, 4000));                // ...but the settle time still applies
-    CHECK(!startup_done(false, false, false, 14999));
-    CHECK(startup_done(false, false, false, 15000));               // never stuck on the boot screen
+    CHECK(!startup_done(true, true, false, false, 4999));          // always at least the settle time
+    CHECK(startup_done(true, true, false, false, 5000));           // network up and clock set
+    CHECK(!startup_done(false, false, false, false, 6000));        // a saved network is still being joined
+    CHECK(!startup_done(true, false, false, false, 6000));         // joined, clock not set yet
+    CHECK(startup_done(false, false, true, false, 5000));          // new setup: setup AP is on, nothing to wait for
+    CHECK(!startup_done(false, false, true, false, 4000));         // ...but the settle time still applies
+    CHECK(!startup_done(false, false, false, false, 14999));
+    CHECK(startup_done(false, false, false, false, 15000));        // never stuck on the boot screen
+    CHECK(!startup_done(true, true, false, true, 6000));           // first boot of a new image: wait for the confirm
+    CHECK(!startup_done(false, false, true, true, 9000));
+    CHECK(startup_done(true, true, false, true, 15000));           // ...but never past the limit
 }
 
 TEST(toast_queue_drops_start_up_noise_but_keeps_critical)
