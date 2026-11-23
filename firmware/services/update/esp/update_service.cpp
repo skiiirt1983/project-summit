@@ -232,7 +232,8 @@ void do_install(const std::string &version)
         // the panel and it flashes blue. The light comes back as soon as the writing is over.
         vTaskDelay(pdMS_TO_TICKS(1500));
         g->bus->publish("display/blank", true);
-        vTaskDelay(pdMS_TO_TICKS(100));  // let the UI loop apply it before the first erase
+        g->bus->publish("display/panel_off", true);  // the panel's own output off too: no glitching image to leak
+        vTaskDelay(pdMS_TO_TICKS(150));              // let the UI loop apply both before the first erase
         ESP_LOGI(TAG, "install timing: light off, flash write starts at %u ms", ms());
     }
     {
@@ -246,6 +247,7 @@ void do_install(const std::string &version)
     // The panel needs a moment to settle after the flash stall: switching the light back on at once showed a very
     // dim on/off flicker (alpha.15). Stay dark a little longer, then show the result.
     ESP_LOGI(TAG, "install timing: flash write finished at %u ms", ms());
+    g->bus->publish("display/panel_off", false);
     vTaskDelay(pdMS_TO_TICKS(600));
     g->bus->publish("display/blank", false);
     ESP_LOGI(TAG, "install timing: light back on at %u ms", ms());

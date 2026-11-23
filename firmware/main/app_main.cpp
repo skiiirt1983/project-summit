@@ -218,6 +218,10 @@ extern "C" void app_main(void)
     bus.subscribe("settings/debug/backlight", [str_of](const std::string &, const summit::Value &v) {
         summit::bsp::set_debug_backlight_full(str_of(v, "pwm") == "full");
     });
+    bus.subscribe("display/panel_off", [](const std::string &, const summit::Value &v) {
+        const bool *b = std::get_if<bool>(&v);
+        summit::bsp::set_panel_output(!(b && *b));
+    });
     bus.subscribe("display/blank", [](const std::string &, const summit::Value &v) {
         const bool *b = std::get_if<bool>(&v);
         summit::bsp::set_display_blank(b && *b);

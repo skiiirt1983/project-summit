@@ -379,6 +379,13 @@ uint32_t pixel_clock_mhz() { return kPixelClockMhz; }
 }  // namespace summit::bsp
 
 namespace summit::bsp {
+void set_panel_output(bool on)
+{
+    if (!g_panel) return;
+    const esp_err_t e = esp_lcd_panel_disp_on_off(g_panel, on);
+    ESP_LOGI(TAG, "panel output %s: %s", on ? "on" : "off", esp_err_to_name(e));
+}
+
 void set_display_blank(bool blank)
 {
     g_blank = blank;

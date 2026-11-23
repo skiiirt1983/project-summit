@@ -67,9 +67,9 @@ void guard_task(void *arg)
             // This writes the boot flag to flash: the cache freeze makes the lit panel flash blue (alpha.15, partway
             // through the boot screen). Keep the light off for the write and a short settle time.
             ctx->bus->publish("display/blank", true);
-            vTaskDelay(pdMS_TO_TICKS(150));
+            vTaskDelay(pdMS_TO_TICKS(60));
             const esp_err_t valid_err = esp_ota_mark_app_valid_cancel_rollback();
-            vTaskDelay(pdMS_TO_TICKS(400));
+            vTaskDelay(pdMS_TO_TICKS(250));
             ctx->bus->publish("display/blank", false);
             if (valid_err == ESP_OK) {
                 ESP_LOGI(TAG, "new image confirmed");

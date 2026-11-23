@@ -31,10 +31,11 @@ bool EspOtaWriter::begin(size_t image_size, std::string *error)
     return open_flash(error);
 }
 
-bool EspOtaWriter::open_flash(std::string *error)
+bool EspOtaWriter::open_flash(std::string *error, size_t erase_bytes)
 {
-    // Erase sector by sector as the data arrives instead of the whole image area at once.
-    esp_err_t err = esp_ota_begin(target_, OTA_WITH_SEQUENTIAL_WRITES, &handle_);
+    // erase_bytes = the image size: the whole image area is erased up front in big blocks, much faster than sector by
+    // sector (alpha.18 measured about 21 s for 3.6 MB that way). Streaming fallback: sector by sector as data arrives.
+    esp_err_t err = esp_ota_begin(target_, erase_bytes, &handle_);
     if (err != ESP_OK) {
         *error = esp_err_to_name(err);
         open_ = false;
@@ -69,7 +70,7 @@ bool EspOtaWriter::finish(std::string *error)
 {
     open_ = false;
     if (buf_) {  // the one burst
-        bool ok = open_flash(error);
+        bool ok = open_flash(error, buf_len_);
         if (ok) {
             const size_t chunk = 64 * 1024;
             for (size_t off = 0; off < buf_len_ && ok; off += chunk) {
