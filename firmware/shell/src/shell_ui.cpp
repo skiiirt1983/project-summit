@@ -616,10 +616,18 @@ void Shell::update_hide_reasons()
     if (was != visibility_.hidden_by_mode() && content_) apply_layout(false);
 }
 
+void Shell::push_toast(Toast t)
+{
+    const Value dnd = d_.settings.get("system/dnd");
+    const bool *on = std::get_if<bool>(&dnd);
+    if (!toast_allowed(on && *on, t.critical)) return;
+    toasts_.push(std::move(t), now_);
+}
+
 void Shell::on_toast(const Value &v, bool critical)
 {
     const std::string *s = std::get_if<std::string>(&v);
-    if (s && !s->empty()) toasts_.push({*s, "", critical, 0, ""}, now_);
+    if (s && !s->empty()) push_toast({*s, "", critical, 0, ""});
 }
 
 // "<screen id>\n<text>": a toast that opens a screen when tapped. Never opens it by itself:
@@ -630,7 +638,7 @@ void Shell::on_toast_link(const Value &v)
     if (!s) return;
     const size_t nl = s->find('\n');
     if (nl == std::string::npos || nl == 0 || nl + 1 >= s->size()) return;
-    toasts_.push({s->substr(nl + 1), "", false, 0, s->substr(0, nl)}, now_);
+    push_toast({s->substr(nl + 1), "", false, 0, s->substr(0, nl)});
 }
 
 // A tapped link toast: put the screen's panel on show (first path segment = panel id), hand the
@@ -830,7 +838,7 @@ void Shell::toggle_rotation_lock()
     d_.settings.set("ui/rotation_lock", lock);
     rotation_.set_lock(lock);
     d_.state.set(topics::kRotationLocked, lock != "off");
-    toasts_.push({lock == "off" ? "Rotation unlocked" : "Rotation locked", "", false, 0, ""}, now_);
+    push_toast({lock == "off" ? "Rotation unlocked" : "Rotation locked", "", false, 0, ""});
 }
 
 bool Shell::settings_notice_shown() const { return !lv_obj_has_flag(notice_row_, LV_OBJ_FLAG_HIDDEN); }
@@ -852,7 +860,7 @@ void Shell::refresh_settings_notice()
     }
     lv_label_set_text(notice_label_, text.c_str());
     lv_obj_remove_flag(notice_row_, LV_OBJ_FLAG_HIDDEN);
-    toasts_.push({text, "", true, 0, ""}, now_);  // the notice and its reset live in quick settings
+    push_toast({text, "", true, 0, ""});  // the notice and its reset live in quick settings
 }
 
 void Shell::request_settings_reset()
@@ -867,9 +875,9 @@ void Shell::request_settings_reset()
     lv_label_set_text(reset_label_, "Reset settings");
     if (d_.settings.reset() == ResetResult::Ok) {
         d_.state.set(topics::kSettingsNotice, std::string());
-        toasts_.push({"Settings reset. Old settings kept for export.", "", false, 0, ""}, now_);
+        push_toast({"Settings reset. Old settings kept for export.", "", false, 0, ""});
     } else {
-        toasts_.push({"Reset failed: old settings could not be saved", "", true, 0, ""}, now_);
+        push_toast({"Reset failed: old settings could not be saved", "", true, 0, ""});
     }
 }
 

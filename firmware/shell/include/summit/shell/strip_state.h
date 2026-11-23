@@ -42,6 +42,9 @@ struct Toast {
 // - Normal toasts wait while the strip is hidden and expire after 10 min in the queue.
 // - Critical toasts jump the queue and show immediately, even in full-screen modes.
 // - A toast with the same text as one queued or showing is merged into it.
+// Do not disturb: normal toasts are dropped, critical ones (alarm, low battery) always show.
+inline bool toast_allowed(bool do_not_disturb, bool critical) { return !do_not_disturb || critical; }
+
 class ToastQueue {
 public:
     static constexpr uint32_t kShowMs = 4000;
