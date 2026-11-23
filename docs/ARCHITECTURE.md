@@ -287,7 +287,7 @@ The state store and event bus are the public API between services, panels and th
 | `shell/rotation_locked` | bool | shell | glance strip (rotation-lock chip) |
 | `shell/current_panel` | string: panel id | shell | diagnostics, web UI |
 | `system/hardware_id` | string, e.g. "waveshare-p4-wifi6-lcd5-rev3" | boot (`app_main`) | Updates screen, web UI |
-| `system/firmware_version` | string: running app version | boot (`app_main`) | Updates screen, web UI |
+| `system/firmware_version` | string: running app version | boot (`app_main`) | Updates screen, quick settings ("Software version"), web UI |
 | `ui/swipe_lock` | bool: the shown panel takes horizontal swipes itself | shown panel (Recipes, while a recipe is open) | shell (no page swipe) |
 | `ui/keep_awake` | bool: keep the screen on (30 min safety timeout) | shown panel (Recipes, while a recipe is open) | power service |
 | `input/double_tap` | event: bool, double-tap on the case | IMU service (LIS2DW12) | Recipes (next step / page) |

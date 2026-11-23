@@ -276,6 +276,14 @@ void Shell::build_quick_settings()
         lv_obj_set_style_text_color(l, lv_color_hex(kMuted), 0);
         return r;
     };
+    // The running firmware version, so nobody has to guess which build is on the device (it never changes while running).
+    {
+        lv_obj_t *version_label = lv_label_create(row("Software version"));
+        lv_obj_set_style_text_color(version_label, lv_color_hex(kText), 0);
+        const Value fv = d_.state.get("system/firmware_version");
+        const std::string *fvs = std::get_if<std::string>(&fv);
+        lv_label_set_text(version_label, fvs && !fvs->empty() ? fvs->c_str() : "unknown");
+    }
     // Wi-Fi: so the device's address never has to be looked up on the router.
     wifi_label_ = lv_label_create(row("Wi-Fi"));
     lv_label_set_long_mode(wifi_label_, LV_LABEL_LONG_MODE_WRAP);
