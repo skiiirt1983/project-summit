@@ -249,7 +249,8 @@ extern "C" void app_main(void)
     // The boot screen covers the start-up work (clock sync, first updates, start-up toasts): at least 5 s, and while a
     // saved network is being joined until the clock is set (15 s at most). It never waits for Wi-Fi on a new setup.
     const uint32_t splash_start = now_ms();
-    bool splash_ready = false;
+    bool splash_ready = false, saw_verifying = false;
+    uint32_t verified_at = 0;  // when the health gate confirmed the new image (0 = not on this boot)
     lv_timer_handler();                                // draw the first frame, then light the panel
     summit::bsp::set_brightness(start_brightness);
     ESP_LOGI(TAG, "UI running");
@@ -277,8 +278,13 @@ extern "C" void app_main(void)
                     const bool *b = std::get_if<bool>(&v);
                     return b && *b;
                 };
+                const bool verifying = summit::update::ota_pending_verify();
+                if (verifying) saw_verifying = true;
+                else if (saw_verifying && verified_at == 0) verified_at = now;
+                // The confirm blanks the light for a moment: the boot screen stays a little longer after it.
+                const uint32_t since_verified = verified_at ? now - verified_at : UINT32_MAX;
                 if (summit::boot::startup_done(flag("net/wifi_connected"), flag("time/synced"), flag("net/ap_active"),
-                                               summit::update::ota_pending_verify(), now - splash_start)) {
+                                               verifying, since_verified, now - splash_start)) {
                     splash.set_ready();
                     splash_ready = true;
                 }
