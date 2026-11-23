@@ -22,6 +22,14 @@ A wrong or broken C6 image leaves the device **without Wi-Fi** (and so without W
 cannot repair the C6. Therefore: only an image built from the same esp-hosted-mcu tag family as the host (2.13.x),
 flashed only after Paul says so for that specific step.
 
+## Step 1 result (2026-11-23)
+- The manual workflow built the slave from `espressif/esp-hosted-mcu` tag **v2.13.1** for esp32c6: `network_adapter.bin`,
+  1,212,512 bytes, SHA-256 `69b679e1a3d2c40204035e3b7f965071bb5a76813430cdd3f14b6e896fd462e0`, SDIO streaming mode,
+  C6 pins CMD 18, CLK 19, D0-D3 20-23 (the Espressif P4 function board wiring; the P4 side already uses GPIO14-19 and
+  works with the C6's current firmware, so the wiring matches). Artifact `wifi-chip-v2.13.1-<sha>` (kept 90 days).
+- The host-API job printed nothing useful: my command was quoted twice by the CI action. Replaced by
+  `tools/wifi_chip_api.sh` (run again after this change merges).
+
 ## Steps
 1. CI: manual workflow `.github/workflows/wifi-chip.yml` builds the C6 slave image (artifact) and prints the host-side
    update API from the real headers. *(this change)*

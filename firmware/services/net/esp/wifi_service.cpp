@@ -13,6 +13,7 @@
 #include "esp_sntp.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
+#include "summit/net/reconnect.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "nvs.h"
@@ -38,6 +39,7 @@ esp_netif_t *g_sta = nullptr;
 esp_netif_t *g_ap = nullptr;
 volatile bool g_connected = false;
 volatile bool g_ap_on = false;
+volatile int g_last_reason = 0;  // reason of the last disconnect event (read by the service task)
 
 std::string nvs_read(const char *key, size_t cap)
 {
@@ -96,6 +98,7 @@ void on_event(void *, esp_event_base_t base, int32_t id, void *data)
         const auto *d = static_cast<wifi_event_sta_disconnected_t *>(data);
         const int reason = d ? d->reason : -1;
         ESP_LOGW(TAG, "disconnected (reason %d)", reason);
+        g_last_reason = reason;
         g_connected = false;
         set_state(false, "", "");
         // Say why, in words, in the quick settings and the web UI (the usual: a wrong password or name).
@@ -130,7 +133,9 @@ void on_event(void *, esp_event_base_t base, int32_t id, void *data)
     }
 }
 
-void connect_saved()
+// restart = true only when new credentials were saved: it drops the current link first. A plain retry must NOT call
+// esp_wifi_disconnect(): that raises another disconnected event and cancels the attempt in progress.
+void connect_saved(bool restart)
 {
     const std::string ssid = nvs_read("ssid", 33), pass = nvs_read("pass", 64);
     if (ssid.empty()) return;
@@ -140,7 +145,7 @@ void connect_saved()
     c.sta.threshold.authmode = pass.empty() ? WIFI_AUTH_OPEN : WIFI_AUTH_WPA_PSK;
     c.sta.pmf_cfg.capable = true;
     c.sta.pmf_cfg.required = false;
-    esp_wifi_disconnect();
+    if (restart) esp_wifi_disconnect();
     esp_err_t err = esp_wifi_set_config(WIFI_IF_STA, &c);
     if (err == ESP_OK) err = esp_wifi_connect();
     ESP_LOGI(TAG, "connecting to '%s': %s", ssid.c_str(), esp_err_to_name(err));
@@ -234,7 +239,9 @@ void task(void *)
     int64_t last_scan = -kScanEveryDownMs;
     // Scan first: a scan cannot run while a connection attempt is in progress (it fails with ESP_ERR_WIFI_STATE).
     if (scan()) last_scan = esp_timer_get_time() / 1000;
-    connect_saved();
+    summit::net::ReconnectPolicy retry;
+    connect_saved(false);
+    retry.attempted(esp_timer_get_time() / 1000);
     if (!have_network) ap_start();
     for (;;) {
         uint32_t bits = 0;
@@ -243,12 +250,14 @@ void task(void *)
         publish_time();
         if (bits & kNotifyCredentials) {
             down_since = now;
-            connect_saved();
+            connect_saved(true);
+            retry.attempted(now);
             last_scan = now - kScanEveryDownMs;  // look again soon
         }
-        if (bits & kNotifyDisconnected) {
-            vTaskDelay(pdMS_TO_TICKS(2000));  // not a tight loop
-            if (!g_connected) connect_saved();
+        if (bits & kNotifyDisconnected) retry.disconnected(now, g_last_reason);
+        if (retry.due(now, g_connected)) {  // paced: never cancels an attempt that is still in progress
+            connect_saved(false);
+            retry.attempted(now);
         }
         if (g_connected) {
             down_since = now;

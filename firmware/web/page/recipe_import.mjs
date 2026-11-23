@@ -2,8 +2,14 @@
 // Pure functions, no DOM: unit-tested in Node (tests/web/test_recipe_import.mjs).
 // The user always reviews the draft; the device validates what is saved.
 
-const ING_HEADING = /^(ingredients?|what you need|you will need|for the \w+)\s*:?$/i;
-const METHOD_HEADING = /^(method|directions?|instructions?|steps?|preparation|how to make( it)?)\s*:?$/i;
+// A heading line: the keyword, optionally followed by a colon, a parenthesis, or "serves 4" / "for 4 servings" (printed
+// web pages and cookbooks write "Ingredients (serves 4)", "INGREDIENTS - 4 servings", "Ingredients:"). The line must
+// still be only the heading: a sentence that starts with the word is not one.
+const HEAD_TAIL = String.raw`(?:\s*[:\-\u2013\u2014]?\s*(?:\([^)]{0,40}\)|(?:serves|servings?|makes|yields?|for)\s*:?\s*\d{1,3}(?:\s*servings?)?|\d{1,3}\s*servings?))?\s*:?`;
+const ING_HEADING = new RegExp(
+  "^(?:ingredients?(?:\\s+list)?|what you(?:['\\u2019]ll|\\s+will)?\\s+need|you(?:['\\u2019]ll|\\s+will)\\s+need|for the [\\w ,'\\u2019-]{1,40})" + HEAD_TAIL + "$", "i");
+const METHOD_HEADING = new RegExp(
+  "^(?:method|directions?|instructions?|cooking instructions?|steps?|preparation(?:\\s+steps?)?|how to make(?: it)?)" + HEAD_TAIL + "$", "i");
 const SERVINGS = /\b(serves|servings|makes|yields?)\s*:?\s*(\d{1,3})\b/i;
 const FOOTER = /^(-\s*\d+\s*-|page\s+\d+(\s+of\s+\d+)?|\d+)$/i;
 const NUMBERED = /^(?:step\s+)?(\d{1,2})\s*[.):]\s+/i;
@@ -84,7 +90,14 @@ export function parseRecipeText(inputLines, fallbackTitle = "Recipe") {
   const heads = [];
   lines.forEach((l, i) => { if (ING_HEADING.test(l)) heads.push(i); });
   if (!heads.length) {
-    return [{ title: lines[0] && lines[0].length <= 80 ? lines[0] : fallbackTitle, servings: 0, ingredients: [], steps: [], found: false }];
+    const title = lines[0] && lines[0].length <= 80 ? lines[0] : fallbackTitle;
+    if (lines.length >= 3) {
+      // There is text, only no ingredients heading was recognised: keep all of it (in the steps box) so nothing is lost
+      // and the person can move the ingredient lines over.
+      const rest = title === lines[0] ? lines.slice(1) : lines;
+      return [{ title, servings: 0, ingredients: [], steps: rest.map((text) => ({ text })), found: false, hasText: true }];
+    }
+    return [{ title, servings: 0, ingredients: [], steps: [], found: false }];
   }
   // Where each recipe starts: its title is the line before the ingredients heading,
   // skipping a "Serves 4" line; the first recipe starts at the top.

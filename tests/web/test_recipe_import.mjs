@@ -50,6 +50,22 @@ const nohead = parseRecipeText(["Toast", "Ingredients", "2 slices bread", "1. To
 eq([nohead[0].ingredients.length, nohead[0].steps.length], [1, 2]);
 
 // ---- scanned / no text
+// Headings as printed web pages and cookbooks write them (alpha.27: six real PDFs were not recognised).
+for (const h of ["Ingredients", "INGREDIENTS", "Ingredients:", "Ingredients (serves 4)", "INGREDIENTS - 4 servings", "Ingredients \u2013 serves 6", "Ingredient List", "What you'll need", "You will need:", "For the sauce:", "Ingredients for 4"]) {
+  const d = parseRecipeText(["Tomato Soup", h, "2 cups tomatoes", "1 onion", "Method", "1. Chop.", "2. Simmer."])[0];
+  eq([h, d.found, d.ingredients.length, d.steps.length], [h, true, 2, 2]);
+}
+for (const h of ["Directions", "Instructions:", "Cooking Instructions", "Preparation", "METHOD", "Method (30 minutes)", "Steps"]) {
+  const d = parseRecipeText(["Tomato Soup", "Ingredients", "2 cups tomatoes", "1 onion", h, "Chop the onion.", "Simmer for 20 minutes."])[0];
+  eq([h, d.found, d.ingredients.length, d.steps.length], [h, true, 2, 2]);
+}
+// A sentence that merely starts with the word is not a heading.
+eq(parseRecipeText(["Soup", "Ingredients are cheap and the soup is quick to make", "Cook it"], "x")[0].found, false);
+// Text without a recognised heading is kept (in the steps) instead of being thrown away.
+{
+  const d = parseRecipeText(["Grandma's Stew", "Beef 500 g", "Carrots", "Simmer for two hours."], "x")[0];
+  eq([d.found, d.hasText, d.title, d.steps.map((x) => x.text)], [false, true, "Grandma's Stew", ["Beef 500 g", "Carrots", "Simmer for two hours."]]);
+}
 eq(parseRecipeText([], "scan0001")[0], { title: "scan0001", servings: 0, ingredients: [], steps: [], found: false });
 eq(parseRecipeText(["Grandma's notes", "a pinch of this and that"], "x")[0].found, false);
 

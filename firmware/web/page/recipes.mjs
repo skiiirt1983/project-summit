@@ -104,7 +104,9 @@ async function startImport(bytes, name, fromInbox) {
   const found = job.drafts[0].found;
   $("rec-note").textContent = found
     ? "Found the recipe text. Check it and fix anything that looks wrong; the pages are saved too."
-    : "No recipe text found (a scan or photo?). It will be saved with its pages only. You can type the ingredients and steps here to get step-by-step mode.";
+    : job.drafts[0].hasText
+      ? "I found text in this PDF but could not tell the ingredients from the steps. All of it is in the Steps box: move the ingredient lines to the Ingredients box, then save. The pages are saved too."
+      : "No recipe text found (a scan or photo?). It will be saved with its pages only. You can type the ingredients and steps here to get step-by-step mode.";
   const pick = $("rec-pick"); pick.replaceChildren();
   job.drafts.forEach((d, i) => { const o = el("option", d.title); o.value = String(i); pick.append(o); });
   $("rec-pick-row").hidden = job.drafts.length < 2;
