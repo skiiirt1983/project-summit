@@ -193,6 +193,15 @@ void do_check()
     ESP_LOGI(TAG, "check: %s %s", stage_name(g->engine->status().stage), g->engine->status().error.c_str());
 }
 
+// update/write_display: "lit" keeps the Writing screen on during the flash write (needs flash auto suspend to keep the
+// panel fed); "pulse" switches the panel off during the stalls and lights it between slices.
+bool write_display_pulse()
+{
+    const Value v = g->settings->get("update/write_display");
+    const std::string *s = std::get_if<std::string>(&v);
+    return s && *s == "pulse";
+}
+
 void do_install(const std::string &version)
 {
     std::string url;
@@ -221,7 +230,8 @@ void do_install(const std::string &version)
                           },
                           &error);
     auto ms = [] { return static_cast<unsigned>(esp_timer_get_time() / 1000); };
-    ESP_LOGI(TAG, "install timing: download finished (http %d) at %u ms", status, ms());
+    ESP_LOGI(TAG, "install timing: download finished (http %d) at %u ms, screen mode %s", status, ms(),
+             write_display_pulse() ? "pulse" : "lit");
     if (status == 200) {
         // Show the "Writing update" screen and let the UI draw it before the flash burst (the display may stall).
         {
@@ -234,10 +244,12 @@ void do_install(const std::string &version)
         // Let the person read it, then switch the backlight off for the flash burst only: the cache freeze starves
         // the panel and it flashes blue. The light comes back as soon as the writing is over.
         vTaskDelay(pdMS_TO_TICKS(1500));
-        g->bus->publish("display/blank", true);
-        g->bus->publish("display/panel_off", true);  // the panel's own output off too: no glitching image to leak
-        vTaskDelay(pdMS_TO_TICKS(150));              // let the UI loop apply both before the first erase
-        ESP_LOGI(TAG, "install timing: light off, flash write starts at %u ms", ms());
+        if (write_display_pulse()) {
+            g->bus->publish("display/blank", true);
+            g->bus->publish("display/panel_off", true);  // the panel's own output off too: no glitching image to leak
+            vTaskDelay(pdMS_TO_TICKS(150));              // let the UI loop apply both before the first erase
+        }
+        ESP_LOGI(TAG, "install timing: flash write starts at %u ms", ms());
     }
     {
         std::lock_guard<std::mutex> lock(g->mu);
@@ -250,9 +262,11 @@ void do_install(const std::string &version)
     // The panel needs a moment to settle after the flash stall: switching the light back on at once showed a very
     // dim on/off flicker (alpha.15). Stay dark a little longer, then show the result.
     ESP_LOGI(TAG, "install timing: flash write finished at %u ms", ms());
-    g->bus->publish("display/panel_off", false);
-    vTaskDelay(pdMS_TO_TICKS(600));
-    g->bus->publish("display/blank", false);
+    if (write_display_pulse()) {
+        g->bus->publish("display/panel_off", false);
+        vTaskDelay(pdMS_TO_TICKS(600));
+        g->bus->publish("display/blank", false);
+    }
     ESP_LOGI(TAG, "install timing: light back on at %u ms", ms());
     std::lock_guard<std::mutex> lock(g->mu);
     publish_locked();
@@ -340,6 +354,7 @@ bool update_service_start(const ServiceConfig &config, EventBus &bus, StateStore
     // screen would look like the device had shut down: between slices it is lit briefly with the progress.
     g->writer.on_slice = [](int percent) {
         g->state->set("update/write_pct", int64_t{percent});
+        if (!write_display_pulse()) return;  // lit mode: the screen stays on, only the progress is updated
         g->bus->publish("display/panel_off", false);
         vTaskDelay(pdMS_TO_TICKS(600));  // the panel settles after the stalls before it is lit (dim flicker otherwise)
         g->bus->publish("display/blank", false);
