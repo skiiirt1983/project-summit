@@ -288,17 +288,30 @@ TEST(motion_rubber_band_settle_and_dots)
     CHECK(kSheetOutMs < kSheetInMs && kScreenOutMs < kScreenInMs && kPressMs < kReleaseMs);
 }
 
-TEST(startup_wait_wifi_then_clock_with_limits)
+TEST(startup_done_settles_first_then_waits_for_the_clock_with_limits)
 {
-    using summit::boot::startup_wait;
-    using summit::boot::StartupWait;
-    CHECK(startup_wait(false, false, false, 1000) == StartupWait::Wifi);
-    CHECK(startup_wait(true, false, false, 1000) == StartupWait::Clock);
-    CHECK(startup_wait(true, true, false, 1000) == StartupWait::Done);
-    CHECK(startup_wait(false, false, true, 1000) == StartupWait::Done);        // setup AP: nothing to wait for
-    CHECK(startup_wait(false, false, false, 19999) == StartupWait::Wifi);
-    CHECK(startup_wait(false, false, false, 20000) == StartupWait::Done);      // never stuck on the boot screen
-    CHECK(startup_wait(true, false, false, 20000) == StartupWait::Done);
+    using summit::boot::startup_done;
+    CHECK(!startup_done(true, true, false, 4999));                 // always at least the settle time
+    CHECK(startup_done(true, true, false, 5000));                  // network up and clock set
+    CHECK(!startup_done(false, false, false, 6000));               // a saved network is still being joined
+    CHECK(!startup_done(true, false, false, 6000));                // joined, clock not set yet
+    CHECK(startup_done(false, false, true, 5000));                 // new setup: setup AP is on, nothing to wait for
+    CHECK(!startup_done(false, false, true, 4000));                // ...but the settle time still applies
+    CHECK(!startup_done(false, false, false, 14999));
+    CHECK(startup_done(false, false, false, 15000));               // never stuck on the boot screen
+}
+
+TEST(toast_queue_drops_start_up_noise_but_keeps_critical)
+{
+    summit::shell::ToastQueue q;
+    q.push({"Rotation locked", "", false, 0, ""}, 0);
+    q.push({"Alarm", "", true, 0, ""}, 0);
+    q.push({"Clock set", "", false, 0, ""}, 0);
+    CHECK(q.pending() == 3);
+    q.clear_non_critical();
+    CHECK(q.pending() == 1);
+    const summit::shell::Toast *t = q.current(10, false);
+    CHECK(t && t->critical && t->text == "Alarm");
 }
 
 TEST(splash_timer_min_time_and_ready)
@@ -330,7 +343,8 @@ int main()
     RUN(toasts_wait_while_hidden_and_expire_after_10_min);
     RUN(critical_toasts_show_immediately_even_when_hidden);
     RUN(link_toast_keeps_its_action);
-    RUN(startup_wait_wifi_then_clock_with_limits);
+    RUN(startup_done_settles_first_then_waits_for_the_clock_with_limits);
+    RUN(toast_queue_drops_start_up_noise_but_keeps_critical);
     RUN(splash_timer_min_time_and_ready);
     RUN(motion_rubber_band_settle_and_dots);
     RUN(page_order_home_first_then_setting_then_rest);

@@ -68,6 +68,8 @@ public:
     bool start(uint32_t now_ms, std::string *error);
     // Call every UI loop iteration, after bus.dispatch() and before lv_timer_handler().
     void tick(uint32_t now_ms);
+    // Discards non-critical toasts raised so far (called when the boot screen ends).
+    void drop_startup_toasts() { toasts_.clear_non_critical(); }
     // Drag-to-swipe between pages and tap-to-reveal the hidden strip.
     void attach_input(lv_indev_t *indev);
 

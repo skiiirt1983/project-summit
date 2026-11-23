@@ -7,18 +7,18 @@ namespace summit::boot {
 
 constexpr uint32_t kSplashMinMs = 2000;  // one full loop of the animation
 
-constexpr uint32_t kStartupMaxMs = 20000;  // never keep the boot screen longer than this waiting for the network
+// The boot screen covers the start-up work (clock sync, first state updates, start-up toasts) so none of it is
+// seen. It stays at least kStartupSettleMs; if a network is being joined it also waits for the clock, up to
+// kStartupMaxMs. It never waits for Wi-Fi as such: with no saved network the setup access point is on and the
+// screen ends after the settle time.
+constexpr uint32_t kStartupSettleMs = 5000;
+constexpr uint32_t kStartupMaxMs = 15000;
 
-enum class StartupWait { Wifi, Clock, Done };
-
-// What the boot screen is waiting for. Wi-Fi first, then the clock (SNTP); done when both are there, when the setup
-// access point is on (no network is saved, so there is nothing to wait for), or after kStartupMaxMs.
-inline StartupWait startup_wait(bool wifi_connected, bool time_synced, bool ap_active, uint32_t elapsed_ms)
+inline bool startup_done(bool wifi_connected, bool time_synced, bool ap_active, uint32_t elapsed_ms)
 {
-    if (elapsed_ms >= kStartupMaxMs || ap_active) return StartupWait::Done;
-    if (!wifi_connected) return StartupWait::Wifi;
-    if (!time_synced) return StartupWait::Clock;
-    return StartupWait::Done;
+    if (elapsed_ms < kStartupSettleMs) return false;
+    if (ap_active || elapsed_ms >= kStartupMaxMs) return true;
+    return wifi_connected && time_synced;
 }
 
 class SplashTimer {
