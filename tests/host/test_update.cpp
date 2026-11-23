@@ -296,6 +296,27 @@ TEST(catalog_install_happy_path)
     CHECK(r.engine.status().stage == Stage::ReadyToReboot && r.writer.finished && r.writer.flash == img);
 }
 
+TEST(restart_download_after_a_dropped_connection)
+{
+    Rig r;
+    auto img = image("0.2.0");
+    CatalogBuild b = build("0.2.0", "stable", static_cast<int64_t>(img.size()));
+    b.sha256 = sha(img);
+    CHECK(r.engine.begin_check());
+    r.engine.catalog_received(catalog({b}));
+    CHECK(r.engine.start_install("0.2.0", ok_preflight()));
+    CHECK(r.engine.restart_download());                            // downloading: allowed (nothing received yet)
+    std::vector<uint8_t> part(img.begin(), img.begin() + 2500);
+    CHECK(r.engine.data(part.data(), part.size()));                // the connection drops here
+    CHECK(r.engine.status().bytes == 2500);
+    CHECK(r.engine.restart_download());                            // start over
+    CHECK(r.engine.status().stage == Stage::Downloading && r.engine.status().bytes == 0 && r.writer.open);
+    r.feed(img);                                                   // the whole image again
+    CHECK(r.engine.complete());
+    CHECK(r.engine.status().stage == Stage::ReadyToReboot && r.writer.flash == img);   // no duplicated bytes
+    CHECK(!r.engine.restart_download());                           // not while ready to reboot
+}
+
 TEST(write_percent_for_the_writing_screen)
 {
     CHECK(write_percent(0, 0) == 0);
@@ -576,6 +597,7 @@ int main()
     RUN(channels_and_newest_update);
     RUN(preflight_rules);
     RUN(catalog_install_happy_path);
+    RUN(restart_download_after_a_dropped_connection);
     RUN(write_percent_for_the_writing_screen);
     RUN(writing_stage_shows_before_the_flash_burst);
     RUN(writing_stage_still_rejects_a_bad_hash_and_a_short_download);

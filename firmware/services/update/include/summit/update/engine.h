@@ -92,6 +92,9 @@ public:
     void fail(const std::string &error, int http_status = 0);
     void cancel();
 
+    // The connection dropped mid-download: start the image over (aborts the writer, reopens it, clears the byte count,
+    // hash and header check) without leaving the Downloading stage. False if not downloading or the slot cannot be reopened.
+    bool restart_download();
     // Download finished: the stage becomes Verifying (shown as "Writing update") before complete() does the flash burst.
     bool begin_writing();
     bool busy() const { return status_.stage == Stage::Downloading || status_.stage == Stage::Verifying; }
