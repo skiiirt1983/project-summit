@@ -14,6 +14,16 @@ constexpr int kReasonAssocLeave = 8;           // WIFI_REASON_ASSOC_LEAVE: we di
 constexpr int64_t kFirstRetryMs = 3000;        // after a real drop
 constexpr int64_t kRetryEveryMs = 8000;        // between attempts: longer than a join takes
 
+constexpr int64_t kDhcpWaitMs = 20000;  // associated but no address yet: leave the join alone for this long
+
+// True while the station is associated with the router and waiting for its address (DHCP). A retry or a scan in this
+// window cancels or slows the address (alpha.30: 36 s to get an address instead of about 1 s). After kDhcpWaitMs it is
+// treated as a failed join again.
+inline bool associating(bool associated, bool connected, int64_t now_ms, int64_t associated_since_ms)
+{
+    return associated && !connected && now_ms - associated_since_ms < kDhcpWaitMs;
+}
+
 class ReconnectPolicy {
 public:
     // An attempt was just made (or new credentials were saved): the next one is not due for kRetryEveryMs.
