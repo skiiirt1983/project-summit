@@ -4,6 +4,7 @@
 #include <cstring>
 
 #include "esp_heap_caps.h"
+#include "esp_timer.h"
 
 #include "esp_err.h"
 
@@ -70,13 +71,19 @@ bool EspOtaWriter::finish(std::string *error)
 {
     open_ = false;
     if (buf_) {  // the one burst
-        bool ok = open_flash(error, buf_len_);
+        // Sector by sector (not the whole area up front: that is one long stall that cannot be split into slices).
+        bool ok = open_flash(error);
         if (ok) {
             const size_t chunk = 64 * 1024;
+            int64_t slice_start = esp_timer_get_time();
             for (size_t off = 0; off < buf_len_ && ok; off += chunk) {
                 size_t n = buf_len_ - off < chunk ? buf_len_ - off : chunk;
                 esp_err_t e = esp_ota_write(handle_, buf_ + off, n);
                 if (e != ESP_OK) { *error = esp_err_to_name(e); ok = false; }
+                if (ok && on_slice && off + n < buf_len_ && esp_timer_get_time() - slice_start >= kSliceMs * 1000) {
+                    on_slice(write_percent(off + n, buf_len_));
+                    slice_start = esp_timer_get_time();  // the pause does not count as flash work
+                }
             }
         }
         heap_caps_free(buf_);

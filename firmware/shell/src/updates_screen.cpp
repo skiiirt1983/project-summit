@@ -236,9 +236,13 @@ void UpdatesScreen::tick()
         // "verifying" = download done, the image is being written to flash (a few seconds; the screen is kept static).
         const bool writing = stage == "verifying";
         set_text(progress_title_, (writing ? "Writing update " : "Installing ") + str("update/target_version"));
-        const int32_t shown = writing ? 100 : static_cast<int32_t>(pct);
+        // While writing, the bar shows how much of the image is in flash (update/write_pct); the screen is lit only
+        // between the flash stalls, so the text says it is working.
+        Value wv = state_.get("update/write_pct");
+        const int64_t wpct = std::get_if<int64_t>(&wv) ? std::get<int64_t>(wv) : 0;
+        const int32_t shown = writing ? static_cast<int32_t>(wpct) : static_cast<int32_t>(pct);
         if (lv_bar_get_value(bar_) != shown) lv_bar_set_value(bar_, shown, LV_ANIM_OFF);
-        set_text(pct_, writing ? std::string("Do not power off") : std::to_string(pct) + "%");
+        set_text(pct_, writing ? std::to_string(wpct) + "%  -  do not power off" : std::to_string(pct) + "%");
         return;
     }
 

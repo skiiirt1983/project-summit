@@ -265,6 +265,7 @@ The state store and event bus are the public API between services, panels and th
 | `update/in_progress` | bool: downloading or verifying | update engine | shell (hides strip), Updates screen (full-screen progress) |
 | `update/stage` | string: idle, checking, up_to_date, available, check_failed, downloading, verifying, ready_to_reboot, failed | update engine | Updates screen, web UI |
 | `update/progress_pct` | int 0–100 | update engine | Updates screen, web UI |
+| `update/write_pct` | int 0–100: how much of the image is in flash while the stage is `verifying` ("Writing update"); the screen is lit only between flash stalls | update service | Updates screen |
 | `update/error` | string: readable reason (incl. HTTP status, TLS / socket errors) | update engine | Updates screen, web UI |
 | `update/target_version` | string: version being installed | update engine | Updates screen, web UI |
 | `update/available_version` | string; empty = none | update engine | Updates screen, web UI |

@@ -296,6 +296,16 @@ TEST(catalog_install_happy_path)
     CHECK(r.engine.status().stage == Stage::ReadyToReboot && r.writer.finished && r.writer.flash == img);
 }
 
+TEST(write_percent_for_the_writing_screen)
+{
+    CHECK(write_percent(0, 0) == 0);
+    CHECK(write_percent(0, 1000) == 0);
+    CHECK(write_percent(250, 1000) == 25);
+    CHECK(write_percent(999, 1000) == 99);
+    CHECK(write_percent(1000, 1000) == 100);
+    CHECK(write_percent(2000, 1000) == 100);
+}
+
 TEST(writing_stage_shows_before_the_flash_burst)
 {
     Rig r;
@@ -566,6 +576,7 @@ int main()
     RUN(channels_and_newest_update);
     RUN(preflight_rules);
     RUN(catalog_install_happy_path);
+    RUN(write_percent_for_the_writing_screen);
     RUN(writing_stage_shows_before_the_flash_burst);
     RUN(writing_stage_still_rejects_a_bad_hash_and_a_short_download);
     RUN(install_picks_this_devices_entry_when_a_version_lists_both_chip_variants);
