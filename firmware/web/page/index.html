@@ -156,7 +156,7 @@ ul{margin:0;padding-left:18px}
 
 <section id="diagnostics">
   <div class="card"><h2>Warnings</h2><ul id="diag-warnings"></ul><p class="muted" id="diag-none">None.</p></div>
-  <div class="card"><h2>Details</h2><dl id="diag-dl"></dl><div class="row"><button class="btn" id="diag-refresh">Refresh</button><button class="btn" id="diag-wifi-probe" title="Asks the Wi-Fi chip whether it accepts a firmware update. Flashes nothing; Wi-Fi may drop for a few seconds.">Probe Wi-Fi chip</button></div></div>
+  <div class="card"><h2>Details</h2><dl id="diag-dl"></dl><div class="row"><button class="btn" id="diag-refresh">Refresh</button><button class="btn" id="diag-wifi-probe" title="Asks the Wi-Fi chip whether it accepts a firmware update. Flashes nothing; Wi-Fi may drop for a few seconds.">Probe Wi-Fi chip</button><button class="btn" data-sound="preview" title="Plays a built-in sound through the speaker at the saved volume">Test tick</button><button class="btn" data-sound="confirm">Test confirmation</button><button class="btn" data-sound="warning">Test warning</button><button class="btn" data-sound="alarm">Test alarm (cowbell)</button></div></div>
 </section>
 
 <section id="log">
@@ -453,6 +453,11 @@ $("diag-wifi-probe").addEventListener("click", async () => {
   try { await api("/api/wifi_chip/probe", { method: "POST", json: {} }); } catch (err) { alert("Could not start the probe: " + err.message); return; }
   setTimeout(() => loaders.diagnostics(), 8000);  // the answer takes a few seconds; the page also reloads on Refresh
 });
+
+for (const b of document.querySelectorAll("[data-sound]"))
+  b.addEventListener("click", async () => {
+    try { await api("/api/audio/test", { method: "POST", json: { sound: b.dataset.sound } }); } catch (err) { alert("Could not play the sound: " + err.message); }
+  });
 
 // Shared with the Recipes module (recipes.mjs).
 window.summit = { $, el, api, msg, loaders };

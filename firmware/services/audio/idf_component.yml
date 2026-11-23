@@ -1,0 +1,3 @@
+dependencies:
+  # Codec driver (ES8311) and I2S data path; same library Waveshare's own board support uses.
+  espressif/esp_codec_dev: "~1.6.2"

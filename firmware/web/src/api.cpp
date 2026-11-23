@@ -249,13 +249,22 @@ Response WebApi::handle(const Request &req)
         bus_.publish("net/wifi_chip_command", std::string("probe"));
         return accepted();
     }
+    if (p == "/api/audio/test" && post) {  // plays a built-in sound through the speaker (Diagnostics tab)
+        const JsonPtr j = parse(req.body);
+        const cJSON *snd = j ? cJSON_GetObjectItemCaseSensitive(j.get(), "sound") : nullptr;
+        const std::string name = cJSON_IsString(snd) ? snd->valuestring : "";
+        if (name != "preview" && name != "confirm" && name != "warning" && name != "alarm")
+            return error(400, "sound must be preview, confirm, warning or alarm");
+        bus_.publish("audio/play", name);
+        return accepted();
+    }
     if (modules_ && p == "/api/modules" && get) return modules_get();
     if (modules_ && post && (p == "/api/modules/install" || p == "/api/modules/remove" || p == "/api/modules/delete-data"))
         return modules_command(p.substr(13), req.body);
     static const char *known[] = {"/api/status", "/api/wifi", "/api/firmware", "/api/settings",
                                   "/api/settings/export", "/api/settings/import", "/api/settings/reset",
                                   "/api/settings/backup", "/api/settings/import/validate", "/api/settings/undo",
-                                  "/api/diagnostics", "/api/wifi_chip/probe", "/api/modules", "/api/modules/install", "/api/modules/remove",
+                                  "/api/diagnostics", "/api/wifi_chip/probe", "/api/audio/test", "/api/modules", "/api/modules/install", "/api/modules/remove",
                                   "/api/modules/delete-data"};
     for (ApiExtension *ext : extensions_) {
         Response out;
