@@ -31,7 +31,8 @@ constexpr uint32_t kNotifyCredentials = 1u << 0;  // web UI saved a network: (re
 constexpr uint32_t kNotifyDisconnected = 1u << 1;
 constexpr uint32_t kNotifyScan = 1u << 2;
 constexpr uint32_t kNotifyProbe = 1u << 3;  // web UI: try the Wi-Fi chip update handshake
-constexpr int64_t kApAfterMs = 45 * 1000;      // no connection for this long: bring the setup AP up
+constexpr int64_t kApAfterMs = 45 * 1000;             // no network saved and no connection for this long: setup AP (Paul, 2026-11-22)
+constexpr int64_t kApAfterSavedMs = 5 * 60 * 1000;    // a saved network is unreachable this long: setup AP (Paul, 2026-11-23: a router restart is shorter)
 constexpr int64_t kScanEveryDownMs = 30 * 1000;
 constexpr int64_t kScanEveryUpMs = 180 * 1000;
 
@@ -42,6 +43,8 @@ esp_netif_t *g_sta = nullptr;
 esp_netif_t *g_ap = nullptr;
 volatile bool g_connected = false;
 volatile bool g_ap_on = false;
+volatile bool g_associated = false;      // associated with the router (the address may still be on its way)
+volatile int64_t g_associated_ms = 0;
 volatile int g_last_reason = 0;  // reason of the last disconnect event (read by the service task)
 
 std::string nvs_read(const char *key, size_t cap)
@@ -102,6 +105,7 @@ void on_event(void *, esp_event_base_t base, int32_t id, void *data)
         const int reason = d ? d->reason : -1;
         ESP_LOGW(TAG, "disconnected (reason %d)", reason);
         g_last_reason = reason;
+        g_associated = false;
         g_connected = false;
         set_state(false, "", "");
         // Say why, in words, in the quick settings and the web UI (the usual: a wrong password or name).
@@ -122,6 +126,8 @@ void on_event(void *, esp_event_base_t base, int32_t id, void *data)
         if (g_task) xTaskNotify(g_task, kNotifyDisconnected, eSetBits);
     } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_CONNECTED) {
         ESP_LOGI(TAG, "associated, waiting for an address");
+        g_associated_ms = esp_timer_get_time() / 1000;
+        g_associated = true;
     } else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
         const auto *d = static_cast<ip_event_got_ip_t *>(data);
         char ip[16];
@@ -278,17 +284,19 @@ void task(void *)
         }
         if (bits & kNotifyProbe) wifi_chip_probe();
         if (bits & kNotifyDisconnected) retry.disconnected(now, g_last_reason);
-        if (retry.due(now, g_connected)) {  // paced: never cancels an attempt that is still in progress
-            connect_saved(false);
+        // Associated but still waiting for its address: leave it alone (a retry or a scan here made the address take 36 s).
+        const bool wait = summit::net::associating(g_associated, g_connected, now, g_associated_ms);
+        if (retry.due(now, g_connected || wait)) {  // paced: never cancels an attempt that is still in progress
+            connect_saved(g_associated);            // stuck associated without an address: drop it first
             retry.attempted(now);
         }
         if (g_connected) {
             down_since = now;
             if (g_ap_on) ap_stop();
-        } else if (now - down_since > kApAfterMs) {
+        } else if (now - down_since > (nvs_read("ssid", 33).empty() ? kApAfterMs : kApAfterSavedMs)) {
             ap_start();  // nothing reachable: let the web UI be reached directly
         }
-        if (bits & kNotifyScan || now - last_scan > (g_connected ? kScanEveryUpMs : kScanEveryDownMs)) {
+        if (!wait && (bits & kNotifyScan || now - last_scan > (g_connected ? kScanEveryUpMs : kScanEveryDownMs))) {
             last_scan = scan() ? now : now - (g_connected ? kScanEveryUpMs : kScanEveryDownMs) + 8000;  // failed: again in 8 s
         }
     }

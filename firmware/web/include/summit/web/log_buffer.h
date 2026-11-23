@@ -20,7 +20,9 @@ public:
     void append(const std::string &s) { append(s.data(), s.size()); }
     std::string text() const;                 // everything, oldest first
     std::string tail(size_t lines) const;     // the last `lines` lines
-    void clear();
+    void clear();                              // tests only: not reachable from the web UI
+    // Puts older text in front (the previous boot's log read from the SD card). Trimmed from its oldest end to fit.
+    void prepend(const std::string &older);
     size_t size() const;
     uint64_t total_bytes() const;             // ever appended (so a viewer can tell something new arrived)
 
@@ -33,7 +35,7 @@ private:
 };
 
 // GET /api/log[?lines=N][&download=1]   the log as plain text (download -> summit-log.txt)
-// POST /api/log/clear
+// (There is no way to clear the log from the web UI: it is also kept on the SD card and is evidence.)
 class LogApi : public ApiExtension {
 public:
     explicit LogApi(LogBuffer &log) : log_(log) {}

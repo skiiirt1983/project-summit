@@ -51,7 +51,7 @@ eq([nohead[0].ingredients.length, nohead[0].steps.length], [1, 2]);
 
 // ---- scanned / no text
 // Headings as printed web pages and cookbooks write them (alpha.27: six real PDFs were not recognised).
-for (const h of ["Ingredients", "INGREDIENTS", "Ingredients:", "Ingredients (serves 4)", "INGREDIENTS - 4 servings", "Ingredients \u2013 serves 6", "Ingredient List", "What you'll need", "You will need:", "For the sauce:", "Ingredients for 4"]) {
+for (const h of ["Ingredients", "INGREDIENTS", "Ingredients:", "Ingredients (serves 4)", "INGREDIENTS - 4 servings", "Ingredients \u2013 serves 6", "Ingredient List", "What you'll need", "You will need:", "Ingredients for 4"]) {
   const d = parseRecipeText(["Tomato Soup", h, "2 cups tomatoes", "1 onion", "Method", "1. Chop.", "2. Simmer."])[0];
   eq([h, d.found, d.ingredients.length, d.steps.length], [h, true, 2, 2]);
 }
@@ -65,6 +65,60 @@ eq(parseRecipeText(["Soup", "Ingredients are cheap and the soup is quick to make
 {
   const d = parseRecipeText(["Grandma's Stew", "Beef 500 g", "Carrots", "Simmer for two hours."], "x")[0];
   eq([d.found, d.hasText, d.title, d.steps.map((x) => x.text)], [false, true, "Grandma's Stew", ["Beef 500 g", "Carrots", "Simmer for two hours."]]);
+}
+// Items as pdf.js gives them: { str, transform: [a,b,c,d,x,y], width }.
+const item = (str, x, y, width = str.length * 6) => ({ str, transform: [12, 0, 0, 12, x, y], width });
+{
+  // Two columns (Ingredients left, Method right): read column by column, not line by line across them.
+  const items = [item("Pancakes", 72, 760, 60),
+    item("Ingredients", 72, 720), item("Method", 320, 720),
+    item("1 cup flour", 72, 700), item("1. Mix everything.", 320, 700),
+    item("1 egg", 72, 680), item("2. Fry in a pan.", 320, 680),
+    item("1 cup milk", 72, 660)];
+  const lines = itemsToLines(items);
+  eq(lines, ["Pancakes", "Ingredients", "1 cup flour", "1 egg", "1 cup milk", "Method", "1. Mix everything.", "2. Fry in a pan."]);
+  const d = parseRecipeText(lines)[0];
+  eq([d.found, d.ingredients.length, d.steps.length], [true, 3, 2]);
+}
+{
+  // A table (quantity next to the ingredient) is one column: its rows stay together.
+  const items = [item("Ingredients", 72, 700),
+    item("2 cups", 72, 680, 40), item("flour", 130, 680, 30),
+    item("1", 72, 660, 6), item("egg", 130, 660, 20),
+    item("1 cup", 72, 640, 30), item("milk", 130, 640, 24)];
+  eq(itemsToLines(items), ["Ingredients", "2 cups flour", "1 egg", "1 cup milk"]);
+}
+{
+  // A right-aligned "Serves 4" next to a heading is not a second column.
+  const items = [item("Ingredients", 72, 700), item("Serves 4", 480, 700), item("2 eggs", 72, 680), item("1 cup milk", 72, 660)];
+  eq(itemsToLines(items), ["Ingredients Serves 4", "2 eggs", "1 cup milk"]);
+}
+{
+  // Heading and first ingredient on one line; Word's private-use bullets are stripped.
+  const d = parseRecipeText(["Toast", "Ingredients 2 slices bread", "\uF0B7 butter", "Method", "Toast it."])[0];
+  eq([d.found, d.ingredients.length, d.steps.length], [true, 2, 1]);
+  eq(parseRecipeText(["Soup", "Ingredients are cheap and the soup is quick", "Cook it"], "x")[0].found, false);
+}
+// The real file Paul attached (Lemon Poppy Seed Muffins, printed from a recipe website), as its text lines.
+{
+  const lines = ["Lemon Poppy Seed Muffins", "Prep Time Cook Time Total Time Servings", "10 minutes 20 minutes 30 minutes 18 muffins",
+    "Ingredients", "For the Muffins:", "\u2022 2/3 cup sugar", "\u2022 2 cups all-purpose flour", "\u2022 2 large eggs",
+    "Optional Icing:", "\u2022 1 cup confectioners\u2019 sugar sifted", "Instructions",
+    "1. To Make the Muffins: Center a rack in the oven and preheat the oven to 400 degrees F. Butter",
+    "or spray the 12 molds in a regular-size muffin pan.",
+    "2. In a large bowl, rub the sugar and the lemon zest together.", "3. Pour the liquid ingredients over the dry ones."];
+  const drafts = parseRecipeText(lines, "x");
+  eq(drafts.length, 1);                                    // sub-headings do not start more recipes
+  const d = drafts[0];
+  eq([d.title, d.servings, d.found], ["Lemon Poppy Seed Muffins", 18, true]);
+  eq(d.ingredients.map((g) => g.item), ["sugar", "all-purpose flour", "large eggs", "confectioners\u2019 sugar sifted"]);  // no sub-headings
+  eq(d.steps.length, 3);
+  eq(d.steps[0].text.startsWith("To Make the Muffins: Center a rack") && d.steps[0].text.endsWith("muffin pan."), true);  // wrapped line joined
+}
+{
+  // Pieces of one word (kerning) are joined without a space; a real space stays.
+  const items = [item("lem", 100, 700, 18), item("on", 118, 700, 12), item("juice", 134, 700, 30), item("all", 72, 680, 14), item("-", 86, 680, 4), item("purpose", 90, 680, 36)];
+  eq(itemsToLines(items), ["lemon juice", "all-purpose"]);
 }
 eq(parseRecipeText([], "scan0001")[0], { title: "scan0001", servings: 0, ingredients: [], steps: [], found: false });
 eq(parseRecipeText(["Grandma's notes", "a pinch of this and that"], "x")[0].found, false);

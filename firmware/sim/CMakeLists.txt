@@ -58,7 +58,7 @@ add_executable(summit_sim
     ${FW}/services/timers/src/timers.cpp
     ${FW}/services/power/src/sleep.cpp ${FW}/services/power/src/power_service.cpp
     ${FW}/boot/src/boot_screen.c ${FW}/boot/src/boot_images.c ${FW}/boot/src/splash.cpp
-    ${FW}/web/src/api.cpp ${FW}/web/src/log_buffer.cpp ${FW}/../third_party/cjson/cJSON.c)
+    ${FW}/web/src/api.cpp ${FW}/web/src/log_buffer.cpp ${FW}/web/src/log_mirror.cpp ${FW}/../third_party/cjson/cJSON.c)
 # The media kit's C files are used as supplied: no -Werror for them.
 set_source_files_properties(${FW}/boot/src/boot_screen.c ${FW}/boot/src/boot_images.c PROPERTIES COMPILE_OPTIONS "-Wno-error")
 target_include_directories(summit_sim PRIVATE ${FW}/boot/include ${FW}/framework/include ${FW}/shell/include

@@ -56,11 +56,26 @@ TEST(router_returns_after_a_long_outage)
     CHECK(!p.due(now + 5000, true));             // joined
 }
 
+TEST(an_association_waiting_for_its_address_is_left_alone)
+{
+    CHECK(!associating(false, false, 5000, 0));                 // not associated: nothing to protect
+    CHECK(associating(true, false, 1000, 0));                   // associated, no address yet: no retries, no scans
+    CHECK(associating(true, false, kDhcpWaitMs - 1, 0));
+    CHECK(!associating(true, false, kDhcpWaitMs, 0));           // too long: a failed join, retry
+    CHECK(!associating(true, true, 1000, 0));                   // got its address: connected
+    // the alpha.30 log: associated at 219.5 s, retries at 227, 235, 243 and 251 s cancelled the address until 255 s
+    ReconnectPolicy p;
+    p.attempted(216000);
+    const int64_t assoc = 219563;
+    for (int64_t t = 220000; t < 239000; t += 1000) CHECK(!p.due(t, false || associating(true, false, t, assoc)));
+}
+
 int main()
 {
     RUN(first_attempt_is_due_at_once_then_paced);
     RUN(our_own_disconnect_does_not_schedule_a_retry);
     RUN(a_real_drop_retries_soon_but_never_faster_than_a_join);
     RUN(router_returns_after_a_long_outage);
+    RUN(an_association_waiting_for_its_address_is_left_alone);
     return report("net policy");
 }

@@ -437,7 +437,7 @@ TEST(log_buffer_and_api)
     CHECK(api.handle({"GET", "/api/log", "", "", "lines=2"}, r) && r.status == 200 && r.content_type.rfind("text/plain", 0) == 0 &&
           r.body == log.tail(2) && r.filename.empty());
     CHECK(api.handle({"GET", "/api/log", "", "", "download=1"}, r) && r.filename == "summit-log.txt" && r.body == log.text());
-    CHECK(api.handle({"POST", "/api/log/clear", "application/json", "{}"}, r) && r.status == 200 && log.size() == 0);
+    CHECK(!api.handle({"POST", "/api/log/clear", "application/json", "{}"}, r) && log.size() > 0);  // no way to clear it
     CHECK(!api.handle({"GET", "/api/other"}, r));
 }
 

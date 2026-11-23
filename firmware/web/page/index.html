@@ -161,12 +161,11 @@ ul{margin:0;padding-left:18px}
 
 <section id="log">
   <div class="card"><h2>Console log</h2>
-    <p class="muted">What the device prints on its serial port, newest at the bottom. Copy it into a message, or download it as a file.</p>
+    <p class="muted">What the device prints on its serial port, newest at the bottom. Copy it into a message, or download it as a file. It cannot be cleared here: with a microSD card in, the device also keeps it in the card's <code>logs</code> folder, so it survives a reset or a power cut.</p>
     <div class="row">
       <button class="btn" id="log-copy">Copy</button>
       <button class="btn" id="log-download">Download</button>
       <button class="btn" id="log-refresh">Refresh</button>
-      <button class="btn danger" id="log-clear">Clear</button>
       <label style="display:flex;gap:8px;align-items:center;color:var(--text)"><input type="checkbox" id="log-auto" checked> Update every 4 s</label>
     </div>
     <textarea id="log-text" readonly spellcheck="false" aria-label="Console log" style="width:100%;height:55vh;margin-top:12px;box-sizing:border-box;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--bg,#0f1317);color:var(--text);border:1px solid var(--border,#2a323b);border-radius:8px;padding:10px;resize:vertical;white-space:pre"></textarea>
@@ -214,10 +213,6 @@ loaders.log = async () => {
 };
 $("log-refresh").addEventListener("click", () => loaders.log().catch((e) => msg("log-msg", e.message, "err")));
 $("log-download").addEventListener("click", () => download("/api/log?download=1"));
-$("log-clear").addEventListener("click", async () => {
-  try { await api("/api/log/clear", { method: "POST", json: {} }); $("log-text").value = ""; msg("log-msg", "Cleared.", "ok"); }
-  catch (e) { msg("log-msg", e.message, "err"); }
-});
 $("log-copy").addEventListener("click", async () => {
   const box = $("log-text");
   try {

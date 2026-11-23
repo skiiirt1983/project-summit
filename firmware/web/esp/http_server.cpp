@@ -14,6 +14,8 @@
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "esp_heap_caps.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "nvs.h"
 #include "summit/update/device.h"
 #include "summit/web/api.h"
@@ -206,7 +208,20 @@ esp_err_t api_handler(httpd_req_t *req)
             got += static_cast<size_t>(n);
         }
     }
+    // The website import is the heaviest request (HTTPS inside this task): log the stack and internal heap around it, so a
+    // crash leaves "start" without "done" in the log kept across restarts, and a pass shows how close it came.
+    const bool import_job = r.path == "/api/recipes/import-url";
+    if (import_job)
+        ESP_LOGI(TAG, "import-url: start, internal heap %u KB free (lowest %u KB), stack free %u B",
+                 static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
+                 static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL) / 1024),
+                 static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)));
     Response resp = g->api->handle(r);
+    if (import_job)
+        ESP_LOGI(TAG, "import-url: done, http %d, internal heap %u KB free (lowest %u KB), lowest stack free %u B", resp.status,
+                 static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
+                 static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL) / 1024),
+                 static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)));
     if (resp.storage_path.empty()) return send(req, resp);
     // Stream a file from the SD card in chunks.
     if (!g->storage || g->storage->size(resp.storage_path) < 0) return send(req, json_error(404, "not found"));
@@ -285,12 +300,12 @@ bool web_server_start(EventBus &bus, StateStore &state, Settings &settings, cons
     g->api = std::make_unique<WebApi>(bus, state, settings, g->control, g->wifi, g->facts);
     g->api->set_modules(modules);
     if (extension) g->api->add_extension(extension);
-    static LogApi log_api(device_log());  // GET /api/log, POST /api/log/clear
+    static LogApi log_api(device_log());  // GET /api/log (read only: the log cannot be cleared)
     g->api->add_extension(&log_api);
     g->storage = storage;
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
     cfg.uri_match_fn = httpd_uri_match_wildcard;
-    cfg.stack_size = 8192;
+    cfg.stack_size = 8192;  // (a 16 KB stack was considered for the website import; the real failure was the Wi-Fi link, not a crash)
     cfg.lru_purge_enable = true;
     httpd_handle_t server = nullptr;
     if (httpd_start(&server, &cfg) != ESP_OK) {
