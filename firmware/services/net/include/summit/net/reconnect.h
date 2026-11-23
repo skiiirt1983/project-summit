@@ -11,8 +11,13 @@
 namespace summit::net {
 
 constexpr int kReasonAssocLeave = 8;           // WIFI_REASON_ASSOC_LEAVE: we disconnected on purpose
-constexpr int64_t kFirstRetryMs = 3000;        // after a real drop
+constexpr int64_t kFirstRetryMs = 3000;        // after a real drop of a working connection
 constexpr int64_t kRetryEveryMs = 8000;        // between attempts: longer than a join takes
+// While the setup network (Summit-Setup) is up the chip has one radio for both: every join attempt takes it off the setup
+// network's channel for several seconds, so a phone cannot join it (alpha.31 log: no phone ever connected in 3 minutes,
+// and the router handshake kept timing out). Try rarely then, and more rarely still while a phone is connected to it.
+constexpr int64_t kRetryWhileSetupApMs = 60000;
+constexpr int64_t kRetryWhileSetupClientMs = 90000;
 
 constexpr int64_t kDhcpWaitMs = 20000;  // associated but no address yet: leave the join alone for this long
 
@@ -26,12 +31,13 @@ inline bool associating(bool associated, bool connected, int64_t now_ms, int64_t
 
 class ReconnectPolicy {
 public:
-    // An attempt was just made (or new credentials were saved): the next one is not due for kRetryEveryMs.
-    void attempted(int64_t now_ms) { next_ms_ = now_ms + kRetryEveryMs; }
-    // The link dropped. Our own disconnect must not schedule another attempt.
-    void disconnected(int64_t now_ms, int reason)
+    // An attempt was just made (or new credentials were saved): the next one is not due for `interval_ms`.
+    void attempted(int64_t now_ms, int64_t interval_ms = kRetryEveryMs) { next_ms_ = now_ms + interval_ms; }
+    // The link dropped. Our own disconnect (reason 8) schedules nothing. A *failed attempt* (the router is still off) also
+    // schedules nothing: only the drop of a working connection (real_drop) brings the next attempt forward.
+    void disconnected(int64_t now_ms, int reason, bool real_drop = true)
     {
-        if (reason == kReasonAssocLeave) return;
+        if (reason == kReasonAssocLeave || !real_drop) return;
         const int64_t soon = now_ms + kFirstRetryMs;
         if (next_ms_ > soon || next_ms_ < now_ms) next_ms_ = soon;  // let the radio settle, then retry; never sooner
     }
@@ -40,5 +46,12 @@ public:
 private:
     int64_t next_ms_ = 0;
 };
+
+// How long to wait between join attempts, for the current state.
+inline int64_t retry_interval_ms(bool setup_ap_on, int ap_clients)
+{
+    if (!setup_ap_on) return kRetryEveryMs;
+    return ap_clients > 0 ? kRetryWhileSetupClientMs : kRetryWhileSetupApMs;
+}
 
 }  // namespace summit::net

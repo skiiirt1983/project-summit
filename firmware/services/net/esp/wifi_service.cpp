@@ -43,6 +43,8 @@ esp_netif_t *g_sta = nullptr;
 esp_netif_t *g_ap = nullptr;
 volatile bool g_connected = false;
 volatile bool g_ap_on = false;
+volatile int g_ap_clients = 0;           // phones connected to the setup network
+volatile bool g_drop_was_up = false;     // the last disconnect ended a working connection (not a failed attempt)
 volatile bool g_associated = false;      // associated with the router (the address may still be on its way)
 volatile int64_t g_associated_ms = 0;
 volatile int g_last_reason = 0;  // reason of the last disconnect event (read by the service task)
@@ -105,6 +107,7 @@ void on_event(void *, esp_event_base_t base, int32_t id, void *data)
         const int reason = d ? d->reason : -1;
         ESP_LOGW(TAG, "disconnected (reason %d)", reason);
         g_last_reason = reason;
+        g_drop_was_up = g_connected;  // read before it is cleared below
         g_associated = false;
         g_connected = false;
         set_state(false, "", "");
@@ -124,6 +127,10 @@ void on_event(void *, esp_event_base_t base, int32_t id, void *data)
         snprintf(text, sizeof text, "%s (code %d)", why, reason);
         g_state->set("net/last_error", std::string(text));
         if (g_task) xTaskNotify(g_task, kNotifyDisconnected, eSetBits);
+    } else if (base == WIFI_EVENT && id == WIFI_EVENT_AP_STACONNECTED) {
+        g_ap_clients = g_ap_clients + 1;
+    } else if (base == WIFI_EVENT && id == WIFI_EVENT_AP_STADISCONNECTED) {
+        if (g_ap_clients > 0) g_ap_clients = g_ap_clients - 1;
     } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_CONNECTED) {
         ESP_LOGI(TAG, "associated, waiting for an address");
         g_associated_ms = esp_timer_get_time() / 1000;
@@ -221,6 +228,7 @@ void ap_stop()
     if (!g_ap_on) return;
     esp_wifi_set_mode(WIFI_MODE_STA);
     g_ap_on = false;
+    g_ap_clients = 0;
     g_state->set("net/ap_active", false);
     ESP_LOGI(TAG, "setup access point off");
 }
@@ -283,12 +291,13 @@ void task(void *)
             last_scan = now - kScanEveryDownMs;  // look again soon
         }
         if (bits & kNotifyProbe) wifi_chip_probe();
-        if (bits & kNotifyDisconnected) retry.disconnected(now, g_last_reason);
+        if (bits & kNotifyDisconnected) retry.disconnected(now, g_last_reason, g_drop_was_up);
         // Associated but still waiting for its address: leave it alone (a retry or a scan here made the address take 36 s).
         const bool wait = summit::net::associating(g_associated, g_connected, now, g_associated_ms);
         if (retry.due(now, g_connected || wait)) {  // paced: never cancels an attempt that is still in progress
             connect_saved(g_associated);            // stuck associated without an address: drop it first
-            retry.attempted(now);
+            // With the setup network up one attempt a minute (90 s with a phone on it): the single radio cannot serve both.
+            retry.attempted(now, summit::net::retry_interval_ms(g_ap_on, g_ap_clients));
         }
         if (g_connected) {
             down_since = now;
@@ -296,7 +305,8 @@ void task(void *)
         } else if (now - down_since > (nvs_read("ssid", 33).empty() ? kApAfterMs : kApAfterSavedMs)) {
             ap_start();  // nothing reachable: let the web UI be reached directly
         }
-        if (!wait && (bits & kNotifyScan || now - last_scan > (g_connected ? kScanEveryUpMs : kScanEveryDownMs))) {
+        // No periodic scans while the setup network is up (each one takes the radio off its channel); on demand still works.
+        if (!wait && ((bits & kNotifyScan) || (!g_ap_on && now - last_scan > (g_connected ? kScanEveryUpMs : kScanEveryDownMs)))) {
             last_scan = scan() ? now : now - (g_connected ? kScanEveryUpMs : kScanEveryDownMs) + 8000;  // failed: again in 8 s
         }
     }
