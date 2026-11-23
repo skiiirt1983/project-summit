@@ -88,9 +88,4 @@ jobs:
           esp_idf_version: v5.5.4
           target: esp32p4
           path: firmware
-          command: >-
-            bash -c 'idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.rev3" reconfigure
-            && d=managed_components/espressif__esp_hosted
-            && echo "== esp_hosted version ==" && grep -m1 -E "^version" $d/idf_component.yml
-            && echo "== OTA and version API ==" && grep -rn -E "esp_hosted_slave_ota|esp_hosted_get_coprocessor|esp_hosted_coprocessor_fwver" $d --include=*.h
-            && echo "== OTA example files ==" && ls $d/examples 2>/dev/null; true'
+          command: bash ../tools/wifi_chip_api.sh
