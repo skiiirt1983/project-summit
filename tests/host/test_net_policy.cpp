@@ -70,6 +70,29 @@ TEST(an_association_waiting_for_its_address_is_left_alone)
     for (int64_t t = 220000; t < 239000; t += 1000) CHECK(!p.due(t, false || associating(true, false, t, assoc)));
 }
 
+TEST(failed_attempts_do_not_pull_the_next_attempt_forward_and_the_setup_network_slows_them)
+{
+    // alpha.30/31 logs: attempt, "disconnected (reason 201)" 2.4 s later, next attempt 4 s after that: every 6.4 s forever.
+    ReconnectPolicy p;
+    p.attempted(100000);                                           // an attempt; the router is off
+    p.disconnected(102400, 201, false);                            // it failed: not a drop of a working link
+    CHECK(!p.due(106400, false));                                  // the old behaviour retried here
+    CHECK(p.due(100000 + kRetryEveryMs, false));
+    // a real drop of a working connection still retries soon
+    ReconnectPolicy q;
+    q.attempted(0);
+    q.disconnected(60000, 200, true);
+    CHECK(q.due(60000 + kFirstRetryMs, false));
+    // with the setup network up: one attempt a minute, 90 s while a phone is connected to it
+    CHECK(retry_interval_ms(false, 0) == kRetryEveryMs);
+    CHECK(retry_interval_ms(true, 0) == 60000 && retry_interval_ms(true, 1) == 90000 && retry_interval_ms(true, 3) == 90000);
+    ReconnectPolicy r;
+    r.attempted(500000, retry_interval_ms(true, 0));
+    CHECK(!r.due(559999, false) && r.due(560000, false));
+    r.attempted(560000, retry_interval_ms(true, 1));
+    CHECK(!r.due(649999, false) && r.due(650000, false));
+}
+
 int main()
 {
     RUN(first_attempt_is_due_at_once_then_paced);
@@ -77,5 +100,6 @@ int main()
     RUN(a_real_drop_retries_soon_but_never_faster_than_a_join);
     RUN(router_returns_after_a_long_outage);
     RUN(an_association_waiting_for_its_address_is_left_alone);
+    RUN(failed_attempts_do_not_pull_the_next_attempt_forward_and_the_setup_network_slows_them);
     return report("net policy");
 }
