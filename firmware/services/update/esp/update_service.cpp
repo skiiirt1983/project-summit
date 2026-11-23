@@ -214,9 +214,25 @@ void do_install(const std::string &version)
         publish_locked();
         if (!ok) return;
     }
+    // The download can fail for reasons that have nothing to do with the image: the Wi-Fi link drops under load ("read
+    // failed" at 0 % on the board, alpha.27, and the Wi-Fi did not come back). Try again up to 4 times: wait for the
+    // Wi-Fi to return, start the image over, and only then give up. Real errors (HTTP status, a rejected image) are not
+    // retried.
+    constexpr int kMaxAttempts = 4;
     std::string error;
-    int64_t last_pct = -1;
-    int status = http_get(url.c_str(), INT64_MAX,
+    int status = -1;
+    for (int attempt = 1; attempt <= kMaxAttempts; ++attempt) {
+        if (attempt > 1) {
+            ESP_LOGW(TAG, "download attempt %d failed (%s): waiting for Wi-Fi, then trying again", attempt - 1, error.c_str());
+            for (int i = 0; i < 90 && !state_bool("net/wifi_connected"); ++i) vTaskDelay(pdMS_TO_TICKS(1000));
+            vTaskDelay(pdMS_TO_TICKS(3000));  // let the link settle
+            std::lock_guard<std::mutex> lock(g->mu);
+            if (!g->engine->restart_download()) break;  // no longer downloading (failed for good)
+            publish_locked();
+            error.clear();
+        }
+        int64_t last_pct = -1;
+        status = http_get(url.c_str(), INT64_MAX,
                           [&](const uint8_t *p, size_t n) {
                               std::lock_guard<std::mutex> lock(g->mu);
                               bool ok = g->engine->data(p, n);
@@ -229,6 +245,12 @@ void do_install(const std::string &version)
                               return ok;
                           },
                           &error);
+        if (status == 200) break;
+        const bool transient = status == -1 && (error.rfind("read failed", 0) == 0 ||
+                                                error.rfind("connection closed early", 0) == 0 ||
+                                                error.rfind("connect:", 0) == 0);
+        if (!transient) break;
+    }
     auto ms = [] { return static_cast<unsigned>(esp_timer_get_time() / 1000); };
     ESP_LOGI(TAG, "install timing: download finished (http %d) at %u ms, screen mode %s", status, ms(),
              write_display_pulse() ? "pulse" : "lit");
@@ -268,10 +290,24 @@ void do_install(const std::string &version)
         g->bus->publish("display/blank", false);
     }
     ESP_LOGI(TAG, "install timing: light back on at %u ms", ms());
-    std::lock_guard<std::mutex> lock(g->mu);
-    publish_locked();
-    if (g->engine->status().stage == Stage::ReadyToReboot) {
-        g->bus->publish("notify/toast", std::string("Update ready: restart to finish"));
+    bool restart = false;
+    {
+        std::lock_guard<std::mutex> lock(g->mu);
+        publish_locked();
+        if (g->engine->status().stage == Stage::ReadyToReboot) {
+            const Value ar = g->settings->get("update/auto_restart");
+            const bool *on = std::get_if<bool>(&ar);
+            restart = !on || *on;  // on by default
+            g->state->set("update/restart_pending", restart);
+            g->bus->publish("notify/toast", std::string(restart ? "Update installed: restarting" : "Update ready: restart to finish"));
+        }
+    }
+    if (restart) {
+        // Paul's request (alpha.29: the screen said "restart" and a tap on the X plus a reset left the update unfinished).
+        // A few seconds so the screen can show it; the new image is already selected for the next boot.
+        ESP_LOGI(TAG, "update installed: restarting in 5 s");
+        vTaskDelay(pdMS_TO_TICKS(5000));
+        esp_restart();
     }
 }
 

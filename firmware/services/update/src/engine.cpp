@@ -161,6 +161,25 @@ bool UpdateEngine::data(const uint8_t *p, size_t len)
     return true;
 }
 
+bool UpdateEngine::restart_download()
+{
+    if (status_.stage != Stage::Downloading) return false;
+    if (writer_open_) {
+        writer_.abort();
+        writer_open_ = false;
+    }
+    std::string error;
+    if (!writer_.begin(static_cast<size_t>(status_.total), &error)) {
+        set_failed("cannot open update slot: " + error);
+        return false;
+    }
+    writer_open_ = true;
+    status_.bytes = 0;
+    header_.clear();
+    hasher_.reset();
+    return true;
+}
+
 bool UpdateEngine::begin_writing()
 {
     if (status_.stage != Stage::Downloading || status_.bytes != status_.total) return false;
