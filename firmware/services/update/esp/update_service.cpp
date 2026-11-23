@@ -12,6 +12,7 @@
 #include "esp_http_client.h"
 #include "esp_log.h"
 #include "esp_system.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
@@ -219,6 +220,8 @@ void do_install(const std::string &version)
                               return ok;
                           },
                           &error);
+    auto ms = [] { return static_cast<unsigned>(esp_timer_get_time() / 1000); };
+    ESP_LOGI(TAG, "install timing: download finished (http %d) at %u ms", status, ms());
     if (status == 200) {
         // Show the "Writing update" screen and let the UI draw it before the flash burst (the display may stall).
         {
@@ -230,6 +233,7 @@ void do_install(const std::string &version)
         vTaskDelay(pdMS_TO_TICKS(1500));
         g->bus->publish("display/blank", true);
         vTaskDelay(pdMS_TO_TICKS(100));  // let the UI loop apply it before the first erase
+        ESP_LOGI(TAG, "install timing: light off, flash write starts at %u ms", ms());
     }
     {
         std::lock_guard<std::mutex> lock(g->mu);
@@ -241,8 +245,10 @@ void do_install(const std::string &version)
     }
     // The panel needs a moment to settle after the flash stall: switching the light back on at once showed a very
     // dim on/off flicker (alpha.15). Stay dark a little longer, then show the result.
+    ESP_LOGI(TAG, "install timing: flash write finished at %u ms", ms());
     vTaskDelay(pdMS_TO_TICKS(600));
     g->bus->publish("display/blank", false);
+    ESP_LOGI(TAG, "install timing: light back on at %u ms", ms());
     std::lock_guard<std::mutex> lock(g->mu);
     publish_locked();
     if (g->engine->status().stage == Stage::ReadyToReboot) {

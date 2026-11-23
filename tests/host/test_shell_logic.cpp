@@ -306,6 +306,15 @@ TEST(startup_done_settles_first_then_waits_for_the_clock_with_limits)
     CHECK(startup_done(true, true, false, true, UINT32_MAX, 15000));           // ...but never past the limit
 }
 
+TEST(do_not_disturb_drops_normal_toasts_but_not_critical)
+{
+    using summit::shell::toast_allowed;
+    CHECK(toast_allowed(false, false));
+    CHECK(toast_allowed(false, true));
+    CHECK(!toast_allowed(true, false));
+    CHECK(toast_allowed(true, true));    // alarms and low battery still show
+}
+
 TEST(toast_queue_drops_start_up_noise_but_keeps_critical)
 {
     summit::shell::ToastQueue q;
@@ -349,6 +358,7 @@ int main()
     RUN(critical_toasts_show_immediately_even_when_hidden);
     RUN(link_toast_keeps_its_action);
     RUN(startup_done_settles_first_then_waits_for_the_clock_with_limits);
+    RUN(do_not_disturb_drops_normal_toasts_but_not_critical);
     RUN(toast_queue_drops_start_up_noise_but_keeps_critical);
     RUN(splash_timer_min_time_and_ready);
     RUN(motion_rubber_band_settle_and_dots);

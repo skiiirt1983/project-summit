@@ -154,6 +154,7 @@ private:
     RotationController rotation_;
     StripVisibility visibility_;
     ToastQueue toasts_;
+    void push_toast(Toast t);  // honours Do not disturb (system/dnd)
     bool toast_on_ = false;        // copied from the queue each tick (no pointers into it)
     bool toast_critical_ = false;
     std::string toast_text_, toast_action_;
