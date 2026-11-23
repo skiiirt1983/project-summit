@@ -7,6 +7,7 @@
 #include <variant>
 
 #include "esp_app_desc.h"
+#include "esp_ota_ops.h"
 #include "esp_core_dump.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -229,6 +230,18 @@ extern "C" void app_main(void)
     bus.subscribe("settings/display/brightness", apply_brightness);  // saved value (web UI, release)
     bus.subscribe("ui/brightness_live", apply_brightness);           // while the slider is dragged
     sim::publish_placeholders(state, false);                              // fake time, weather, battery... (placeholders)
+    // The placeholders above also contain fake device facts (version "0.0.1", hardware id, previous version): put the
+    // real ones back (they showed on the Updates screen, quick settings and web UI until alpha.27).
+    state.set("system/firmware_version", std::string(desc->version));
+    state.set("system/hardware_id", std::string(SUMMIT_HARDWARE_ID));
+    summit::update::update_service_republish_facts();
+    {
+        char sha[9] = {};
+        esp_app_get_elf_sha256(sha, sizeof(sha));  // first 8 hex digits of the image hash
+        const esp_partition_t *running = esp_ota_get_running_partition();
+        state.set("system/build_info", std::string(desc->date) + " " + desc->time + "\n" +
+                                           (running ? running->label : "?") + "  " + sha);
+    }
     static summit::shell::Shell shell(
         summit::shell::Shell::Deps{bus, state, settings, registry, host, &modules},
         [](summit::Orientation o) { summit::bsp::set_orientation(hw.display, o); });

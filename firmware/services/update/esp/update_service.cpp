@@ -331,6 +331,11 @@ void publish_previous_version()
 
 }  // namespace
 
+void update_service_republish_facts()
+{
+    if (g) publish_previous_version();
+}
+
 bool update_service_start(const ServiceConfig &config, EventBus &bus, StateStore &state, Settings &settings)
 {
     if (g) return true;

@@ -46,6 +46,8 @@ struct ServiceConfig {
 
 // Starts the update service (worker task). Reads update/channel from settings.
 bool update_service_start(const ServiceConfig &config, EventBus &bus, StateStore &state, Settings &settings);
+// Publishes the device facts the update service owns (update/previous_version) again, for callers that overwrote them.
+void update_service_republish_facts();
 
 // Web UI upload path (step 6) goes through the same engine: begin, stream, complete.
 bool upload_begin(int64_t size, std::string *error);
