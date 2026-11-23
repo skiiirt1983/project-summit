@@ -33,6 +33,8 @@ constexpr uint32_t kNotifyScan = 1u << 2;
 constexpr uint32_t kNotifyProbe = 1u << 3;  // web UI: try the Wi-Fi chip update handshake
 constexpr int64_t kApAfterMs = 45 * 1000;             // no network saved and no connection for this long: setup AP (Paul, 2026-11-22)
 constexpr int64_t kApAfterSavedMs = 5 * 60 * 1000;    // a saved network is unreachable this long: setup AP (Paul, 2026-11-23: a router restart is shorter)
+constexpr int64_t kApHoldMs = 60 * 1000;     // setup network stays up this long between join windows
+constexpr int64_t kJoinWindowMs = 20 * 1000; // setup network off, router-only (STA) join attempt this long
 constexpr int64_t kScanEveryDownMs = 30 * 1000;
 constexpr int64_t kScanEveryUpMs = 180 * 1000;
 
@@ -273,6 +275,8 @@ void task(void *)
     const bool have_network = !nvs_read("ssid", 33).empty();
     int64_t down_since = esp_timer_get_time() / 1000;
     int64_t last_scan = -kScanEveryDownMs;
+    int64_t join_until = 0;  // end of the current router-only join window (0 = none)
+    int64_t next_join = 0;   // when the setup network may next make way for a join window
     // Scan first: a scan cannot run while a connection attempt is in progress (it fails with ESP_ERR_WIFI_STATE).
     if (scan()) last_scan = esp_timer_get_time() / 1000;
     summit::net::ReconnectPolicy retry;
@@ -294,19 +298,36 @@ void task(void *)
         if (bits & kNotifyDisconnected) retry.disconnected(now, g_last_reason, g_drop_was_up);
         // Associated but still waiting for its address: leave it alone (a retry or a scan here made the address take 36 s).
         const bool wait = summit::net::associating(g_associated, g_connected, now, g_associated_ms);
-        if (retry.due(now, g_connected || wait)) {  // paced: never cancels an attempt that is still in progress
-            connect_saved(g_associated);            // stuck associated without an address: drop it first
-            // With the setup network up one attempt a minute (90 s with a phone on it): the single radio cannot serve both.
-            retry.attempted(now, summit::net::retry_interval_ms(g_ap_on, g_ap_clients));
+        // The Wi-Fi chip cannot serve the setup network and a join to the router at the same time (alpha.32 on hardware:
+        // with both up, every join ended in reason 15 and phones could not join either). Router-only mode is the one
+        // proven to join, so the two take turns: no join attempts while the setup network is up; with nobody on it, it
+        // steps aside for a short window every minute. With a phone on it, nothing is attempted.
+        if (g_ap_on) {
+            if (g_ap_clients == 0 && now >= next_join && !nvs_read("ssid", 33).empty()) {
+                ap_stop();
+                join_until = now + kJoinWindowMs;
+                connect_saved(false);
+                retry.attempted(now);
+            }
+        } else if (retry.due(now, g_connected || wait)) {  // paced: never cancels an attempt that is still in progress
+            connect_saved(g_associated);                   // stuck associated without an address: drop it first
+            retry.attempted(now);
         }
         if (g_connected) {
             down_since = now;
+            join_until = 0;
             if (g_ap_on) ap_stop();
-        } else if (now - down_since > (nvs_read("ssid", 33).empty() ? kApAfterMs : kApAfterSavedMs)) {
+        } else if (!g_ap_on && now >= join_until && !wait &&
+                   now - down_since > (nvs_read("ssid", 33).empty() ? kApAfterMs : kApAfterSavedMs)) {
+            if (join_until) {  // the window ended without a connection: stop the pending attempt, bring the setup network back
+                join_until = 0;
+                esp_wifi_disconnect();
+            }
+            next_join = now + kApHoldMs;
             ap_start();  // nothing reachable: let the web UI be reached directly
         }
         // No periodic scans while the setup network is up (each one takes the radio off its channel); on demand still works.
-        if (!wait && ((bits & kNotifyScan) || (!g_ap_on && now - last_scan > (g_connected ? kScanEveryUpMs : kScanEveryDownMs)))) {
+        if (!wait && ((bits & kNotifyScan) || (!g_ap_on && now >= join_until && now - last_scan > (g_connected ? kScanEveryUpMs : kScanEveryDownMs)))) {
             last_scan = scan() ? now : now - (g_connected ? kScanEveryUpMs : kScanEveryDownMs) + 8000;  // failed: again in 8 s
         }
     }
