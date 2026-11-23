@@ -296,9 +296,9 @@ TEST(test_sound_route)
         if (const std::string *s = std::get_if<std::string>(&v)) seen = *s;
     });
     CHECK(r.get("/api/audio/test").status == 405);  // only POST
-    CHECK(r.post("/api/audio/test", R"({"sound":"chime"})").status == 202);
+    CHECK(r.post("/api/audio/test", R"({"sound":"warning"})").status == 202);
     r.bus.dispatch();
-    CHECK(seen == "chime");
+    CHECK(seen == "warning");
     seen.clear();
     for (const char *bad : {"{}", R"({"sound":"klaxon"})", R"({"sound":3})", "nope"}) CHECK(r.post("/api/audio/test", bad).status == 400);
     r.bus.dispatch();

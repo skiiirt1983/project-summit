@@ -7,16 +7,21 @@ namespace summit {
 
 std::vector<Note> sound_notes(Sound s)
 {
-    switch (s) {
-    case Sound::Preview: return {{1800.f, 30}};
-    case Sound::Chime: return {{880.f, 110}, {1320.f, 240}};
-    case Sound::Alarm: return {{1000.f, 150}, {0.f, 80}, {1000.f, 150}, {0.f, 80}, {1000.f, 150}, {0.f, 400}};
-    }
+    if (s == Sound::Preview) return {{1800.f, 30}};
     return {};
+}
+
+int16_t ulaw_decode(uint8_t u)
+{
+    u = static_cast<uint8_t>(~u);
+    int t = ((u & 0x0F) << 3) + 0x84;
+    t <<= (u & 0x70) >> 4;
+    return static_cast<int16_t>((u & 0x80) ? (0x84 - t) : (t - 0x84));
 }
 
 int sound_length_ms(Sound s)
 {
+    if (const SoundClip *c = sound_clip(s)) return static_cast<int>(c->samples * 1000 / kAudioSampleRate);
     int total = 0;
     for (const Note &n : sound_notes(s)) total += n.ms;
     return total;
@@ -48,7 +53,8 @@ std::vector<int16_t> render_notes(const std::vector<Note> &notes, int sample_rat
 bool parse_sound(const std::string &name, Sound &out)
 {
     if (name == "preview") out = Sound::Preview;
-    else if (name == "chime") out = Sound::Chime;
+    else if (name == "confirm") out = Sound::Confirm;
+    else if (name == "warning") out = Sound::Warning;
     else if (name == "alarm") out = Sound::Alarm;
     else return false;
     return true;
@@ -58,7 +64,8 @@ bool audible(Sound s, bool dnd, int volume)
 {
     switch (s) {
     case Sound::Alarm: return true;
-    case Sound::Chime: return volume > 0 && !dnd;
+    case Sound::Confirm: return volume > 0 && !dnd;
+    case Sound::Warning: return volume > 0;  // critical: do-not-disturb does not matter
     case Sound::Preview: return volume > 0;  // the user is adjusting it: do-not-disturb does not matter
     }
     return false;
@@ -127,6 +134,12 @@ void AudioService::queue(Sound s)
     if (pending_.size() < 4) pending_.push_back(s);
 }
 
+bool AudioService::alarm_ringing()
+{
+    std::lock_guard<std::mutex> lock(mu_);
+    return ringing_;
+}
+
 void AudioService::play(Sound s, uint64_t now_ms)
 {
     int vol;
@@ -143,9 +156,21 @@ void AudioService::play(Sound s, uint64_t now_ms)
         port_.set_volume(vol);
         applied_volume_ = vol;
     }
-    const std::vector<int16_t> pcm = render_notes(sound_notes(s), kAudioSampleRate, 16000);
-    port_.write(pcm.data(), pcm.size());
-    last_activity_ms_ = now_ms;
+    // Idle clock: the amplifier may go off kIdleCloseMs after the sound ends, not after it starts.
+    last_activity_ms_ = now_ms + static_cast<uint64_t>(sound_length_ms(s));
+    if (const SoundClip *clip = sound_clip(s)) {
+        int16_t buf[1024];  // decoded a piece at a time; the alarm stops between pieces once it is dismissed
+        for (size_t at = 0; at < clip->samples;) {
+            const size_t n = std::min<size_t>(1024, clip->samples - at);
+            for (size_t i = 0; i < n; ++i) buf[i] = ulaw_decode(clip->ulaw[at + i]);
+            if (!port_.write(buf, n)) break;
+            at += n;
+            if (s == Sound::Alarm && !alarm_ringing()) break;
+        }
+    } else {
+        const std::vector<int16_t> pcm = render_notes(sound_notes(s), kAudioSampleRate, 16000);
+        port_.write(pcm.data(), pcm.size());
+    }
 }
 
 void AudioService::tick(uint64_t now_ms)
@@ -161,12 +186,13 @@ void AudioService::tick(uint64_t now_ms)
     if (ringing) {
         if (now_ms >= next_alarm_ms_) {
             play(Sound::Alarm, now_ms);
+            if (!alarm_ringing()) return;  // dismissed while it played
             next_alarm_ms_ = now_ms + static_cast<uint64_t>(sound_length_ms(Sound::Alarm)) + kAlarmGapMs;
         }
     } else {
         next_alarm_ms_ = 0;
     }
-    if (open_ && now_ms - last_activity_ms_ > kIdleCloseMs) {
+    if (open_ && now_ms > last_activity_ms_ && now_ms - last_activity_ms_ > kIdleCloseMs) {  // last_activity is the end of the sound
         port_.close();
         open_ = false;
     }

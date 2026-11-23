@@ -1,10 +1,11 @@
 // Audio service: which sound plays when (pure rules, host-tested in tests/host/test_audio.cpp) and the service that
 // turns bus events into sounds through an AudioPort (the ES8311 codec + amplifier on the board; a fake in tests).
 //
-// Sounds (generated, no files):  Preview = a short tick when the volume slider is released,
-// Chime = a two-note notification sound, Alarm = three beeps, repeated while a timer rings.
-// Rules: volume 0 silences Preview and Chime; do-not-disturb (setting system/dnd or state power/dnd) silences Chime
-// only; an Alarm always rings and never quieter than kAlarmMinVolume, so a timer is never missed.
+// Sounds: Preview = a generated tick when the volume slider is released; Confirm, Warning and Alarm (the cowbell, played
+// again while a timer rings) are Paul's recordings, built into the firmware as 8-bit mu-law (tools/make_sounds.py).
+// Rules: volume 0 silences everything but the Alarm; do-not-disturb (setting system/dnd or state power/dnd) silences
+// Confirm only (a Warning is for critical things); an Alarm always rings, never quieter than kAlarmMinVolume, and stops
+// the moment it is dismissed, so a timer is never missed and never keeps ringing.
 #pragma once
 #include <cstddef>
 #include <cstdint>
@@ -18,7 +19,7 @@
 
 namespace summit {
 
-enum class Sound { Preview, Chime, Alarm };
+enum class Sound { Preview, Confirm, Warning, Alarm };
 
 struct Note {
     float hz;  // 0 = silence
@@ -28,11 +29,19 @@ struct Note {
 constexpr int kAudioSampleRate = 16000;  // mono, 16-bit
 constexpr int kAlarmMinVolume = 40;      // percent
 
-std::vector<Note> sound_notes(Sound s);
-int sound_length_ms(Sound s);
+// A recorded sound: 16 kHz mono 8-bit mu-law (null for Preview, which is generated from sound_notes()).
+struct SoundClip {
+    const uint8_t *ulaw;
+    size_t samples;
+};
+const SoundClip *sound_clip(Sound s);  // sounds_data.cpp (generated)
+int16_t ulaw_decode(uint8_t u);
+
+std::vector<Note> sound_notes(Sound s);  // the generated sounds only (empty for the recordings)
+int sound_length_ms(Sound s);            // either kind
 // Sine notes with a 5 ms fade in/out so nothing clicks. peak = largest sample (0..32767).
 std::vector<int16_t> render_notes(const std::vector<Note> &notes, int sample_rate, int peak);
-// Parses the payload of the bus event audio/play: "preview", "chime" or "alarm".
+// Parses the payload of the bus event audio/play: "preview", "confirm", "warning" or "alarm".
 bool parse_sound(const std::string &name, Sound &out);
 bool audible(Sound s, bool dnd, int volume);
 // Volume handed to the codec (0..100).
@@ -61,6 +70,7 @@ public:
 private:
     bool dnd_now() const;
     void queue(Sound s);
+    bool alarm_ringing();
     void play(Sound s, uint64_t now_ms);
 
     EventBus &bus_;
