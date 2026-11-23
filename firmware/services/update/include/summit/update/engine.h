@@ -12,6 +12,14 @@
 
 namespace summit::update {
 
+// Percent of the image written to flash (0..100), for the "Writing update" screen.
+inline int write_percent(size_t done, size_t total)
+{
+    if (total == 0) return 0;
+    if (done >= total) return 100;
+    return static_cast<int>(done * 100 / total);
+}
+
 class OtaWriter {
 public:
     virtual ~OtaWriter() = default;

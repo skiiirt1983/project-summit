@@ -226,7 +226,10 @@ void do_install(const std::string &version)
         // Show the "Writing update" screen and let the UI draw it before the flash burst (the display may stall).
         {
             std::lock_guard<std::mutex> lock(g->mu);
-            if (g->engine->begin_writing()) publish_locked();
+            if (g->engine->begin_writing()) {
+                g->state->set("update/write_pct", int64_t{0});
+                publish_locked();
+            }
         }
         // Let the person read it, then switch the backlight off for the flash burst only: the cache freeze starves
         // the panel and it flashes blue. The light comes back as soon as the writing is over.
@@ -333,6 +336,18 @@ bool update_service_start(const ServiceConfig &config, EventBus &bus, StateStore
         return false;
     }
     g->engine = std::make_unique<UpdateEngine>(d, expect, g->writer, g->hasher);
+    // The flash write runs in slices (see EspOtaWriter::on_slice). The panel is off during the flash stalls, so a dark
+    // screen would look like the device had shut down: between slices it is lit briefly with the progress.
+    g->writer.on_slice = [](int percent) {
+        g->state->set("update/write_pct", int64_t{percent});
+        g->bus->publish("display/panel_off", false);
+        vTaskDelay(pdMS_TO_TICKS(600));  // the panel settles after the stalls before it is lit (dim flicker otherwise)
+        g->bus->publish("display/blank", false);
+        vTaskDelay(pdMS_TO_TICKS(1500));  // lit long enough to read the progress
+        g->bus->publish("display/blank", true);
+        g->bus->publish("display/panel_off", true);
+        vTaskDelay(pdMS_TO_TICKS(150));  // both applied before the next erase
+    };
     g->queue = xQueueCreate(4, sizeof(Command));
     if (!g->queue || xTaskCreate(worker, "update", 8192, nullptr, tskIDLE_PRIORITY + 2, nullptr) != pdPASS) return false;
 

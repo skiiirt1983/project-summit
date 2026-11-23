@@ -1,4 +1,6 @@
 #pragma once
+#include <functional>
+
 #include "esp_ota_ops.h"
 #include "mbedtls/sha256.h"
 #include "summit/update/engine.h"
@@ -12,6 +14,12 @@ public:
     bool write(const uint8_t *data, size_t len, std::string *error) override;
     bool finish(std::string *error) override;
     void abort() override;
+
+    // Called from finish() between pieces of the flash write, about every kSliceMs of flash work, with the percent
+    // written. The update service uses it to light the screen briefly with the progress (the panel is switched off
+    // during the flash stalls). Runs on the update worker task.
+    static constexpr int64_t kSliceMs = 2000;
+    std::function<void(int percent)> on_slice;
 
 private:
     const esp_partition_t *target_ = nullptr;
