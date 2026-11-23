@@ -72,3 +72,7 @@ CONFIG_LV_USE_CLIB_MALLOC=y
 CONFIG_LV_USE_CLIB_STRING=y
 CONFIG_LV_USE_CLIB_SPRINTF=y
 
+# Flash erase/write used to freeze the cache and starve the display's PSRAM reads (screen glitching while an image is
+# installed). Auto suspend lets the flash chip pause an erase/program to serve reads. EXPERIMENT (alpha.24): needs chip
+# support; if it does not help, the Settings key update/write_display = pulse is the fallback behaviour.
+CONFIG_SPI_FLASH_AUTO_SUSPEND=y
