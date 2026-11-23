@@ -231,13 +231,19 @@ void do_install(const std::string &version)
         g->bus->publish("display/blank", true);
         vTaskDelay(pdMS_TO_TICKS(100));  // let the UI loop apply it before the first erase
     }
-    std::lock_guard<std::mutex> lock(g->mu);
-    if (status == 200) {
-        g->engine->complete();
-    } else {
-        g->engine->fail(error.empty() ? "download failed" : error, status > 0 ? status : 0);
+    {
+        std::lock_guard<std::mutex> lock(g->mu);
+        if (status == 200) {
+            g->engine->complete();
+        } else {
+            g->engine->fail(error.empty() ? "download failed" : error, status > 0 ? status : 0);
+        }
     }
+    // The panel needs a moment to settle after the flash stall: switching the light back on at once showed a very
+    // dim on/off flicker (alpha.15). Stay dark a little longer, then show the result.
+    vTaskDelay(pdMS_TO_TICKS(600));
     g->bus->publish("display/blank", false);
+    std::lock_guard<std::mutex> lock(g->mu);
     publish_locked();
     if (g->engine->status().stage == Stage::ReadyToReboot) {
         g->bus->publish("notify/toast", std::string("Update ready: restart to finish"));

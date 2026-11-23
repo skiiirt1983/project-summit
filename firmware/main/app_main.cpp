@@ -278,7 +278,7 @@ extern "C" void app_main(void)
                     return b && *b;
                 };
                 if (summit::boot::startup_done(flag("net/wifi_connected"), flag("time/synced"), flag("net/ap_active"),
-                                               now - splash_start)) {
+                                               summit::update::ota_pending_verify(), now - splash_start)) {
                     splash.set_ready();
                     splash_ready = true;
                 }

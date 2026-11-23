@@ -64,7 +64,14 @@ void guard_task(void *arg)
         publish_warnings(ctx, warnings);
         GateDecision d = gate.feed(s, static_cast<uint32_t>(esp_timer_get_time() / 1000));
         if (d == GateDecision::Confirm) {
-            if (esp_ota_mark_app_valid_cancel_rollback() == ESP_OK) {
+            // This writes the boot flag to flash: the cache freeze makes the lit panel flash blue (alpha.15, partway
+            // through the boot screen). Keep the light off for the write and a short settle time.
+            ctx->bus->publish("display/blank", true);
+            vTaskDelay(pdMS_TO_TICKS(150));
+            const esp_err_t valid_err = esp_ota_mark_app_valid_cancel_rollback();
+            vTaskDelay(pdMS_TO_TICKS(400));
+            ctx->bus->publish("display/blank", false);
+            if (valid_err == ESP_OK) {
                 ESP_LOGI(TAG, "new image confirmed");
                 ctx->bus->publish("notify/toast",
                                   std::string("Updated to ") + esp_app_get_description()->version);
