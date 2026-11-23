@@ -21,7 +21,7 @@ private:
     // display only suffers flash stalls for those few seconds. Null = streaming fallback (no buffer available).
     uint8_t *buf_ = nullptr;
     size_t buf_len_ = 0, buf_size_ = 0;
-    bool open_flash(std::string *error);
+    bool open_flash(std::string *error, size_t erase_bytes = OTA_WITH_SEQUENTIAL_WRITES);
 };
 
 class MbedSha256 : public Hasher {

@@ -35,6 +35,10 @@ void set_debug_backlight_full(bool full);
 // Forces the backlight off (true) or back to the set brightness (false); used while a firmware image is written.
 void set_display_blank(bool blank);
 
+// Switches the panel's own output off/on (display-off command). The backlight alone leaves a faint glitching image
+// visible while flash writes starve the display; with the panel off there is nothing to see. Logs the result.
+void set_panel_output(bool on);
+
 // 0..100 percent (LEDC PWM on the backlight pin).
 void set_brightness(int percent);
 
