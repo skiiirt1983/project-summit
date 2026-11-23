@@ -218,6 +218,10 @@ extern "C" void app_main(void)
     bus.subscribe("settings/debug/backlight", [str_of](const std::string &, const summit::Value &v) {
         summit::bsp::set_debug_backlight_full(str_of(v, "pwm") == "full");
     });
+    bus.subscribe("display/blank", [](const std::string &, const summit::Value &v) {
+        const bool *b = std::get_if<bool>(&v);
+        summit::bsp::set_display_blank(b && *b);
+    });
     bus.subscribe("settings/display/brightness", apply_brightness);  // saved value (web UI, release)
     bus.subscribe("ui/brightness_live", apply_brightness);           // while the slider is dragged
     sim::publish_placeholders(state, false);                              // fake time, weather, battery... (placeholders)
@@ -242,7 +246,10 @@ extern "C" void app_main(void)
     const bool boot_portrait = !(sensor_o && *sensor_o == "landscape");
     if (hw.touch) lv_indev_enable(hw.touch, false);    // no touch (or phantom touch) during the boot screen
     splash.show(now_ms(), hw.display, boot_portrait);
-    splash.set_ready();
+    // The boot screen stays until Wi-Fi is connected and the clock is set (or the setup AP is on, or 20 s have passed).
+    const uint32_t splash_start = now_ms();
+    summit::boot::StartupWait last_wait = summit::boot::StartupWait::Done;
+    bool splash_ready = false;
     lv_timer_handler();                                // draw the first frame, then light the panel
     summit::bsp::set_brightness(start_brightness);
     ESP_LOGI(TAG, "UI running");
@@ -264,6 +271,22 @@ extern "C" void app_main(void)
             bus.dispatch();
             timers.tick(now);
             shell.tick(now);
+            if (!splash_ready) {
+                auto flag = [&](const char *topic) {
+                    const summit::Value v = state.get(topic);
+                    const bool *b = std::get_if<bool>(&v);
+                    return b && *b;
+                };
+                const auto w = summit::boot::startup_wait(flag("net/wifi_connected"), flag("time/synced"),
+                                                          flag("net/ap_active"), now - splash_start);
+                if (w == summit::boot::StartupWait::Done) {
+                    splash.set_ready();
+                    splash_ready = true;
+                } else if (w != last_wait) {
+                    last_wait = w;
+                    splash.set_status(w == summit::boot::StartupWait::Wifi ? "CONNECTING WI-FI" : "SETTING THE CLOCK");
+                }
+            }
             if (splash.tick(now) && hw.touch) lv_indev_enable(hw.touch, true);
             const bool moving = lv_anim_count_running() > 0 || (hw.touch && lv_indev_get_state(hw.touch) == LV_INDEV_STATE_PRESSED);
             next_services = now + (moving ? 4 : 20);

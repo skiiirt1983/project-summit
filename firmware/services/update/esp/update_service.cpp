@@ -225,7 +225,11 @@ void do_install(const std::string &version)
             std::lock_guard<std::mutex> lock(g->mu);
             if (g->engine->begin_writing()) publish_locked();
         }
-        vTaskDelay(pdMS_TO_TICKS(800));
+        // Let the person read it, then switch the backlight off for the flash burst only: the cache freeze starves
+        // the panel and it flashes blue. The light comes back as soon as the writing is over.
+        vTaskDelay(pdMS_TO_TICKS(1500));
+        g->bus->publish("display/blank", true);
+        vTaskDelay(pdMS_TO_TICKS(100));  // let the UI loop apply it before the first erase
     }
     std::lock_guard<std::mutex> lock(g->mu);
     if (status == 200) {
@@ -233,6 +237,7 @@ void do_install(const std::string &version)
     } else {
         g->engine->fail(error.empty() ? "download failed" : error, status > 0 ? status : 0);
     }
+    g->bus->publish("display/blank", false);
     publish_locked();
     if (g->engine->status().stage == Stage::ReadyToReboot) {
         g->bus->publish("notify/toast", std::string("Update ready: restart to finish"));
