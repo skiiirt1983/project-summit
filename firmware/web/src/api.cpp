@@ -245,13 +245,17 @@ Response WebApi::handle(const Request &req)
     if (p == "/api/settings/reset" && post) return settings_reset(req.body);
     if (p == "/api/settings/backup" && get) return settings_backup();
     if (p == "/api/diagnostics" && get) return diagnostics();
+    if (p == "/api/wifi_chip/probe" && post) {  // asks the net service to try the Wi-Fi chip update handshake (flashes nothing)
+        bus_.publish("net/wifi_chip_command", std::string("probe"));
+        return accepted();
+    }
     if (modules_ && p == "/api/modules" && get) return modules_get();
     if (modules_ && post && (p == "/api/modules/install" || p == "/api/modules/remove" || p == "/api/modules/delete-data"))
         return modules_command(p.substr(13), req.body);
     static const char *known[] = {"/api/status", "/api/wifi", "/api/firmware", "/api/settings",
                                   "/api/settings/export", "/api/settings/import", "/api/settings/reset",
                                   "/api/settings/backup", "/api/settings/import/validate", "/api/settings/undo",
-                                  "/api/diagnostics", "/api/modules", "/api/modules/install", "/api/modules/remove",
+                                  "/api/diagnostics", "/api/wifi_chip/probe", "/api/modules", "/api/modules/install", "/api/modules/remove",
                                   "/api/modules/delete-data"};
     for (ApiExtension *ext : extensions_) {
         Response out;
@@ -526,7 +530,7 @@ Response WebApi::diagnostics()
     w.key("event_bus").begin_object().key("published").value(b.published).key("delivered").value(b.delivered);
     w.key("dropped").value(b.dropped).key("high_water").value(static_cast<int64_t>(b.high_water)).end_object();
     w.key("update").begin_object().key("stage").value(str("update/stage")).key("error").value(str("update/error"));
-    w.end_object().key("metrics").begin_object();
+    w.end_object().key("wifi_chip").value(str("net/wifi_chip_probe")).key("metrics").begin_object();
     {  // "key=value" lines published by the UI loop (diag/metrics)
         const std::string m = str("diag/metrics");
         size_t st = 0;

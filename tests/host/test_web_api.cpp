@@ -272,6 +272,22 @@ TEST(diagnostics_lists_addon_warnings)
     CHECK(d.s("device.uptime_s") == "42");
 }
 
+TEST(wifi_chip_probe_is_a_command_and_its_answer_shows_in_diagnostics)
+{
+    Rig r;
+    std::string seen;
+    r.bus.subscribe("net/wifi_chip_command", [&](const std::string &, const Value &v) {
+        if (const std::string *s = std::get_if<std::string>(&v)) seen = *s;
+    });
+    CHECK(r.get("/api/wifi_chip/probe").status == 405);       // only POST
+    CHECK(r.post("/api/wifi_chip/probe", "{}").status == 202);
+    r.bus.dispatch();
+    CHECK(seen == "probe");
+    CHECK(Json(r.get("/api/diagnostics").body).s("wifi_chip") == "");
+    r.state.set("net/wifi_chip_probe", std::string("update begin: ESP_ERR_TIMEOUT"));
+    CHECK(Json(r.get("/api/diagnostics").body).s("wifi_chip") == "update begin: ESP_ERR_TIMEOUT");
+}
+
 TEST(import_is_validated_first_and_refused_cleanly)
 {
     Rig r;
@@ -435,6 +451,7 @@ int main()
     RUN(settings_export_import_round_trip);
     RUN(settings_reset_and_unreadable_export);
     RUN(diagnostics_lists_addon_warnings);
+    RUN(wifi_chip_probe_is_a_command_and_its_answer_shows_in_diagnostics);
     RUN(import_is_validated_first_and_refused_cleanly);
     RUN(secrets_left_out_of_exports_unless_asked);
     RUN(modules_list_install_remove);

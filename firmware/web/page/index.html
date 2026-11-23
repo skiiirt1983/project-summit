@@ -156,7 +156,7 @@ ul{margin:0;padding-left:18px}
 
 <section id="diagnostics">
   <div class="card"><h2>Warnings</h2><ul id="diag-warnings"></ul><p class="muted" id="diag-none">None.</p></div>
-  <div class="card"><h2>Details</h2><dl id="diag-dl"></dl><div class="row"><button class="btn" id="diag-refresh">Refresh</button></div></div>
+  <div class="card"><h2>Details</h2><dl id="diag-dl"></dl><div class="row"><button class="btn" id="diag-refresh">Refresh</button><button class="btn" id="diag-wifi-probe" title="Asks the Wi-Fi chip whether it accepts a firmware update. Flashes nothing; Wi-Fi may drop for a few seconds.">Probe Wi-Fi chip</button></div></div>
 </section>
 
 <section id="log">
@@ -447,12 +447,17 @@ loaders.diagnostics = async () => {
   $("diag-none").hidden = d.warnings.length > 0;
   const pairs = [["Settings notice", d.settings.notice], ["Settings schema", d.settings.schema_version + " (stored " + d.settings.stored_version + ")"],
     ["Update", d.update.stage + (d.update.error ? ": " + d.update.error : "")],
+    ["Wi-Fi chip probe", d.wifi_chip || "not run"],
     ["Event bus", d.event_bus.published + " published, " + d.event_bus.dropped + " dropped, peak queue " + d.event_bus.high_water]];
   for (const [k, v] of Object.entries(d.metrics || {})) pairs.push([k, v]);
   for (const [k, v] of Object.entries(d.device)) pairs.push([k, v]);
   fillDl($("diag-dl"), pairs);
 };
 $("diag-refresh").addEventListener("click", () => loaders.diagnostics());
+$("diag-wifi-probe").addEventListener("click", async () => {
+  try { await api("/api/wifi_chip/probe", { method: "POST", json: {} }); } catch (err) { alert("Could not start the probe: " + err.message); return; }
+  setTimeout(() => loaders.diagnostics(), 8000);  // the answer takes a few seconds; the page also reloads on Refresh
+});
 
 // Shared with the Recipes module (recipes.mjs).
 window.summit = { $, el, api, msg, loaders };
