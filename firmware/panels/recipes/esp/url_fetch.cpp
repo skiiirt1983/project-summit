@@ -3,12 +3,14 @@
 
 #include "esp_crt_bundle.h"
 #include "esp_http_client.h"
+#include "esp_log.h"
 
 namespace summit::recipes {
 
 bool HttpsPageFetcher::get(const std::string &url, size_t max_bytes, std::string &body, std::string *error)
 {
     auto fail = [error](const std::string &msg) {
+        ESP_LOGW("recipes", "page fetch failed: %s", msg.c_str());  // never the address itself (it can carry personal details)
         if (error) *error = msg;
         return false;
     };

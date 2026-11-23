@@ -17,6 +17,19 @@ on the board, as in Waveshare's guides). That is Paul's call: it would break the
 The first on-device test is therefore a harmless probe: start the OTA against the current slave and see whether it
 accepts it. A refusal changes nothing.
 
+## Probe result and recovery route (2026-11-23)
+- Probe on alpha.29 (Paul): version call returned -1, update begin ESP_OK, update end ESP_ERR_INVALID_ARG. Read as: the
+  chip's firmware runs its update code (begin accepted; `end` refused because no data was written) and cannot report a
+  version (hence 0.0.0). The host-driven update path looks possible with no wires. Not proven until a real update.
+- Recovery if a new image leaves the chip without Wi-Fi: the board has a 4-pin **C6-UART** header (J7, labelled TX, RX,
+  IO9, GND, top right of the board; schematic page 2). Waveshare FAQ for this board: pull C6 IO9 low at power-on, put the
+  P4 into download mode too (hold BOOT while powering on), flash the C6 over TX/RX. Needs a 3.3 V USB-to-serial adapter and
+  a cable for the header (connector type to be checked on the board); a full image set (bootloader, partition table, app),
+  not only `network_adapter.bin`. Waveshare publishes no C6 firmware or recovery guide for this board.
+- Waveshare's FAQ says the C6 ships with working firmware: the serial header is a recovery/dev route, not the update
+  method. Product rule: our firmware must keep working with the shipped (old) C6 firmware; do not offer the C6 update to
+  other users unless it has been proven over many devices.
+
 ## Risk
 A wrong or broken C6 image leaves the device **without Wi-Fi** (and so without Wi-Fi updates). A USB flash of the P4
 cannot repair the C6. Therefore: only an image built from the same esp-hosted-mcu tag family as the host (2.13.x),
