@@ -1,0 +1,38 @@
+{
+  "project": "summit",
+  "version": "0.0.2-alpha.31",
+  "git_sha": "aaec82ff72f8",
+  "hardware_id": "waveshare-p4-wifi6-lcd5-rev3",
+  "chip_rev_family": "rev3",
+  "chip": "ESP32-P4",
+  "ota": {
+    "chip_id": 18,
+    "min_chip_rev_full": 301,
+    "max_chip_rev_full": 399,
+    "version": "0.0.2-alpha.31",
+    "project": "summit",
+    "bytes": 3669616,
+    "slot": "ota_0",
+    "slot_bytes": 8388608,
+    "headroom": 0.5625,
+    "file": "summit-0.0.2-alpha.31-rev3-ota.bin",
+    "sha256": "58a1a4c0b51c690e7e83192ad3cf8b445183176c94b3bfd084f97fe42390ea94"
+  },
+  "full": {
+    "bytes": 7994992,
+    "app_partition": "ota_0",
+    "app_offset": "0x420000",
+    "file": "summit-0.0.2-alpha.31-rev3-full.bin",
+    "sha256": "e3acb1b8572a3884646a73d5574aafda7e6263dd033f8b57764c87b51e3eda70",
+    "flash_offset": "0x0"
+  },
+  "keep_settings": {
+    "manifest": "manifest-rev3-preserve.json",
+    "writes": {
+      "0x109000": "summit-0.0.2-alpha.31-rev3-otadata-ota0.bin",
+      "0x420000": "summit-0.0.2-alpha.31-rev3-ota.bin"
+    }
+  },
+  "hardware_tested": false,
+  "released": "2026-11-23"
+}
