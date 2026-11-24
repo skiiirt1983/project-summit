@@ -24,7 +24,7 @@ update_srcs="$up/src/version.cpp $up/src/catalog.cpp $up/src/preflight.cpp $up/s
 ${CC:-gcc} -std=c99 -g -fsanitize=address,undefined -c third_party/cjson/cJSON.c -o "$out/cJSON.o"
 web_srcs="$wb/src/api.cpp $wb/src/log_buffer.cpp $wb/src/log_mirror.cpp $out/cJSON.o"
 recipe_srcs="$rc/src/module.cpp $rc/src/recipe.cpp $rc/src/quantity.cpp $rc/src/step_time.cpp $rc/src/store.cpp $rc/src/cook.cpp $rc/src/web_api.cpp $rc/src/jsonld.cpp"
-for t in test_event_bus test_settings test_panels test_settings_schema test_shell_logic test_update test_web_api test_modules test_recipes test_storage test_timers test_recipe_api test_jsonld test_sleep test_net_policy test_log_mirror test_audio test_jpeg_info; do
-  $cxx $srcs $shell_srcs $update_srcs $web_srcs $recipe_srcs $tm/src/timers.cpp firmware/services/audio/src/audio.cpp firmware/services/audio/src/sounds_data.cpp firmware/services/jpeg/src/jpeg_info.cpp firmware/services/power/src/sleep.cpp firmware/services/power/src/power_service.cpp tests/host/$t.cpp -o "$out/$t"
+for t in test_event_bus test_settings test_panels test_settings_schema test_shell_logic test_update test_web_api test_modules test_recipes test_storage test_timers test_recipe_api test_jsonld test_sleep test_net_policy test_log_mirror test_audio test_jpeg_info test_clock_tools; do
+  $cxx $srcs $shell_srcs $update_srcs $web_srcs $recipe_srcs $tm/src/timers.cpp $tm/src/stopwatch.cpp $tm/src/alarms.cpp firmware/services/audio/src/audio.cpp firmware/services/audio/src/sounds_data.cpp firmware/services/jpeg/src/jpeg_info.cpp firmware/services/power/src/sleep.cpp firmware/services/power/src/power_service.cpp tests/host/$t.cpp -o "$out/$t"
   "$out/$t"
 done

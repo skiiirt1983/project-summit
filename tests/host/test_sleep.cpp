@@ -166,7 +166,7 @@ TEST(timers_survive_sleep)
     CHECK(Timers().next_due_ms(0) == -1 && Timers().save(0).empty());
     // Restore replaces what was there and ignores nonsense.
     woke.restore({{"", 60, 1000}, {"bad", 0, 1000}}, 0, 0);
-    CHECK(woke.all().size() == 1 && woke.all()[0].name == "Timer" && woke.all()[0].id != 0);
+    CHECK(woke.all().size() == 1 && woke.all()[0].name == "Timer 1" && woke.all()[0].id != 0);  // an empty saved name is numbered
 }
 
 TEST(wake_plan)

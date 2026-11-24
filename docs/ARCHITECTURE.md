@@ -580,7 +580,7 @@ Large bodies are streamed in both directions (`StorageWriter`, `read_chunk`), ne
 
 ### Kitchen timers
 
-- `firmware/services/timers`: up to 8 named timers at once (1 s to 48 h). Tapping a time in a step raises `timers/start`; the service counts down and publishes `timers/chip_text`, `timers/list` and `timers/ringing`.
+- `firmware/services/timers`: up to 8 named timers at once (1 s to 48 h); a timer without a name is called "Timer 1", "Timer 2" ... (the lowest number not in use). Also pure logic, not yet wired to the bus or a screen (design: `docs/TIMER_BRIEF.md`): `Stopwatch` (start/stop/lap/reset, laps kept until reset, up to 99) and `Alarms` (up to 8 alarms with a time of day, repeat days, snooze; works on local wall-clock seconds; a once-alarm switches itself off; late alarms after sleep are skipped). Tapping a time in a step raises `timers/start`; the service counts down and publishes `timers/chip_text`, `timers/list` and `timers/ringing`.
 - When a timer ends it raises a critical toast ("Timer done: <name>", shown even in full-screen modes) and rings until stopped; if nobody stops it, it stops by itself after 1 minute.
 - **Glance chips** (declared in the Recipes panel's manifest): a timer chip with the soonest countdown (never dropped at narrow widths) and a "Cooking now" chip with the recipe title while a recipe is open on another page. Tapping either returns to the Recipes page.
 - The Recipes panel lists running timers above every view with Cancel, and Stop for a finished one.

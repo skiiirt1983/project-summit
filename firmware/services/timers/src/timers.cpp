@@ -37,8 +37,17 @@ bool parse_timer_request(const std::string &text, int &seconds, std::string &nam
     if (name.size() > 80) name.resize(80);
     for (char &c : name)
         if (c == '\n' || c == '\r' || c == '|') c = ' ';  // keep list_text one line per timer
-    if (name.empty()) name = "Timer";
-    return true;
+    return true;  // an empty name becomes "Timer 1", "Timer 2" ... in Timers::start
+}
+
+std::string Timers::numbered_name() const
+{
+    for (int n = 1;; ++n) {  // the lowest number not in use: Timer 1, Timer 2, ...
+        const std::string candidate = "Timer " + std::to_string(n);
+        bool used = false;
+        for (const KitchenTimer &t : timers_) used = used || t.name == candidate;
+        if (!used) return candidate;
+    }
 }
 
 int Timers::start(const std::string &name, int seconds, uint64_t now_ms)
@@ -46,7 +55,7 @@ int Timers::start(const std::string &name, int seconds, uint64_t now_ms)
     if (seconds < 1 || seconds > kMaxSeconds || timers_.size() >= kMax) return 0;
     KitchenTimer t;
     t.id = next_id_++;
-    t.name = name.empty() ? "Timer" : name;
+    t.name = name.empty() || name == "Timer" ? numbered_name() : name;
     t.total_s = seconds;
     t.end_ms = now_ms + static_cast<uint64_t>(seconds) * 1000;
     timers_.push_back(t);
@@ -100,7 +109,7 @@ void Timers::restore(const std::vector<SavedTimer> &saved, uint64_t slept_ms, ui
         if (timers_.size() >= kMax || s.total_s < 1 || s.total_s > kMaxSeconds) continue;
         KitchenTimer t;
         t.id = next_id_++;
-        t.name = s.name.empty() ? "Timer" : s.name;
+        t.name = s.name.empty() || s.name == "Timer" ? numbered_name() : s.name;
         t.total_s = s.total_s;
         t.end_ms = now_ms + (s.remaining_ms > slept_ms ? s.remaining_ms - slept_ms : 0);
         timers_.push_back(t);
