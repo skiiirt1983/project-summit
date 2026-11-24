@@ -1,4 +1,4 @@
-# Brief for the design doc: system Timer, Stopwatch and Alarm (2026-11-24)
+# Brief for the design doc: system Timer, Stopwatch and Alarm (2026-11-24, with Paul's answers)
 
 Not a design. Paul's feedback from the alpha.34/35 audio tests, written down so it can go into the Claude design doc, where design decisions are made (CLAUDE.md rule 10). Nothing here is built. Answer the questions at the end, then the build can be planned.
 
@@ -27,3 +27,29 @@ Not a design. Paul's feedback from the alpha.34/35 audio tests, written down so 
 
 ## Constraints the design must respect
 Panels talk only to the framework (state store, event bus, settings); size tokens, never hard-coded pixels; works at 1280x720 and 720x1280; new state topics, bus events and settings keys are listed in `docs/ARCHITECTURE.md`. Hardware proof is separate from a green build.
+
+## Paul's answers (2026-11-24, evening): the screen, as he described it
+**Entry.** The clock on the Home screen is a button. Tapping it opens the clock page.
+
+**Clock page**, four areas, each tappable (tap = see or change settings, or start):
+- top left: Clock
+- top right: Alarm clock (shows the alarm time when one is set)
+- bottom left: Timer (shows the running timer, if any)
+- bottom right: Stopwatch
+
+**Timer ending: the countdown overlay.** For the last 10 seconds a semi-transparent box covers most of the screen, with the page blurred behind it, counting down from 10. Touching the screen before it finishes opens the specific timer page, where the timer can be stopped. When it finishes it rings; touching the screen then disables it.
+
+**Status tray.** A running timer shows in the top menu strip like a system tray item; tapping it opens the same timer page. Same for alarms: setting an alarm adds an item with its time to the top menu; tapping it opens the same page.
+
+**Stopwatch.** Independent of timers and counts up. A Lap button records a lap and keeps the stopwatch running, logging each lap time and the total time.
+
+**Sounds and storage.** Paul asked what the sound-storage question meant: the SD card is optional (recipes are a module), so sounds must never need it. They do not have to: the flash layout already has an `assets` LittleFS partition of about 11 MB (`docs/ARCHITECTURE.md` partition table, "fonts, sounds, web extras") and the firmware image itself has room. Proposed answer for the design doc to confirm: the default sound set ships inside the firmware or the assets partition (no SD card needed, same on every device); an SD card could later hold extra user sounds, but nothing depends on it. At 16 kHz 8-bit a 5 s clip is about 80 KB, so a set of ten to fifteen sounds is about 1 MB.
+
+## Still open after Paul's answers
+- Blur: LVGL has no cheap live blur. Proposed: a snapshot of the page, downscaled and tinted, shown under the box (the shell already takes snapshots for swipes); the design should accept "frosted" as the look.
+- Does tapping a tray item with a running timer and one with an alarm open one shared page or two tabs of the same page?
+- Several timers at once: what does the tray show (the soonest, a count)? The service allows 8.
+- Alarm repeat days, snooze, and whether the alarm keeps working across power loss (needs the RTC, HARDWARE_TODO).
+- The sound list (names, theme: alpine summit, kitchen-timer and silly rings) and who makes or licenses them.
+- Stopwatch laps: how many are kept, and are they kept when the page closes or the device sleeps?
+- The countdown overlay length (10 s) and whether it applies to timers only or alarms too.
