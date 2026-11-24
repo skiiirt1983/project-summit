@@ -1,10 +1,11 @@
 // Audio service: which sound plays when (pure rules, host-tested in tests/host/test_audio.cpp) and the service that
 // turns bus events into sounds through an AudioPort (the ES8311 codec + amplifier on the board; a fake in tests).
 //
-// Sounds: Preview = a generated tick when the volume slider is released; Confirm, Warning and Alarm (the cowbell, played
-// again while a timer rings) are Paul's recordings, built into the firmware as 8-bit mu-law (tools/make_sounds.py).
+// Sounds: Preview = a generated tick when the volume slider is released; Warning (a critical toast), UsbPlug (USB power
+// gets plugged in) and Alarm (the cowbell, played again while a timer rings) are recordings built into the firmware as
+// 8-bit mu-law (tools/make_sounds.py). Paul's rule: the device is quiet; only critical things and alarms make a sound.
 // Rules: volume 0 silences everything but the Alarm; do-not-disturb (setting system/dnd or state power/dnd) silences
-// Confirm only (a Warning is for critical things); an Alarm always rings, never quieter than kAlarmMinVolume, and stops
+// UsbPlug only (a Warning is for critical things); an Alarm always rings, never quieter than kAlarmMinVolume, and stops
 // the moment it is dismissed, so a timer is never missed and never keeps ringing.
 #pragma once
 #include <cstddef>
@@ -19,7 +20,7 @@
 
 namespace summit {
 
-enum class Sound { Preview, Confirm, Warning, Alarm };
+enum class Sound { Preview, Warning, UsbPlug, Alarm };
 
 struct Note {
     float hz;  // 0 = silence
@@ -41,7 +42,7 @@ std::vector<Note> sound_notes(Sound s);  // the generated sounds only (empty for
 int sound_length_ms(Sound s);            // either kind
 // Sine notes with a 5 ms fade in/out so nothing clicks. peak = largest sample (0..32767).
 std::vector<int16_t> render_notes(const std::vector<Note> &notes, int sample_rate, int peak);
-// Parses the payload of the bus event audio/play: "preview", "confirm", "warning" or "alarm".
+// Parses the payload of the bus event audio/play: "preview", "warning", "usb" or "alarm".
 bool parse_sound(const std::string &name, Sound &out);
 bool audible(Sound s, bool dnd, int volume);
 // Volume handed to the codec (0..100).
@@ -71,6 +72,8 @@ private:
     bool dnd_now() const;
     void queue(Sound s);
     bool alarm_ringing();
+    bool usb_known_ = false;   // a USB reading has been seen (the first one is the baseline, not a plug-in)
+    bool usb_was_on_ = false;  // for the plug-in edge (bus thread only)
     void play(Sound s, uint64_t now_ms);
 
     EventBus &bus_;

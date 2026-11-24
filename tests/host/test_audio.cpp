@@ -81,14 +81,14 @@ TEST(rendering_and_clips)
     CHECK(render_notes({{440.f, 10}}, 16000, 99999).size() == 160);  // peak is clamped
     // The recordings: present, the expected length, audible, and decoded to the right loudness.
     CHECK(sound_clip(Sound::Preview) == nullptr);
-    for (Sound s : {Sound::Confirm, Sound::Warning, Sound::Alarm}) {
+    for (Sound s : {Sound::Warning, Sound::UsbPlug, Sound::Alarm}) {
         const SoundClip *c = sound_clip(s);
         CHECK(c && c->samples > 8000 && sound_notes(s).empty());
         int loud = 0;
         for (size_t i = 0; c && i < c->samples; ++i) loud = std::max(loud, std::abs(static_cast<int>(ulaw_decode(c->ulaw[i]))));
         CHECK(loud > 8000);
     }
-    CHECK(sound_length_ms(Sound::Confirm) == 800 && sound_length_ms(Sound::Warning) == 1150 &&
+    CHECK(sound_length_ms(Sound::Warning) == 600 && sound_length_ms(Sound::UsbPlug) == 520 &&
           sound_length_ms(Sound::Alarm) > 9000 && sound_length_ms(Sound::Alarm) < 9400);
     // mu-law decode: silence, sign, and the extremes
     CHECK(ulaw_decode(0xFF) == 0 && ulaw_decode(0x7F) == 0 && ulaw_decode(0x00) == -32124 && ulaw_decode(0x80) == 32124);
@@ -98,35 +98,35 @@ TEST(rendering_and_clips)
 TEST(rules)
 {
     Sound s;
-    CHECK(parse_sound("confirm", s) && s == Sound::Confirm && parse_sound("warning", s) && s == Sound::Warning &&
+    CHECK(parse_sound("warning", s) && s == Sound::Warning && parse_sound("usb", s) && s == Sound::UsbPlug &&
           parse_sound("alarm", s) && s == Sound::Alarm && parse_sound("preview", s) && s == Sound::Preview &&
-          !parse_sound("Confirm", s) && !parse_sound("chime", s) && !parse_sound("", s));
-    CHECK(audible(Sound::Confirm, false, 50) && !audible(Sound::Confirm, true, 50) && !audible(Sound::Confirm, false, 0));
+          !parse_sound("Warning", s) && !parse_sound("confirm", s) && !parse_sound("chime", s) && !parse_sound("", s));
+    CHECK(audible(Sound::UsbPlug, false, 50) && !audible(Sound::UsbPlug, true, 50) && !audible(Sound::UsbPlug, false, 0));
     CHECK(audible(Sound::Warning, true, 50) && !audible(Sound::Warning, false, 0));
     CHECK(audible(Sound::Preview, true, 50) && !audible(Sound::Preview, false, 0));
     CHECK(audible(Sound::Alarm, true, 0));
     CHECK(effective_volume(Sound::Alarm, 0) == kAlarmMinVolume && effective_volume(Sound::Alarm, 80) == 80);
-    CHECK(effective_volume(Sound::Confirm, 0) == 0 && effective_volume(Sound::Confirm, 250) == 100 &&
-          effective_volume(Sound::Confirm, -5) == 0);
+    CHECK(effective_volume(Sound::Warning, 0) == 0 && effective_volume(Sound::Warning, 250) == 100 &&
+          effective_volume(Sound::Warning, -5) == 0);
 }
 
-TEST(confirm_plays_at_the_saved_volume_then_the_amplifier_goes_off)
+TEST(warning_plays_at_the_saved_volume_then_the_amplifier_goes_off)
 {
     Rig r;
     r.step();
     CHECK(r.port.opens == 0);  // nothing asked: stays off
-    r.bus.publish("audio/play", std::string("confirm"));
+    r.bus.publish("audio/play", std::string("warning"));
     r.step();
-    CHECK(r.port.opens == 1 && r.port.samples == 800u * 16);
+    CHECK(r.port.opens == 1 && r.port.samples == 600u * 16);
     CHECK(r.port.volumes.size() == 1 && r.port.volumes[0] == 60);  // the default setting
-    r.bus.publish("audio/play", std::string("confirm"));
+    r.bus.publish("audio/play", std::string("warning"));
     r.step();
-    CHECK(r.port.opens == 1 && r.port.samples == 1600u * 16 && r.port.volumes.size() == 1);  // still open, volume unchanged
-    r.step(800 + AudioService::kIdleCloseMs - 100);  // the idle time counts from the end of the sound
+    CHECK(r.port.opens == 1 && r.port.samples == 1200u * 16 && r.port.volumes.size() == 1);  // still open, volume unchanged
+    r.step(600 + AudioService::kIdleCloseMs - 100);  // the idle time counts from the end of the sound
     CHECK(r.port.is_open);
     r.step(300);
     CHECK(!r.port.is_open && r.port.closes == 1);
-    r.bus.publish("audio/play", std::string("confirm"));
+    r.bus.publish("audio/play", std::string("warning"));
     r.step();
     CHECK(r.port.opens == 2 && r.port.volumes.size() == 2);  // reopened: the volume is set again
 }
@@ -140,23 +140,23 @@ TEST(bad_requests_and_silence)
     CHECK(r.port.opens == 0);
     r.settings.set("audio/volume", int64_t{0});
     r.step();  // saving the volume at 0 plays nothing
-    r.bus.publish("audio/play", std::string("confirm"));
+    r.bus.publish("audio/play", std::string("warning"));
     r.step();
     CHECK(r.port.opens == 0 && r.port.writes == 0);
 }
 
-TEST(do_not_disturb_mutes_confirm_not_warning_or_alarm)
+TEST(do_not_disturb_mutes_the_usb_sound_not_warning_or_alarm)
 {
     Rig r;
     r.settings.set("system/dnd", true);
     r.step();
-    r.bus.publish("audio/play", std::string("confirm"));
+    r.bus.publish("audio/play", std::string("usb"));
     r.step();
     CHECK(r.port.samples == 0);
     r.bus.publish("audio/play", std::string("warning"));
     r.step();
     const size_t warn = r.port.samples;
-    CHECK(warn == 1150u * 16);
+    CHECK(warn == 600u * 16);
     r.bus.publish("audio/play", std::string("alarm"));
     r.step();
     CHECK(r.port.samples > warn);
@@ -164,13 +164,69 @@ TEST(do_not_disturb_mutes_confirm_not_warning_or_alarm)
     r.state.set("power/dnd", true);  // face-down mute counts too
     r.step();
     const size_t before = r.port.samples;
-    r.bus.publish("audio/play", std::string("confirm"));
+    r.bus.publish("audio/play", std::string("usb"));
     r.step();
     CHECK(r.port.samples == before);
     r.state.set("power/dnd", false);
-    r.bus.publish("audio/play", std::string("confirm"));
+    r.bus.publish("audio/play", std::string("usb"));
     r.step();
-    CHECK(r.port.samples == before + 800u * 16);
+    CHECK(r.port.samples == before + 520u * 16);
+}
+
+TEST(only_critical_toasts_and_usb_plug_ins_make_a_sound)
+{
+    Rig r;
+    r.bus.publish("notify/toast", std::string("Module installed"));  // an ordinary toast: silent
+    r.step();
+    CHECK(r.port.samples == 0);
+    r.bus.publish("notify/toast_critical", std::string("Battery low"));
+    r.step();
+    CHECK(r.port.samples == 600u * 16);
+    // USB: the start-up value is not a plug-in; unplugging is silent; plugging in plays the sound
+    r.state.set("power/usb_power", true);  // the first reading after start-up is where things stand, not a plug-in
+    r.step();
+    CHECK(r.port.samples == 600u * 16);
+    r.state.set("power/usb_power", false);
+    r.step();
+    r.state.set("power/usb_power", true);
+    r.step();
+    CHECK(r.port.samples == 600u * 16 + 520u * 16);
+}
+
+TEST(usb_edges)
+{
+    EventBus bus{64};
+    StateStore state{bus};
+    FakeStorage storage;
+    Settings settings{system_settings_schema(), storage, &bus};
+    settings.load();
+    state.set("power/usb_power", true);  // already on when the service starts: not a plug-in
+    FakePort port;
+    AudioService svc(bus, state, settings, port);
+    uint64_t now = 1000;
+    auto step = [&] {
+        now += 20;
+        bus.dispatch();
+        svc.tick(now);
+    };
+    state.set("power/usb_power", false);
+    step();
+    CHECK(port.samples == 0);
+    state.set("power/usb_power", true);
+    step();
+    CHECK(port.samples == 520u * 16);
+    state.set("power/usb_power", true);  // unchanged: nothing
+    step();
+    CHECK(port.samples == 520u * 16);
+}
+
+TEST(a_timer_done_toast_does_not_play_over_the_alarm)
+{
+    Rig r;
+    r.state.set("timers/ringing", true);
+    r.bus.publish("notify/toast_critical", std::string("Timer done: Eggs"));  // the timer service sends both
+    r.step();
+    CHECK(r.port.samples == sound_clip(Sound::Alarm)->samples);  // the cowbell only, no warning hit before it
 }
 
 TEST(volume_slider)
@@ -237,9 +293,12 @@ int main()
 {
     RUN(rendering_and_clips);
     RUN(rules);
-    RUN(confirm_plays_at_the_saved_volume_then_the_amplifier_goes_off);
+    RUN(warning_plays_at_the_saved_volume_then_the_amplifier_goes_off);
     RUN(bad_requests_and_silence);
-    RUN(do_not_disturb_mutes_confirm_not_warning_or_alarm);
+    RUN(do_not_disturb_mutes_the_usb_sound_not_warning_or_alarm);
+    RUN(only_critical_toasts_and_usb_plug_ins_make_a_sound);
+    RUN(usb_edges);
+    RUN(a_timer_done_toast_does_not_play_over_the_alarm);
     RUN(volume_slider);
     RUN(timer_alarm_repeats_until_dismissed_and_is_never_silent);
     RUN(dismissing_stops_the_recording_at_once);

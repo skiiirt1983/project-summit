@@ -17,8 +17,8 @@ RATE = 16000
 
 # name, file, start s, end s (None = whole file)
 SOUNDS = [
-    ("confirm", "summit_confirmation.wav", 0.0, 0.80),
-    ("warning", "summit_warning.wav", 0.0, 1.15),
+    ("warning", "summit_warning_hit.wav", 0.0, None),
+    ("usb", "summit_usb_plugin.wav", 0.0, None),
     ("alarm", "summit_cowbell.mp3", 0.30, 9.60),
 ]
 
@@ -65,7 +65,7 @@ def main():
         out += ["};", ""]
     out += ["}  // namespace", "", "const SoundClip *sound_clip(Sound s)", "{", "    switch (s) {"]
     for name, *_ in SOUNDS:
-        cls = {"confirm": "Confirm", "warning": "Warning", "alarm": "Alarm"}[name]
+        cls = {"warning": "Warning", "usb": "UsbPlug", "alarm": "Alarm"}[name]
         out += [f"    case Sound::{cls}: {{", f"        static const SoundClip c = {{k_{name}, sizeof k_{name}}};", "        return &c;", "    }"]
     out += ["    default: return nullptr;", "    }", "}", "", "}  // namespace summit", ""]
     OUT.write_text("\n".join(out))

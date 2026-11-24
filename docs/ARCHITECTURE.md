@@ -280,7 +280,7 @@ The state store and event bus are the public API between services, panels and th
 | `update/command` | event: "check", "install:<version>", "previous", "reboot" | Updates screen, web UI | update engine |
 | `power/battery_text` | string, e.g. "85%" | power service | glance strip (battery chip) |
 | `power/battery_icon` | string: LVGL symbol (level / charging) | power service | glance strip (battery chip) |
-| `power/usb_power` | bool | power service | update pre-flight |
+| `power/usb_power` | bool | power service | update pre-flight, audio service (plug-in sound on false to true) |
 | `power/battery_pct` | int 0–100 | power service | update pre-flight |
 | `alarm/next_in_s` | int: seconds to the next alarm; -1 = none | alarm (Home) | update pre-flight |
 | `time/synced` | bool: SNTP synced | time service | update pre-flight (TLS needs the clock) |
@@ -322,10 +322,10 @@ The state store and event bus are the public API between services, panels and th
 | `display/blank` | event: bool, true switches the backlight off (whatever the brightness setting), false restores it. Used around a firmware flash write and the health-gate confirm write, which stall the panel | update service | display driver (backlight) |
 | `display/panel_off` | event: bool, true sends the panel its display-off command, false display-on. Used only around the firmware flash write, so the starved panel shows no glitching image even with the backlight off | update service | display driver (panel) |
 | `ui/volume_live` | event: int 0–100, the volume slider while it is being dragged (not saved) | shell (quick settings) | audio service (`firmware/services/audio`) |
-| `audio/play` | event: string `preview` (tick), `confirm`, `warning` or `alarm` (cowbell); plays a built-in sound at the saved volume (volume 0 silences all but the alarm; do-not-disturb silences confirm; the alarm always rings, never below 40%, and stops when dismissed) | web UI Diagnostics (test buttons), later the shell | audio service |
+| `audio/play` | event: string `preview` (tick), `warning`, `usb` (plug-in) or `alarm` (cowbell); plays a built-in sound at the saved volume (volume 0 silences all but the alarm; do-not-disturb silences usb; the alarm always rings, never below 40%, and stops when dismissed). The audio service also plays `warning` on `notify/toast_critical` (not while a timer alarm rings) and `usb` when `power/usb_power` goes false to true; nothing else makes a sound | web UI Diagnostics (test buttons), later the shell | audio service |
 | `notify/toast_link` | event: string "<screen id>\n<text>"; tapping the toast opens that screen, e.g. `recipes/open/<id>` | recipe web API (after a URL import) | shell (toast) |
 | `ui/open_request` | string: the screen the shell was asked to open by a tapped toast; the target panel clears it when it takes it | shell | the target panel (read when it is shown) |
-| `notify/toast_critical` | event: string | alarm, power service | shell (toast, shown even in full-screen) |
+| `notify/toast_critical` | event: string | alarm, power service | shell (toast, shown even in full-screen), audio service (warning sound) |
 | `ui/open_screen` | event: string screen id: "settings/updates", "settings/modules", "recipes/open/<id>" | shell (update chip, quick settings) | shell (opens the screen), recipes panel |
 | `settings/<key>` | event: the new value | settings (on every change) | shell (`settings/ui/page_order`), update engine (`settings/update/channel`: re-check), services |
 | `settings/reset` | event: bool | settings | services, UI |

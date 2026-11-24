@@ -253,8 +253,8 @@ Response WebApi::handle(const Request &req)
         const JsonPtr j = parse(req.body);
         const cJSON *snd = j ? cJSON_GetObjectItemCaseSensitive(j.get(), "sound") : nullptr;
         const std::string name = cJSON_IsString(snd) ? snd->valuestring : "";
-        if (name != "preview" && name != "confirm" && name != "warning" && name != "alarm")
-            return error(400, "sound must be preview, confirm, warning or alarm");
+        if (name != "preview" && name != "warning" && name != "usb" && name != "alarm")
+            return error(400, "sound must be preview, warning, usb or alarm");
         bus_.publish("audio/play", name);
         return accepted();
     }
