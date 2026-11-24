@@ -44,6 +44,7 @@
 #include "summit/power_service.h"
 #include "summit/audio_esp.h"
 #include "summit/jpeg_esp.h"
+#include "summit/update/flash_check.h"
 #include "summit/timers.h"
 #include "summit/update/device.h"
 #include "summit/web/device.h"
@@ -203,6 +204,7 @@ extern "C" void app_main(void)
         ESP_LOGE(TAG, "display/touch failed to start: the update engine and web server keep running without a UI");
         return;
     }
+    summit::update::flashcheck::start(bus);  // Diagnostics "Flash self-test" and the failed-install locator
     summit::jpeg_hw::start();  // untested on hardware: the log line "jpeg: hardware JPEG decoder ready" or why not
     summit::audio_service_start(bus, state, settings, summit::bsp::i2c_bus_handle());  // speaker: timers ring, volume slider ticks
     summit::bsp::set_orientation(hw.display, summit::kLandscape);  // the shell starts landscape, until the accelerometer service exists
@@ -263,9 +265,15 @@ extern "C" void app_main(void)
         state.set("system/build_info", std::string(desc->date) + " " + desc->time + "\n" +
                                            (running ? running->label : "?") + "  " + sha + "\n" + flash_text);
     }
+    // What the shell last asked for. The boot screen restores the display rotation it saw when it appeared, which is
+    // stale when the rotation lock (portrait) was applied during it: the layout was portrait, the display landscape.
+    static summit::Orientation shell_orientation = summit::kLandscape;
     static summit::shell::Shell shell(
         summit::shell::Shell::Deps{bus, state, settings, registry, host, &modules},
-        [](summit::Orientation o) { summit::bsp::set_orientation(hw.display, o); });
+        [](summit::Orientation o) {
+            shell_orientation = o;
+            summit::bsp::set_orientation(hw.display, o);
+        });
     auto now_ms = [] { return static_cast<uint32_t>(esp_timer_get_time() / 1000); };
     std::string ui_error;
     if (!shell.start(now_ms(), &ui_error)) {
@@ -328,6 +336,7 @@ extern "C" void app_main(void)
                 }
             }
             if (splash.tick(now)) {
+                summit::bsp::set_orientation(hw.display, shell_orientation);  // not the rotation saved when the boot screen appeared
                 shell.drop_startup_toasts();  // what fired while the boot screen was up (rotation, clock...) is not shown
                 if (hw.touch) lv_indev_enable(hw.touch, true);
             }
@@ -350,7 +359,7 @@ extern "C" void app_main(void)
         }
         if (static_cast<int32_t>(now - next_metrics) >= 0) {
             next_metrics = now + 5000;
-            char m[896];
+            char m[1280];
             snprintf(m, sizeof m,
                      "lvgl_busy_pct=%u\nfps_peak_5s=%u\npanel_strips_per_s_peak=%u\nworst_lvgl_pass_ms=%u\n"
                      "heap_internal_kb=%u\nheap_internal_lowest_kb=%u\npsram_free_kb=%u\nui_pixel_clock_mhz=%u\n"
@@ -359,7 +368,7 @@ extern "C" void app_main(void)
                      static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
                      static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL) / 1024),
                      static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024), (unsigned)summit::bsp::pixel_clock_mhz(), (unsigned)(now / 1000),
-                     summit::update::ota_pending_verify() ? "yes" : "no", reset_name, summit::jpeg_hw::diag_lines().c_str());
+                     summit::update::ota_pending_verify() ? "yes" : "no", reset_name, (summit::jpeg_hw::diag_lines() + summit::update::flashcheck::diag_lines()).c_str());
             state.set("diag/metrics", std::string(m));
             fps_peak = strips_peak = worst_ms = 0;
         }
@@ -368,7 +377,7 @@ extern "C" void app_main(void)
         vTaskDelay(pdMS_TO_TICKS(wait));  // at least one tick: lets the idle task run and feed the watchdog
         if (static_cast<int32_t>(now - next_report) >= 0) {
             next_report = now + 30000;
-            char m[896];
+            char m[1280];
             const summit::Value mv = state.get("diag/metrics");
             snprintf(m, sizeof m, "%s", std::get_if<std::string>(&mv) ? std::get_if<std::string>(&mv)->c_str() : "");
             std::string md(m);

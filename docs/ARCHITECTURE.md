@@ -262,6 +262,7 @@ The state store and event bus are the public API between services, panels and th
 | `net/scan` | string: JSON array of {ssid, rssi, secure} | net service | web UI (Wi-Fi page) |
 | `net/connect` | event: SSID just saved (the password stays in the Wi-Fi store) | web UI | net service |
 | `net/wifi_chip_command` | event: string, `probe` = try the Wi-Fi chip update handshake (flashes nothing) | web UI (Diagnostics tab) | net service |
+| `diag/flash_test` | event: string `run` = run the flash (above 16 MB) and PSRAM self-test in its own task; touches only the unused `assets` partition and 5 MB of PSRAM. Result in `diag/metrics` (`flash_selftest`, `flash_last_verify`) | web UI Diagnostics (`POST /api/flash/selftest`) | update component (`esp/flash_check.cpp`) |
 | `net/wifi_chip_probe` | string: the probe's answer ("running...", or what the co-processor replied) | net service | web UI (Diagnostics tab) |
 | `update/available` | bool | update engine | glance strip (update chip), Updates screen |
 | `update/in_progress` | bool: downloading or verifying | update engine | shell (hides strip), Updates screen (full-screen progress) |
@@ -315,7 +316,7 @@ The state store and event bus are the public API between services, panels and th
 | `storage/sd_present` | bool | storage service | Modules screen (requirements), module panels |
 | `storage/sd_free_mb` | int: free space on the SD card | storage service | Modules screen (requirements) |
 | `diag/warnings` | string: newline-separated warnings, e.g. a missing add-on; empty = none | health gate (add-on checks) | web UI diagnostics |
-| `diag/metrics` | string: `key=value` lines (LVGL busy %, peak fps, panel strips/s, worst LVGL pass ms, heap, PSRAM, uptime, pending_verify, reset reason, and the JPEG decoder: `jpeg_state` (ready/off), `jpeg_decodes`, `jpeg_fails`, `jpeg_last_ms`, `jpeg_last_size`, `jpeg_last_error`), refreshed every 5 s | UI loop (app_main) | web UI diagnostics, `diag:` log line every 30 s |
+| `diag/metrics` | string: `key=value` lines (LVGL busy %, peak fps, panel strips/s, worst LVGL pass ms, heap, PSRAM, uptime, pending_verify, reset reason, and the JPEG decoder: `jpeg_state` (ready/off), `jpeg_decodes`, `jpeg_fails`, `jpeg_last_ms`, `jpeg_last_size`, `jpeg_last_error`, `flash_selftest`, `flash_last_verify`), refreshed every 5 s | UI loop (app_main) | web UI diagnostics, `diag:` log line every 30 s |
 | `system/settings_notice` | string; empty = none | boot (`app_main`), shell (clears after reset) | shell (toast + quick settings), web UI |
 | `notify/toast` | event: string | any service or panel | shell (toast) |
 | `ui/brightness_live` | event: int 0–100, the brightness slider while it is being dragged (not saved; the setting is saved when the finger lifts) | shell (quick settings) | display driver (backlight) |

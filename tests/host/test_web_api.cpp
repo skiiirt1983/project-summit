@@ -276,6 +276,14 @@ TEST(wifi_chip_probe_is_a_command_and_its_answer_shows_in_diagnostics)
 {
     Rig r;
     std::string seen;
+    std::string flash_test;
+    r.bus.subscribe("diag/flash_test", [&](const std::string &, const Value &v) {
+        if (const std::string *s = std::get_if<std::string>(&v)) flash_test = *s;
+    });
+    CHECK(r.get("/api/flash/selftest").status == 405);  // only POST
+    CHECK(r.post("/api/flash/selftest", "{}").status == 202);
+    r.bus.dispatch();
+    CHECK(flash_test == "run");
     r.bus.subscribe("net/wifi_chip_command", [&](const std::string &, const Value &v) {
         if (const std::string *s = std::get_if<std::string>(&v)) seen = *s;
     });
