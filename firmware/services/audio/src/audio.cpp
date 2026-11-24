@@ -99,6 +99,11 @@ AudioService::AudioService(EventBus &bus, StateStore &state, Settings &settings,
         Sound s;
         if (name && parse_sound(*name, s)) queue(s);
     }));
+    subs_.push_back(bus_.subscribe("audio/test", [this](const std::string &, const Value &v) {
+        const std::string *name = std::get_if<std::string>(&v);
+        Sound s;
+        if (name && parse_sound(*name, s)) queue(s, true);
+    }));
     subs_.push_back(bus_.subscribe("ui/volume_live", [this](const std::string &, const Value &v) {
         std::lock_guard<std::mutex> lock(mu_);
         live_volume_ = int_of(v, volume_);
@@ -137,12 +142,12 @@ AudioService::~AudioService()
 
 bool AudioService::dnd_now() const { return bool_of(settings_.get("system/dnd")) || bool_of(state_.get("power/dnd")); }
 
-void AudioService::queue(Sound s)
+void AudioService::queue(Sound s, bool test)
 {
-    const bool dnd = dnd_now();
+    const bool dnd = test ? false : dnd_now();  // a test button press is the user asking: do-not-disturb does not matter
     std::lock_guard<std::mutex> lock(mu_);
     if (!audible(s, dnd, live_volume_ >= 0 ? live_volume_ : volume_)) return;
-    if (pending_.size() < 4) pending_.push_back(s);
+    if (pending_.size() < 4) pending_.push_back({s, test});
 }
 
 bool AudioService::alarm_ringing()
@@ -151,7 +156,7 @@ bool AudioService::alarm_ringing()
     return ringing_;
 }
 
-void AudioService::play(Sound s, uint64_t now_ms)
+void AudioService::play(Sound s, uint64_t now_ms, bool test)
 {
     int vol;
     {
@@ -168,15 +173,19 @@ void AudioService::play(Sound s, uint64_t now_ms)
         applied_volume_ = vol;
     }
     // Idle clock: the amplifier may go off kIdleCloseMs after the sound ends, not after it starts.
-    last_activity_ms_ = now_ms + static_cast<uint64_t>(sound_length_ms(s));
+    int length_ms = sound_length_ms(s);
+    if (test && s == Sound::Alarm) length_ms = std::min<int>(length_ms, static_cast<int>(kTestAlarmMs));
+    last_activity_ms_ = now_ms + static_cast<uint64_t>(length_ms);
     if (const SoundClip *clip = sound_clip(s)) {
+        // A real alarm stops when dismissed; a test alarm (nothing is ringing) plays its first kTestAlarmMs.
+        const size_t limit = (test && s == Sound::Alarm) ? std::min<size_t>(clip->samples, kTestAlarmMs * kAudioSampleRate / 1000) : clip->samples;
         int16_t buf[1024];  // decoded a piece at a time; the alarm stops between pieces once it is dismissed
-        for (size_t at = 0; at < clip->samples;) {
-            const size_t n = std::min<size_t>(1024, clip->samples - at);
+        for (size_t at = 0; at < limit;) {
+            const size_t n = std::min<size_t>(1024, limit - at);
             for (size_t i = 0; i < n; ++i) buf[i] = ulaw_decode(clip->ulaw[at + i]);
             if (!port_.write(buf, n)) break;
             at += n;
-            if (s == Sound::Alarm && !alarm_ringing()) break;
+            if (s == Sound::Alarm && !test && !alarm_ringing()) break;
         }
     } else {
         const std::vector<int16_t> pcm = render_notes(sound_notes(s), kAudioSampleRate, 16000);
@@ -186,16 +195,16 @@ void AudioService::play(Sound s, uint64_t now_ms)
 
 void AudioService::tick(uint64_t now_ms)
 {
-    std::vector<Sound> todo;
+    std::vector<Pending> todo;
     bool ringing;
     {
         std::lock_guard<std::mutex> lock(mu_);
         todo.swap(pending_);
         ringing = ringing_;
     }
-    for (Sound s : todo) {
-        if (s == Sound::Warning && ringing) continue;  // "Timer done" is a critical toast too: the alarm is already ringing
-        play(s, now_ms);
+    for (const Pending &p : todo) {
+        if (p.sound == Sound::Warning && !p.test && ringing) continue;  // "Timer done" is a critical toast too: the alarm is already ringing
+        play(p.sound, now_ms, p.test);
     }
     if (ringing) {
         if (now_ms >= next_alarm_ms_) {

@@ -292,7 +292,7 @@ TEST(test_sound_route)
 {
     Rig r;
     std::string seen;
-    r.bus.subscribe("audio/play", [&](const std::string &, const Value &v) {
+    r.bus.subscribe("audio/test", [&](const std::string &, const Value &v) {
         if (const std::string *s = std::get_if<std::string>(&v)) seen = *s;
     });
     CHECK(r.get("/api/audio/test").status == 405);  // only POST

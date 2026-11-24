@@ -173,6 +173,28 @@ TEST(do_not_disturb_mutes_the_usb_sound_not_warning_or_alarm)
     CHECK(r.port.samples == before + 520u * 16);
 }
 
+TEST(diagnostics_test_buttons_play_the_whole_sound_even_in_do_not_disturb)
+{
+    Rig r;
+    r.settings.set("system/dnd", true);
+    r.step();
+    r.bus.publish("audio/test", std::string("usb"));
+    r.step();
+    CHECK(r.port.samples == 520u * 16);  // the real USB sound would be muted; the button asks for it
+    const size_t before = r.port.samples;
+    r.bus.publish("audio/test", std::string("alarm"));  // nothing is ringing
+    r.step();
+    CHECK(r.port.samples == before + AudioService::kTestAlarmMs * 16);  // 3 s of cowbell, not one 64 ms piece
+    r.settings.set("audio/volume", int64_t{0});
+    r.step();
+    r.bus.publish("audio/test", std::string("usb"));
+    r.step();
+    CHECK(r.port.samples == before + AudioService::kTestAlarmMs * 16);  // volume 0 still silences it
+    r.bus.publish("audio/play", std::string("alarm"));  // a real alarm request with nothing ringing stays a stub
+    r.step();
+    CHECK(r.port.samples <= before + AudioService::kTestAlarmMs * 16 + 1024);
+}
+
 TEST(only_critical_toasts_and_usb_plug_ins_make_a_sound)
 {
     Rig r;
@@ -296,6 +318,7 @@ int main()
     RUN(warning_plays_at_the_saved_volume_then_the_amplifier_goes_off);
     RUN(bad_requests_and_silence);
     RUN(do_not_disturb_mutes_the_usb_sound_not_warning_or_alarm);
+    RUN(diagnostics_test_buttons_play_the_whole_sound_even_in_do_not_disturb);
     RUN(only_critical_toasts_and_usb_plug_ins_make_a_sound);
     RUN(usb_edges);
     RUN(a_timer_done_toast_does_not_play_over_the_alarm);

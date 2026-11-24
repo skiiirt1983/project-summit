@@ -42,7 +42,9 @@ std::vector<Note> sound_notes(Sound s);  // the generated sounds only (empty for
 int sound_length_ms(Sound s);            // either kind
 // Sine notes with a 5 ms fade in/out so nothing clicks. peak = largest sample (0..32767).
 std::vector<int16_t> render_notes(const std::vector<Note> &notes, int sample_rate, int peak);
-// Parses the payload of the bus event audio/play: "preview", "warning", "usb" or "alarm".
+// Bus events: audio/play (a sound by name, obeys the rules below) and audio/test (the web Diagnostics buttons: same
+// names, but do-not-disturb is ignored and a test alarm plays kTestAlarmMs once without a timer ringing).
+// Parses the payload of those events: "preview", "warning", "usb" or "alarm".
 bool parse_sound(const std::string &name, Sound &out);
 bool audible(Sound s, bool dnd, int volume);
 // Volume handed to the codec (0..100).
@@ -62,6 +64,7 @@ class AudioService {
 public:
     static constexpr uint64_t kIdleCloseMs = 3000;  // amplifier off this long after the last sound
     static constexpr uint64_t kAlarmGapMs = 500;    // pause between alarm repeats
+    static constexpr size_t kTestAlarmMs = 3000;    // the Diagnostics "Test alarm" plays this much of the cowbell
 
     AudioService(EventBus &bus, StateStore &state, Settings &settings, AudioPort &port);
     ~AudioService();
@@ -70,11 +73,11 @@ public:
 
 private:
     bool dnd_now() const;
-    void queue(Sound s);
+    void queue(Sound s, bool test = false);
     bool alarm_ringing();
     bool usb_known_ = false;   // a USB reading has been seen (the first one is the baseline, not a plug-in)
     bool usb_was_on_ = false;  // for the plug-in edge (bus thread only)
-    void play(Sound s, uint64_t now_ms);
+    void play(Sound s, uint64_t now_ms, bool test = false);
 
     EventBus &bus_;
     StateStore &state_;
@@ -83,7 +86,11 @@ private:
     std::vector<EventBus::SubscriptionId> subs_;
 
     std::mutex mu_;  // guards the fields below (bus handlers vs the audio task)
-    std::vector<Sound> pending_;
+    struct Pending {
+        Sound sound;
+        bool test;  // from the web Diagnostics buttons: ignores do-not-disturb; a test alarm plays kTestAlarmMs once
+    };
+    std::vector<Pending> pending_;
     bool ringing_ = false;
     int volume_ = 60;
     int live_volume_ = -1;  // slider being dragged, -1 = none
