@@ -255,7 +255,7 @@ Response WebApi::handle(const Request &req)
         const std::string name = cJSON_IsString(snd) ? snd->valuestring : "";
         if (name != "preview" && name != "warning" && name != "usb" && name != "alarm")
             return error(400, "sound must be preview, warning, usb or alarm");
-        bus_.publish("audio/play", name);
+        bus_.publish("audio/test", name);
         return accepted();
     }
     if (modules_ && p == "/api/modules" && get) return modules_get();
