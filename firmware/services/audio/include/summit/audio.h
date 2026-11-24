@@ -29,6 +29,8 @@ struct Note {
 
 constexpr int kAudioSampleRate = 16000;  // mono, 16-bit
 constexpr int kAlarmMinVolume = 40;      // percent
+constexpr int kCodecMinVolume = 35;      // codec volume of slider step 1: the codec's own curve is inaudible below about 30%
+constexpr int kTargetPeak = 32000;       // every sound is scaled up to this peak (full scale is 32767)
 
 // A recorded sound: 16 kHz mono 8-bit mu-law (null for Preview, which is generated from sound_notes()).
 struct SoundClip {
@@ -47,8 +49,13 @@ std::vector<int16_t> render_notes(const std::vector<Note> &notes, int sample_rat
 // Parses the payload of those events: "preview", "warning", "usb" or "alarm".
 bool parse_sound(const std::string &name, Sound &out);
 bool audible(Sound s, bool dnd, int volume);
-// Volume handed to the codec (0..100).
+// Volume after the rules above (0..100).
 int effective_volume(Sound s, int volume);
+// Slider/effective volume -> codec volume: 0 stays 0 (silent), 1..100 spreads over kCodecMinVolume..100 so the lowest
+// step is audible and the top is as loud as the codec goes.
+int codec_volume(int volume);
+// Gain (8.8 fixed point, 256 = 1.0) that brings a sound's loudest sample to kTargetPeak.
+int sound_gain_q8(Sound s);
 
 class AudioPort {
 public:

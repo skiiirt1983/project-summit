@@ -77,6 +77,28 @@ int effective_volume(Sound s, int volume)
     return s == Sound::Alarm ? std::max(volume, kAlarmMinVolume) : volume;
 }
 
+int codec_volume(int volume)
+{
+    volume = std::clamp(volume, 0, 100);
+    if (volume == 0) return 0;
+    return kCodecMinVolume + (volume - 1) * (100 - kCodecMinVolume) / 99;
+}
+
+int sound_gain_q8(Sound s)
+{
+    static int cache[4] = {0, 0, 0, 0};
+    int &g = cache[static_cast<int>(s)];
+    if (g) return g;
+    int peak = 1;
+    if (const SoundClip *c = sound_clip(s)) {
+        for (size_t i = 0; i < c->samples; ++i) peak = std::max(peak, std::abs(static_cast<int>(ulaw_decode(c->ulaw[i]))));
+    } else {
+        for (int16_t v : render_notes(sound_notes(s), kAudioSampleRate, kTargetPeak)) peak = std::max(peak, std::abs(static_cast<int>(v)));
+    }
+    g = std::max(256, kTargetPeak * 256 / peak);  // never quieter than the recording
+    return g;
+}
+
 namespace {
 int int_of(const Value &v, int fallback)
 {
@@ -169,26 +191,28 @@ void AudioService::play(Sound s, uint64_t now_ms, bool test)
         applied_volume_ = -1;
     }
     if (vol != applied_volume_) {
-        port_.set_volume(vol);
+        port_.set_volume(codec_volume(vol));
         applied_volume_ = vol;
     }
     // Idle clock: the amplifier may go off kIdleCloseMs after the sound ends, not after it starts.
     int length_ms = sound_length_ms(s);
     if (test && s == Sound::Alarm) length_ms = std::min<int>(length_ms, static_cast<int>(kTestAlarmMs));
     last_activity_ms_ = now_ms + static_cast<uint64_t>(length_ms);
+    const int gain = sound_gain_q8(s);
     if (const SoundClip *clip = sound_clip(s)) {
         // A real alarm stops when dismissed; a test alarm (nothing is ringing) plays its first kTestAlarmMs.
         const size_t limit = (test && s == Sound::Alarm) ? std::min<size_t>(clip->samples, kTestAlarmMs * kAudioSampleRate / 1000) : clip->samples;
         int16_t buf[1024];  // decoded a piece at a time; the alarm stops between pieces once it is dismissed
         for (size_t at = 0; at < limit;) {
             const size_t n = std::min<size_t>(1024, limit - at);
-            for (size_t i = 0; i < n; ++i) buf[i] = ulaw_decode(clip->ulaw[at + i]);
+            for (size_t i = 0; i < n; ++i)
+                buf[i] = static_cast<int16_t>(std::clamp(ulaw_decode(clip->ulaw[at + i]) * gain / 256, -32767, 32767));
             if (!port_.write(buf, n)) break;
             at += n;
             if (s == Sound::Alarm && !test && !alarm_ringing()) break;
         }
     } else {
-        const std::vector<int16_t> pcm = render_notes(sound_notes(s), kAudioSampleRate, 16000);
+        const std::vector<int16_t> pcm = render_notes(sound_notes(s), kAudioSampleRate, kTargetPeak);
         port_.write(pcm.data(), pcm.size());
     }
 }

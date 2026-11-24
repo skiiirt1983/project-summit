@@ -17,6 +17,7 @@ struct FakePort : AudioPort {
     bool is_open = false;
     std::vector<int> volumes;
     size_t samples = 0;
+    int peak = 0;  // loudest sample written
     std::function<void()> on_write;
     bool open(int rate) override
     {
@@ -26,9 +27,10 @@ struct FakePort : AudioPort {
         return true;
     }
     void set_volume(int p) override { volumes.push_back(p); }
-    bool write(const int16_t *, size_t n) override
+    bool write(const int16_t *d, size_t n) override
     {
         CHECK(is_open);
+        for (size_t i = 0; i < n; ++i) peak = std::max(peak, std::abs(static_cast<int>(d[i])));
         ++writes;
         samples += n;
         if (on_write) on_write();
@@ -118,7 +120,7 @@ TEST(warning_plays_at_the_saved_volume_then_the_amplifier_goes_off)
     r.bus.publish("audio/play", std::string("warning"));
     r.step();
     CHECK(r.port.opens == 1 && r.port.samples == 600u * 16);
-    CHECK(r.port.volumes.size() == 1 && r.port.volumes[0] == 60);  // the default setting
+    CHECK(r.port.volumes.size() == 1 && r.port.volumes[0] == codec_volume(60));  // the default setting
     r.bus.publish("audio/play", std::string("warning"));
     r.step();
     CHECK(r.port.opens == 1 && r.port.samples == 1200u * 16 && r.port.volumes.size() == 1);  // still open, volume unchanged
@@ -129,6 +131,21 @@ TEST(warning_plays_at_the_saved_volume_then_the_amplifier_goes_off)
     r.bus.publish("audio/play", std::string("warning"));
     r.step();
     CHECK(r.port.opens == 2 && r.port.volumes.size() == 2);  // reopened: the volume is set again
+}
+
+TEST(volume_curve_and_loudness)
+{
+    CHECK(codec_volume(0) == 0 && codec_volume(-4) == 0);
+    CHECK(codec_volume(1) == kCodecMinVolume && codec_volume(100) == 100 && codec_volume(250) == 100);
+    for (int v = 1; v < 100; ++v) CHECK(codec_volume(v + 1) >= codec_volume(v));  // never gets quieter as it goes up
+    CHECK(codec_volume(50) > codec_volume(25) && codec_volume(25) > kCodecMinVolume);
+    for (Sound s : {Sound::Preview, Sound::Warning, Sound::UsbPlug, Sound::Alarm}) {  // every sound reaches the same peak
+        Rig r;
+        r.bus.publish("audio/test", std::string(s == Sound::Preview ? "preview" : s == Sound::Warning ? "warning" : s == Sound::UsbPlug ? "usb" : "alarm"));
+        r.step();
+        CHECK(r.port.peak >= kTargetPeak * 3 / 4 && r.port.peak <= kTargetPeak);  // the 3 s test alarm may miss the loudest hit
+        CHECK(sound_gain_q8(s) >= 256);
+    }
 }
 
 TEST(bad_requests_and_silence)
@@ -259,11 +276,11 @@ TEST(volume_slider)
     CHECK(r.port.opens == 0);
     r.settings.set("audio/volume", int64_t{30});  // released: a short tick at the new volume
     r.step();
-    CHECK(r.port.opens == 1 && r.port.writes == 1 && r.port.samples == 30u * 16 && r.port.volumes.back() == 30);
+    CHECK(r.port.opens == 1 && r.port.writes == 1 && r.port.samples == 30u * 16 && r.port.volumes.back() == codec_volume(30));
     r.settings.set("system/dnd", true);
     r.settings.set("audio/volume", int64_t{70});
     r.step();
-    CHECK(r.port.writes == 2 && r.port.volumes.back() == 70);  // the preview ignores do-not-disturb
+    CHECK(r.port.writes == 2 && r.port.volumes.back() == codec_volume(70));  // the preview ignores do-not-disturb
 }
 
 TEST(timer_alarm_repeats_until_dismissed_and_is_never_silent)
@@ -275,7 +292,7 @@ TEST(timer_alarm_repeats_until_dismissed_and_is_never_silent)
     r.state.set("timers/ringing", true);
     r.step();
     const size_t one = sound_clip(Sound::Alarm)->samples;
-    CHECK(r.port.samples == one && r.port.volumes.back() == kAlarmMinVolume);
+    CHECK(r.port.samples == one && r.port.volumes.back() == codec_volume(kAlarmMinVolume));
     r.step(8000);  // still inside the recording and the gap
     CHECK(r.port.samples == one);
     r.step(2000);
@@ -316,6 +333,7 @@ int main()
     RUN(rendering_and_clips);
     RUN(rules);
     RUN(warning_plays_at_the_saved_volume_then_the_amplifier_goes_off);
+    RUN(volume_curve_and_loudness);
     RUN(bad_requests_and_silence);
     RUN(do_not_disturb_mutes_the_usb_sound_not_warning_or_alarm);
     RUN(diagnostics_test_buttons_play_the_whole_sound_even_in_do_not_disturb);
