@@ -1,0 +1,3 @@
+dependencies:
+  # The decoder registers itself with LVGL (lv_image_decoder_*), same pin as firmware/shell.
+  lvgl/lvgl: "9.4.0"

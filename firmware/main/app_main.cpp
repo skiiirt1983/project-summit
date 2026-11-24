@@ -43,6 +43,7 @@
 #include "summit/deep_sleep.h"
 #include "summit/power_service.h"
 #include "summit/audio_esp.h"
+#include "summit/jpeg_esp.h"
 #include "summit/timers.h"
 #include "summit/update/device.h"
 #include "summit/web/device.h"
@@ -122,7 +123,11 @@ extern "C" void app_main(void)
     recipe_api.set_bus(&bus);
     // First-light placeholder panels (home, calendar, weather, news, printer), shared with the simulator.
     sim::register_demo_panels(registry);
-    registry.add(std::make_unique<summit::recipes::RecipesPanel>(recipe_store));
+    // Recipe page images and thumbnails: the P4 hardware JPEG decoder (started after the display, below). "S:" is
+    // LVGL's POSIX file driver on /sdcard. No decoder or no file: the panel says images are unavailable.
+    registry.add(std::make_unique<summit::recipes::RecipesPanel>(recipe_store, [](const std::string &card_path) {
+        return summit::jpeg_hw::usable() && sd.exists(card_path) ? "S:" + card_path : std::string();
+    }));
 
     // Modules ship in the firmware but start uninstalled (ARCHITECTURE.md "Modules").
     static summit::ModuleManager modules;
@@ -198,6 +203,7 @@ extern "C" void app_main(void)
         ESP_LOGE(TAG, "display/touch failed to start: the update engine and web server keep running without a UI");
         return;
     }
+    summit::jpeg_hw::start();  // untested on hardware: the log line "jpeg: hardware JPEG decoder ready" or why not
     summit::audio_service_start(bus, state, settings, summit::bsp::i2c_bus_handle());  // speaker: timers ring, volume slider ticks
     summit::bsp::set_orientation(hw.display, summit::kLandscape);  // the shell starts landscape, until the accelerometer service exists
     // The display slider (quick settings) sets the backlight; the saved value applies from the start.
@@ -344,16 +350,16 @@ extern "C" void app_main(void)
         }
         if (static_cast<int32_t>(now - next_metrics) >= 0) {
             next_metrics = now + 5000;
-            char m[640];
+            char m[896];
             snprintf(m, sizeof m,
                      "lvgl_busy_pct=%u\nfps_peak_5s=%u\npanel_strips_per_s_peak=%u\nworst_lvgl_pass_ms=%u\n"
                      "heap_internal_kb=%u\nheap_internal_lowest_kb=%u\npsram_free_kb=%u\nui_pixel_clock_mhz=%u\n"
-                     "uptime_s=%u\npending_verify=%s\nreset=%s\n",
+                     "uptime_s=%u\npending_verify=%s\nreset=%s\n%s",
                      (unsigned)(100u - lv_timer_get_idle()), (unsigned)fps_peak, (unsigned)strips_peak, (unsigned)worst_ms,
                      static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
                      static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL) / 1024),
                      static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024), (unsigned)summit::bsp::pixel_clock_mhz(), (unsigned)(now / 1000),
-                     summit::update::ota_pending_verify() ? "yes" : "no", reset_name);
+                     summit::update::ota_pending_verify() ? "yes" : "no", reset_name, summit::jpeg_hw::diag_lines().c_str());
             state.set("diag/metrics", std::string(m));
             fps_peak = strips_peak = worst_ms = 0;
         }
@@ -362,7 +368,7 @@ extern "C" void app_main(void)
         vTaskDelay(pdMS_TO_TICKS(wait));  // at least one tick: lets the idle task run and feed the watchdog
         if (static_cast<int32_t>(now - next_report) >= 0) {
             next_report = now + 30000;
-            char m[640];
+            char m[896];
             const summit::Value mv = state.get("diag/metrics");
             snprintf(m, sizeof m, "%s", std::get_if<std::string>(&mv) ? std::get_if<std::string>(&mv)->c_str() : "");
             std::string md(m);

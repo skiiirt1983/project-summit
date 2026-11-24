@@ -24,7 +24,7 @@ Updated after every merge so a new session can continue (D-009).
 | D-010 | "Delete recipes" button with count confirm (device + web UI); web UI lock withdrawn | done (#16) |
 | F1 | Edit a saved recipe in the web UI (also covers fixing URL imports) | done (#17) |
 | M1 | Motion and controls: motion tokens, page swipe with both pages moving, rubber band, sheet and screen moves, press feedback, page dots | done (simulator only) |
-| F2 | Library thumbnails (`thumb.jpg`) in the Recipes panel (simulator; device needs the JPEG decoder) | done (#18) |
+| F2 | Library thumbnails (`thumb.jpg`) in the Recipes panel (simulator; device needs the JPEG decoder) | done (#18); device: hardware decoder written 2026-11-24, untested on hardware |
 
 **All planned Recipe reader steps (R1–R7) are built for the simulator.** What is left, in suggested order:
 
