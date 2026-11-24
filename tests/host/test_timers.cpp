@@ -13,7 +13,7 @@ TEST(countdown_and_request_parsing)
     int s;
     std::string name;
     CHECK(parse_timer_request("1800|Pancakes: Step 2 of 3", s, name) && s == 1800 && name == "Pancakes: Step 2 of 3");
-    CHECK(parse_timer_request("60", s, name) && s == 60 && name == "Timer");
+    CHECK(parse_timer_request("60", s, name) && s == 60 && name.empty());  // numbered by the timer list
     CHECK(parse_timer_request("60|a|b\nc", s, name) && name == "a b c");
     for (const char *bad : {"", "|x", "abc|x", "0|x", "-5|x", "9999999|x", "1e3|x"}) CHECK(!parse_timer_request(bad, s, name));
 }

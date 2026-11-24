@@ -55,13 +55,14 @@ public:
     std::string list_text(uint64_t now_ms) const;
 
 private:
+    std::string numbered_name() const;  // "Timer 1", "Timer 2" ...: the lowest number not in use
     std::vector<KitchenTimer> timers_;
     int next_id_ = 1;
 };
 
 std::string format_countdown(int seconds);  // "0:45", "12:34", "1:05:00"
 
-// "<seconds>|<name>" (the timers/start payload).
+// "<seconds>|<name>" (the timers/start payload); the name may be empty (the timer list numbers it).
 bool parse_timer_request(const std::string &text, int &seconds, std::string &name);
 
 class TimerService {
