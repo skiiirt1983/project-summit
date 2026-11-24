@@ -7,8 +7,30 @@ name: Firmware
 on:
   push:
     branches: [main]
+    # Notes that no test or build reads do not need a 20-minute build (Paul's CI allowance). docs/ARCHITECTURE.md is NOT
+    # listed: the topic contract test reads it. A change that also touches anything else still runs everything.
+    paths-ignore:
+      - "CLAUDE.md"
+      - "README.md"
+      - "docs/KICKOFF.md"
+      - "docs/OPEN_QUESTIONS.md"
+      - "docs/HARDWARE_TODO.md"
+      - "docs/WIFI_CHIP_UPDATE.md"
+      - "docs/RECIPE_CARD.md"
+      - "docs/DECISIONS.md"
   pull_request:
     branches: [main]
+    # Notes that no test or build reads do not need a 20-minute build (Paul's CI allowance). docs/ARCHITECTURE.md is NOT
+    # listed: the topic contract test reads it. A change that also touches anything else still runs everything.
+    paths-ignore:
+      - "CLAUDE.md"
+      - "README.md"
+      - "docs/KICKOFF.md"
+      - "docs/OPEN_QUESTIONS.md"
+      - "docs/HARDWARE_TODO.md"
+      - "docs/WIFI_CHIP_UPDATE.md"
+      - "docs/RECIPE_CARD.md"
+      - "docs/DECISIONS.md"
   workflow_dispatch:
 
 permissions:
