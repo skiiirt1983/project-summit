@@ -300,7 +300,7 @@ TEST(test_sound_route)
     r.bus.dispatch();
     CHECK(seen == "warning");
     seen.clear();
-    for (const char *bad : {"{}", R"({"sound":"klaxon"})", R"({"sound":3})", "nope"}) CHECK(r.post("/api/audio/test", bad).status == 400);
+    for (const char *bad : {"{}", R"({"sound":"Klaxon!"})", R"({"sound":""})", R"({"sound":3})", "nope"}) CHECK(r.post("/api/audio/test", bad).status == 400);
     r.bus.dispatch();
     CHECK(seen.empty());
 }

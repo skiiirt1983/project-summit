@@ -253,8 +253,9 @@ Response WebApi::handle(const Request &req)
         const JsonPtr j = parse(req.body);
         const cJSON *snd = j ? cJSON_GetObjectItemCaseSensitive(j.get(), "sound") : nullptr;
         const std::string name = cJSON_IsString(snd) ? snd->valuestring : "";
-        if (name != "preview" && name != "warning" && name != "usb" && name != "alarm")
-            return error(400, "sound must be preview, warning, usb or alarm");
+        bool plain = !name.empty() && name.size() <= 32;  // preview, warning, usb, alarm or a library id like "kitchen"
+        for (char c : name) plain = plain && ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_');
+        if (!plain) return error(400, "sound must be preview, warning, usb, alarm or a sound id");
         bus_.publish("audio/test", name);
         return accepted();
     }

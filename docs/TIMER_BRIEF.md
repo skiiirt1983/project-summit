@@ -45,11 +45,37 @@ Panels talk only to the framework (state store, event bus, settings); size token
 
 **Sounds and storage.** Paul asked what the sound-storage question meant: the SD card is optional (recipes are a module), so sounds must never need it. They do not have to: the flash layout already has an `assets` LittleFS partition of about 11 MB (`docs/ARCHITECTURE.md` partition table, "fonts, sounds, web extras") and the firmware image itself has room. Proposed answer for the design doc to confirm: the default sound set ships inside the firmware or the assets partition (no SD card needed, same on every device); an SD card could later hold extra user sounds, but nothing depends on it. At 16 kHz 8-bit a 5 s clip is about 80 KB, so a set of ten to fifteen sounds is about 1 MB.
 
-## Still open after Paul's answers
-- Blur: LVGL has no cheap live blur. Proposed: a snapshot of the page, downscaled and tinted, shown under the box (the shell already takes snapshots for swipes); the design should accept "frosted" as the look.
-- Does tapping a tray item with a running timer and one with an alarm open one shared page or two tabs of the same page?
-- Several timers at once: what does the tray show (the soonest, a count)? The service allows 8.
-- Alarm repeat days, snooze, and whether the alarm keeps working across power loss (needs the RTC, HARDWARE_TODO).
-- The sound list (names, theme: alpine summit, kitchen-timer and silly rings) and who makes or licenses them.
-- Stopwatch laps: how many are kept, and are they kept when the page closes or the device sleeps?
-- The countdown overlay length (10 s) and whether it applies to timers only or alarms too.
+## Paul's answers, round 2 (2026-11-24)
+- **Blur: yes.** Frosted look from a darkened, downscaled snapshot of the page under the box.
+- **Several timers:** named Timer 1, Timer 2, Timer 3 and so on; each also gets its own item in the top tray.
+- **Alarm options: yes.** Repeat days and snooze are wanted.
+- **Stopwatch:** laps are kept until the stopwatch is reset (so they survive leaving the page).
+- **Sounds.** The cowbell (cut to 9 s to loop) stays the Summit alarm; `summit warning hit` is the sound for all notifications; `summit usb plug-in` is for plugging in and for disconnecting USB (disconnect = the same clip played in reverse). A free, attribution-free library is attached, each file named for its use. Source files are in `firmware/services/audio/assets/library/` (not built in yet):
+
+| File | Length | Use |
+| --- | --- | --- |
+| alarm-summit-cowbell | 11.0 s (the shipped alarm is cut to 9.3 s) | alarm (default, already built in) |
+| alarm-beep-beep-beep | 8.6 s | alarm |
+| alarm-hi-low | 13.5 s | alarm |
+| alarm-old_timey | 5.8 s | alarm |
+| alarm-qwarky | 3.5 s | alarm |
+| alarm-ytv | 6.5 s | alarm |
+| timer-kitchen | 30.2 s | timer |
+| timer-airplane | 6.1 s | timer |
+| timer-marimba | 4.5 s | timer |
+| timer-levelup | 3.6 s | timer |
+| timer-chisper | 0.7 s | timer |
+
+Size if all are built in as 16 kHz 8-bit mu-law like the existing sounds: about 1.5 MB (the 30 s kitchen timer alone is 0.5 MB), on top of the 0.23 MB used now. Every OTA image grows by that much (the update download is about 3.6 MB today). Licence and source of each file must be written into `THIRD_PARTY_NOTICES.md` before the public release (GPL-3.0 project).
+
+## Paul's answers, round 3 (2026-11-24)
+- **Notifications and sound:** Paul prefers no toasts at all: only critical system errors or things the user should be warned about. Where a toast has to exist, it may use the warning hit. (So today's rule stands: only critical toasts play it; the design should keep ordinary toasts to a minimum.)
+- **Tray items:** a timer opens the timer page, an alarm opens the alarm page.
+- **Defaults:** default timer sound is the kitchen timer; default alarm is the cowbell. Paul will supply better prepared (shorter) files; the library sources in `assets/library/` are placeholders until then. Do not build them in before his files arrive.
+- **Countdown overlay:** applies to timers and alarms (both can be used for recipes).
+- **Licence:** Paul points to Pixabay's content licence summary (https://pixabay.com/service/license-summary/). Needs a check for this project: Pixabay's licence allows free use without attribution, but as far as I know it forbids redistributing the files on their own, and it is not an open-source licence. This repo is public GPL-3.0 and ships the sounds in the source tree and firmware image, so decide before the public release whether that is acceptable, or whether the sounds should be CC0/GPL-compatible instead, or kept out of the public repo. This is not legal advice.
+
+## Still open
+- Alarm across power loss needs the RTC (HARDWARE_TODO).
+- Several timers in the tray: one item each (Paul), the exact look when there are many (more than about 3) is for the design.
+- Paul's trimmed sound files (kitchen timer, cowbell) and the licence decision above.
