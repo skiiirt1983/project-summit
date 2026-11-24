@@ -17,6 +17,13 @@ SettingsSchema system_settings_schema()
         {"display/brightness", int64_t{80}, {}},
         {"audio/volume", int64_t{60}, {}},
         {"system/dnd", false, {}},
+        // Ring sounds (the library in firmware/services/audio, tools/make_sounds.py). Additive keys: no version bump.
+        // The choices must match the library ids: tests/host/test_audio.cpp checks it.
+        SettingDef("audio/timer_sound", std::string("kitchen"), {"kitchen", "airplane", "marimba", "levelup", "chisper"},
+                   "Timer sound", "The sound a finished timer rings with."),
+        SettingDef("audio/alarm_sound", std::string("summit-cowbell"),
+                   {"summit-cowbell", "beep-beep-beep", "hi-low", "old_timey", "qwarky", "ytv"}, "Alarm sound",
+                   "The sound an alarm rings with."),
         // Sleep (D-012, ARCHITECTURE.md "Sleep"). Additive keys: no version bump.
         SettingDef("power/idle_sleep_min", int64_t{5}, {}, "Sleep after (minutes)",
                    "On battery, the device sleeps after this long without a touch. 0 = never. "

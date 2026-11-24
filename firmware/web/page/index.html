@@ -156,7 +156,7 @@ ul{margin:0;padding-left:18px}
 
 <section id="diagnostics">
   <div class="card"><h2>Warnings</h2><ul id="diag-warnings"></ul><p class="muted" id="diag-none">None.</p></div>
-  <div class="card"><h2>Details</h2><dl id="diag-dl"></dl><div class="row"><button class="btn" id="diag-refresh">Refresh</button><button class="btn" id="diag-wifi-probe" title="Asks the Wi-Fi chip whether it accepts a firmware update. Flashes nothing; Wi-Fi may drop for a few seconds.">Probe Wi-Fi chip</button><button class="btn" data-sound="preview" title="Plays a built-in sound through the speaker at the saved volume">Test tick</button><button class="btn" data-sound="warning">Test warning</button><button class="btn" data-sound="usb">Test USB plug-in</button><button class="btn" data-sound="alarm">Test alarm (cowbell)</button></div></div>
+  <div class="card"><h2>Details</h2><dl id="diag-dl"></dl><div class="row"><button class="btn" id="diag-refresh">Refresh</button><button class="btn" id="diag-wifi-probe" title="Asks the Wi-Fi chip whether it accepts a firmware update. Flashes nothing; Wi-Fi may drop for a few seconds.">Probe Wi-Fi chip</button><button class="btn" data-sound="preview" title="Plays a built-in sound through the speaker at the saved volume">Test tick</button><button class="btn" data-sound="warning">Test warning</button><button class="btn" data-sound="usb">Test USB plug-in</button><button class="btn" data-sound="alarm">Test alarm (ring sound)</button></div><div class="row"><select id="snd-pick" aria-label="Sound"><optgroup label="Timer sounds"><option value="kitchen">Kitchen</option><option value="airplane">Airplane</option><option value="marimba">Marimba</option><option value="levelup">Level up</option><option value="chisper">Chisper</option></optgroup><optgroup label="Alarm sounds"><option value="summit-cowbell">Summit cowbell</option><option value="beep-beep-beep">Beep beep beep</option><option value="hi-low">Hi-low</option><option value="old_timey">Old timey</option><option value="qwarky">Qwarky</option><option value="ytv">YTV</option></optgroup></select><button class="btn" id="snd-play" title="Plays the chosen sound once through the speaker at the saved volume">Play sound</button></div></div>
 </section>
 
 <section id="log">
@@ -458,6 +458,10 @@ for (const b of document.querySelectorAll("[data-sound]"))
   b.addEventListener("click", async () => {
     try { await api("/api/audio/test", { method: "POST", json: { sound: b.dataset.sound } }); } catch (err) { alert("Could not play the sound: " + err.message); }
   });
+
+document.getElementById("snd-play").addEventListener("click", async () => {
+  try { await api("/api/audio/test", { method: "POST", json: { sound: document.getElementById("snd-pick").value } }); } catch (err) { alert("Could not play the sound: " + err.message); }
+});
 
 // Shared with the Recipes module (recipes.mjs).
 window.summit = { $, el, api, msg, loaders };

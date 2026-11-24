@@ -91,7 +91,7 @@ TEST(rendering_and_clips)
         CHECK(loud > 8000);
     }
     CHECK(sound_length_ms(Sound::Warning) == 600 && sound_length_ms(Sound::UsbPlug) == 520 &&
-          sound_length_ms(Sound::Alarm) > 9000 && sound_length_ms(Sound::Alarm) < 9400);
+          sound_length_ms(Sound::Alarm) == 9750);  // the cowbell loop
     // mu-law decode: silence, sign, and the extremes
     CHECK(ulaw_decode(0xFF) == 0 && ulaw_decode(0x7F) == 0 && ulaw_decode(0x00) == -32124 && ulaw_decode(0x80) == 32124);
     CHECK(ulaw_decode(0x80 + 5) > 0 && ulaw_decode(5) < 0);
@@ -201,7 +201,7 @@ TEST(diagnostics_test_buttons_play_the_whole_sound_even_in_do_not_disturb)
     const size_t before = r.port.samples;
     r.bus.publish("audio/test", std::string("alarm"));  // nothing is ringing
     r.step();
-    CHECK(r.port.samples == before + AudioService::kTestAlarmMs * 16);  // 3 s of cowbell, not one 64 ms piece
+    CHECK(r.port.samples == before + AudioService::kTestAlarmMs * 16);  // 3 s of the ring sound, not one 64 ms piece
     r.settings.set("audio/volume", int64_t{0});
     r.step();
     r.bus.publish("audio/test", std::string("usb"));
@@ -265,7 +265,7 @@ TEST(a_timer_done_toast_does_not_play_over_the_alarm)
     r.state.set("timers/ringing", true);
     r.bus.publish("notify/toast_critical", std::string("Timer done: Eggs"));  // the timer service sends both
     r.step();
-    CHECK(r.port.samples == sound_clip(Sound::Alarm)->samples);  // the cowbell only, no warning hit before it
+    CHECK(r.port.samples == find_library("kitchen")->clip.samples);  // the ring sound only, no warning hit before it
 }
 
 TEST(volume_slider)
@@ -291,12 +291,12 @@ TEST(timer_alarm_repeats_until_dismissed_and_is_never_silent)
     r.step();
     r.state.set("timers/ringing", true);
     r.step();
-    const size_t one = sound_clip(Sound::Alarm)->samples;
+    const size_t one = find_library("kitchen")->clip.samples;  // the default timer sound, 5.02 s
     CHECK(r.port.samples == one && r.port.volumes.back() == codec_volume(kAlarmMinVolume));
-    r.step(8000);  // still inside the recording and the gap
+    r.step(4000);  // still inside the loop
     CHECK(r.port.samples == one);
-    r.step(2000);
-    CHECK(r.port.samples == 2 * one);  // rings again
+    r.step(1100);
+    CHECK(r.port.samples == 2 * one);  // repeats at once: the loop carries its own gap
     r.state.set("timers/ringing", false);
     r.step();
     r.step(12000);
@@ -306,6 +306,74 @@ TEST(timer_alarm_repeats_until_dismissed_and_is_never_silent)
     r.state.set("timers/ringing", true);  // rings again at once the next time
     r.step();
     CHECK(r.port.samples == 3 * one);
+}
+
+TEST(the_library_and_the_timer_sound_setting)
+{
+    size_t n = 0;
+    const LibrarySound *all = sound_library(&n);
+    CHECK(n == 11);
+    int alarms = 0, timers = 0;
+    for (size_t i = 0; i < n; ++i) {
+        (all[i].alarm ? alarms : timers)++;
+        const int ms = static_cast<int>(all[i].clip.samples * 1000 / kAudioSampleRate);
+        CHECK(ms >= 700 && ms <= 10000);          // Paul's loops: 0.72 s to 9.75 s
+        CHECK(find_library(all[i].id) == &all[i]);
+        CHECK(clip_gain_q8(&all[i].clip) >= 256);
+    }
+    CHECK(alarms == 6 && timers == 5 && !find_library("klaxon") && !find_library(""));
+    // The settings offer exactly the library ids, split the same way.
+    for (const SettingDef &d : system_settings_schema().defs) {
+        if (d.key != "audio/timer_sound" && d.key != "audio/alarm_sound") continue;
+        const bool alarm = d.key == "audio/alarm_sound";
+        size_t count = 0;
+        for (size_t i = 0; i < n; ++i) count += all[i].alarm == alarm;
+        CHECK(d.choices.size() == count);
+        for (const std::string &c : d.choices) CHECK(find_library(c) && find_library(c)->alarm == alarm);
+        CHECK(find_library(std::get<std::string>(d.default_value)) != nullptr);
+    }
+    CHECK(std::string(kDefaultTimerSound) == "kitchen" && std::string(kDefaultAlarmSound) == "summit-cowbell");
+    CHECK(sound_clip(Sound::Alarm) == &find_library(kDefaultAlarmSound)->clip);
+
+    Rig r;  // changing the setting changes what rings
+    r.settings.set("audio/timer_sound", std::string("marimba"));
+    r.step();
+    r.state.set("timers/ringing", true);
+    r.step();
+    CHECK(r.port.samples == find_library("marimba")->clip.samples);
+}
+
+TEST(the_ring_sound_is_read_from_the_setting_at_start_up)
+{
+    EventBus bus{64};
+    StateStore state{bus};
+    FakeStorage storage;
+    Settings settings{system_settings_schema(), storage, &bus};
+    settings.load();
+    settings.set("audio/timer_sound", std::string("chisper"));
+    FakePort port;
+    AudioService svc(bus, state, settings, port);
+    state.set("timers/ringing", true);
+    bus.dispatch();
+    svc.tick(1000);
+    CHECK(port.samples == find_library("chisper")->clip.samples);
+}
+
+TEST(diagnostics_can_play_any_library_sound_whole)
+{
+    Rig r;
+    r.settings.set("system/dnd", true);
+    r.step();
+    r.bus.publish("audio/test", std::string("summit-cowbell"));
+    r.step();
+    CHECK(r.port.samples == find_library("summit-cowbell")->clip.samples);  // 9.75 s, not the 3 s cap
+    const size_t before = r.port.samples;
+    r.bus.publish("audio/test", std::string("klaxon"));  // unknown ids do nothing
+    r.step();
+    CHECK(r.port.samples == before);
+    r.bus.publish("audio/play", std::string("hi-low"));  // only the test event takes library ids
+    r.step();
+    CHECK(r.port.samples == before);
 }
 
 TEST(dismissing_stops_the_recording_at_once)
@@ -342,6 +410,9 @@ int main()
     RUN(a_timer_done_toast_does_not_play_over_the_alarm);
     RUN(volume_slider);
     RUN(timer_alarm_repeats_until_dismissed_and_is_never_silent);
+    RUN(the_library_and_the_timer_sound_setting);
+    RUN(the_ring_sound_is_read_from_the_setting_at_start_up);
+    RUN(diagnostics_can_play_any_library_sound_whole);
     RUN(dismissing_stops_the_recording_at_once);
     return report("audio");
 }

@@ -19,21 +19,29 @@ RATE = 16000
 SOUNDS = [
     ("warning", "summit_warning_hit.wav", 0.0, None),
     ("usb", "summit_usb_plugin.wav", 0.0, None),
-    ("alarm", "summit_cowbell.mp3", 0.30, 9.60),
 ]
 
+# Selectable ring sounds, prepared by Paul as seamless loops (16 kHz mono WAV in assets/library/, named
+# alarm-<id>.wav or timer-<id>.wav). Used as they are: no loudness change, no trim, no fade (a fade would dent the loop).
+LIBRARY_LABELS = {
+    "summit-cowbell": "Summit cowbell", "beep-beep-beep": "Beep beep beep", "hi-low": "Hi-low", "old_timey": "Old timey",
+    "qwarky": "Qwarky", "ytv": "YTV", "kitchen": "Kitchen", "airplane": "Airplane", "marimba": "Marimba",
+    "levelup": "Level up", "chisper": "Chisper",
+}
 
-def pcm(path, start, end):
+
+def pcm(path, start, end, prepared=False):
     cmd = ["ffmpeg", "-v", "error", "-y", "-i", str(path), "-ac", "1", "-ar", str(RATE)]
-    filt = ["loudnorm=I=-16:TP=-1.5"]
-    cmd += ["-af", ",".join(filt), "-f", "s16le", "-"]
+    if not prepared:
+        cmd += ["-af", "loudnorm=I=-16:TP=-1.5"]
+    cmd += ["-f", "s16le", "-"]
     raw = subprocess.run(cmd, check=True, capture_output=True).stdout
     a = array.array("h")
     a.frombytes(raw)
     s = int(start * RATE)
     e = int(end * RATE) if end else len(a)
     a = a[s:e]
-    fade = int(0.08 * RATE)  # 80 ms fade-out so a trimmed tail does not click
+    fade = 0 if prepared else int(0.08 * RATE)  # 80 ms fade-out so a trimmed tail does not click
     for i in range(min(fade, len(a))):
         a[len(a) - 1 - i] = int(a[len(a) - 1 - i] * i / fade)
     return a
@@ -63,11 +71,31 @@ def main():
         for i in range(0, len(data), 24):
             out.append("    " + ",".join(str(b) for b in data[i:i + 24]) + ",")
         out += ["};", ""]
-    out += ["}  // namespace", "", "const SoundClip *sound_clip(Sound s)", "{", "    switch (s) {"]
+    library = []
+    for f in sorted((ASSETS / "library").glob("*.wav")):
+        kind, _, sid = f.stem.partition("-")
+        assert kind in ("alarm", "timer") and sid in LIBRARY_LABELS, f"unexpected library file {f.name}"
+        a = pcm(f, 0.0, None, prepared=True)
+        data = bytes(ulaw(v) for v in a)
+        var = "k_lib_" + sid.replace("-", "_")
+        out.append(f"// library/{f.name}: {len(data)} samples, {len(data) / RATE:.2f} s")
+        out.append(f"const uint8_t {var}[] = {{")
+        for i in range(0, len(data), 24):
+            out.append("    " + ",".join(str(b) for b in data[i:i + 24]) + ",")
+        out += ["};", ""]
+        library.append((sid, kind == "alarm", var))
+    out += ["const LibrarySound k_library[] = {"]
+    for sid, is_alarm, var in library:
+        out.append(f'    {{"{sid}", "{LIBRARY_LABELS[sid]}", {"true" if is_alarm else "false"}, {{{var}, sizeof {var}}}}},')
+    out += ["};", "", "}  // namespace", "",
+            "const LibrarySound *sound_library(size_t *count)", "{", "    *count = sizeof k_library / sizeof k_library[0];", "    return k_library;", "}", "",
+            "const SoundClip *sound_clip(Sound s)", "{", "    switch (s) {"]
     for name, *_ in SOUNDS:
-        cls = {"warning": "Warning", "usb": "UsbPlug", "alarm": "Alarm"}[name]
+        cls = {"warning": "Warning", "usb": "UsbPlug"}[name]
         out += [f"    case Sound::{cls}: {{", f"        static const SoundClip c = {{k_{name}, sizeof k_{name}}};", "        return &c;", "    }"]
-    out += ["    default: return nullptr;", "    }", "}", "", "}  // namespace summit", ""]
+    out += ["    case Sound::Alarm: {  // the default alarm: the cowbell (the ring sound actually played is chosen in the settings)",
+            "        const LibrarySound *c = find_library(kDefaultAlarmSound);", "        return c ? &c->clip : nullptr;", "    }",
+            "    default: return nullptr;", "    }", "}", "", "}  // namespace summit", ""]
     OUT.write_text("\n".join(out))
     print("wrote", OUT, OUT.stat().st_size, "bytes")
 
