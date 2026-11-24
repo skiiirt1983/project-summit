@@ -102,6 +102,7 @@ TEST(weekdays_and_times)
     CHECK(weekday_of(0) == 3 && weekday_of(-1) == 2);  // 1970-01-01 Thursday; the day before was a Wednesday
     CHECK(seconds_of_day(at(0, 7, 30, 15)) == 7 * 3600 + 30 * 60 + 15 && seconds_of_day(-1) == 86399);
     CHECK(format_alarm_time(7, 5) == "07:05" && format_alarm_time(23, 59) == "23:59");
+    CHECK(format_alarm_time(99, -5) == "23:00" && format_alarm_time(-1, 75) == "00:59");  // clamped, always HH:MM
     int h, m, d;
     std::string label;
     CHECK(parse_alarm_request("7|30|31|Work", h, m, d, label) && h == 7 && m == 30 && d == 31 && label == "Work");

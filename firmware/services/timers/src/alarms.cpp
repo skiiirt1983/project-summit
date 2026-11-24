@@ -27,8 +27,15 @@ int seconds_of_day(int64_t local_s) { return static_cast<int>(local_s - floor_di
 
 std::string format_alarm_time(int hour, int minute)
 {
+    hour = hour < 0 ? 0 : hour > 23 ? 23 : hour;      // clamped so the text is always "HH:MM"
+    minute = minute < 0 ? 0 : minute > 59 ? 59 : minute;
     char b[8];
-    std::snprintf(b, sizeof b, "%02d:%02d", hour, minute);
+    b[0] = static_cast<char>('0' + hour / 10);
+    b[1] = static_cast<char>('0' + hour % 10);
+    b[2] = ':';
+    b[3] = static_cast<char>('0' + minute / 10);
+    b[4] = static_cast<char>('0' + minute % 10);
+    b[5] = '\0';
     return b;
 }
 
