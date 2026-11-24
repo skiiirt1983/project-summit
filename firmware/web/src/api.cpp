@@ -249,6 +249,10 @@ Response WebApi::handle(const Request &req)
         bus_.publish("net/wifi_chip_command", std::string("probe"));
         return accepted();
     }
+    if (p == "/api/flash/selftest" && post) {  // flash above 16 MB and PSRAM check (Diagnostics tab; touches only the unused assets area)
+        bus_.publish("diag/flash_test", std::string("run"));
+        return accepted();
+    }
     if (p == "/api/audio/test" && post) {  // plays a built-in sound through the speaker (Diagnostics tab)
         const JsonPtr j = parse(req.body);
         const cJSON *snd = j ? cJSON_GetObjectItemCaseSensitive(j.get(), "sound") : nullptr;
@@ -265,7 +269,7 @@ Response WebApi::handle(const Request &req)
     static const char *known[] = {"/api/status", "/api/wifi", "/api/firmware", "/api/settings",
                                   "/api/settings/export", "/api/settings/import", "/api/settings/reset",
                                   "/api/settings/backup", "/api/settings/import/validate", "/api/settings/undo",
-                                  "/api/diagnostics", "/api/wifi_chip/probe", "/api/audio/test", "/api/modules", "/api/modules/install", "/api/modules/remove",
+                                  "/api/diagnostics", "/api/wifi_chip/probe", "/api/flash/selftest", "/api/audio/test", "/api/modules", "/api/modules/install", "/api/modules/remove",
                                   "/api/modules/delete-data"};
     for (ApiExtension *ext : extensions_) {
         Response out;

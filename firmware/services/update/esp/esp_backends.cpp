@@ -1,4 +1,5 @@
 #include "esp_backends.h"
+#include "flash_check.h"
 
 #include <cstdio>
 #include <cstring>
@@ -86,12 +87,22 @@ bool EspOtaWriter::finish(std::string *error)
                 }
             }
         }
-        heap_caps_free(buf_);
-        buf_ = nullptr;
-        if (!ok) { if (flash_open_) esp_ota_abort(handle_); flash_open_ = false; return false; }
+        if (!ok) {
+            heap_caps_free(buf_);
+            buf_ = nullptr;
+            if (flash_open_) esp_ota_abort(handle_);
+            flash_open_ = false;
+            return false;
+        }
     }
     flash_open_ = false;
     esp_err_t err = esp_ota_end(handle_);  // validates the image (hash, chip, segments)
+    // The image stays in PSRAM until here so a failed check can say where the flash differs from it.
+    if (err != ESP_OK && buf_) flashcheck::locate_mismatch(target_, buf_, buf_len_);
+    if (buf_) {
+        heap_caps_free(buf_);
+        buf_ = nullptr;
+    }
     if (err == ESP_OK) err = esp_ota_set_boot_partition(target_);
     if (err != ESP_OK) *error = esp_err_to_name(err);
     return err == ESP_OK;
