@@ -24,7 +24,20 @@ update_srcs="$up/src/version.cpp $up/src/catalog.cpp $up/src/preflight.cpp $up/s
 ${CC:-gcc} -std=c99 -g -fsanitize=address,undefined -c third_party/cjson/cJSON.c -o "$out/cJSON.o"
 web_srcs="$wb/src/api.cpp $wb/src/log_buffer.cpp $wb/src/log_mirror.cpp $out/cJSON.o"
 recipe_srcs="$rc/src/module.cpp $rc/src/recipe.cpp $rc/src/quantity.cpp $rc/src/step_time.cpp $rc/src/store.cpp $rc/src/cook.cpp $rc/src/web_api.cpp $rc/src/jsonld.cpp"
+# Every library source is compiled once (in parallel) and linked into each test: compiling the same ~60 sources for each
+# of the 20 tests took longer than the CI job's time limit.
+srcs_all="$srcs $shell_srcs $update_srcs $wb/src/api.cpp $wb/src/log_buffer.cpp $wb/src/log_mirror.cpp $recipe_srcs $tm/src/timers.cpp $tm/src/stopwatch.cpp $tm/src/alarms.cpp firmware/services/audio/src/audio.cpp firmware/services/audio/src/sounds_data.cpp firmware/services/jpeg/src/jpeg_info.cpp firmware/services/power/src/sleep.cpp firmware/services/power/src/power_service.cpp"
+mkdir -p "$out/obj"
+objs=""
+i=0
+: > "$out/compile_list.txt"
+for s in $srcs_all; do
+  i=$((i + 1))
+  objs="$objs $out/obj/$i.o"
+  echo "$s $out/obj/$i.o" >> "$out/compile_list.txt"
+done
+xargs -P "$(nproc 2>/dev/null || echo 2)" -L 1 sh -c '$0 -c "$1" -o "$2"' "$cxx" < "$out/compile_list.txt" || { echo "compile failed"; exit 1; }
 for t in test_event_bus test_settings test_panels test_settings_schema test_shell_logic test_update test_web_api test_modules test_recipes test_storage test_timers test_recipe_api test_jsonld test_sleep test_net_policy test_log_mirror test_audio test_jpeg_info test_clock_tools; do
-  $cxx $srcs $shell_srcs $update_srcs $web_srcs $recipe_srcs $tm/src/timers.cpp $tm/src/stopwatch.cpp $tm/src/alarms.cpp firmware/services/audio/src/audio.cpp firmware/services/audio/src/sounds_data.cpp firmware/services/jpeg/src/jpeg_info.cpp firmware/services/power/src/sleep.cpp firmware/services/power/src/power_service.cpp tests/host/$t.cpp -o "$out/$t"
+  $cxx $objs "$out/cJSON.o" tests/host/$t.cpp -o "$out/$t"
   "$out/$t"
 done
