@@ -168,19 +168,29 @@ lv_result_t decoder_open(lv_image_decoder_t *decoder, lv_image_decoder_dsc_t *ds
 {
     if (dsc->src_type != LV_IMAGE_SRC_FILE || !g_usable) return LV_RESULT_INVALID;
     const int64_t t0 = esp_timer_get_time();
+    // LVGL closes dsc->file after the info step and before open, so the file is opened again here by name.
+    lv_fs_file_t f;
+    if (lv_fs_open(&f, static_cast<const char *>(dsc->src), LV_FS_MODE_RD) != LV_FS_RES_OK) {
+        note_fail("cannot open the file");
+        return LV_RESULT_INVALID;
+    }
     uint32_t size = 0;
-    if (lv_fs_seek(&dsc->file, 0, LV_FS_SEEK_END) != LV_FS_RES_OK || lv_fs_tell(&dsc->file, &size) != LV_FS_RES_OK ||
-        size < 4 || size > 8u * 1024 * 1024 || lv_fs_seek(&dsc->file, 0, LV_FS_SEEK_SET) != LV_FS_RES_OK) {
+    if (lv_fs_seek(&f, 0, LV_FS_SEEK_END) != LV_FS_RES_OK || lv_fs_tell(&f, &size) != LV_FS_RES_OK || size < 4 ||
+        size > 8u * 1024 * 1024 || lv_fs_seek(&f, 0, LV_FS_SEEK_SET) != LV_FS_RES_OK) {
+        lv_fs_close(&f);
         note_fail("cannot size the file");
         return LV_RESULT_INVALID;
     }
     uint8_t *in = alloc_input(size);
     if (!in) {
+        lv_fs_close(&f);
         note_fail("no memory for the file");
         return LV_RESULT_INVALID;
     }
     uint32_t got = 0;
-    if (lv_fs_read(&dsc->file, in, size, &got) != LV_FS_RES_OK || got != size) {
+    const lv_fs_res_t rr = lv_fs_read(&f, in, size, &got);
+    lv_fs_close(&f);
+    if (rr != LV_FS_RES_OK || got != size) {
         heap_caps_free(in);
         note_fail("file read failed");
         return LV_RESULT_INVALID;
