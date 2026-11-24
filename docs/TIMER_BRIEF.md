@@ -68,9 +68,14 @@ Panels talk only to the framework (state store, event bus, settings); size token
 
 Size if all are built in as 16 kHz 8-bit mu-law like the existing sounds: about 1.5 MB (the 30 s kitchen timer alone is 0.5 MB), on top of the 0.23 MB used now. Every OTA image grows by that much (the update download is about 3.6 MB today). Licence and source of each file must be written into `THIRD_PARTY_NOTICES.md` before the public release (GPL-3.0 project).
 
+## Paul's answers, round 3 (2026-11-24)
+- **Notifications and sound:** Paul prefers no toasts at all: only critical system errors or things the user should be warned about. Where a toast has to exist, it may use the warning hit. (So today's rule stands: only critical toasts play it; the design should keep ordinary toasts to a minimum.)
+- **Tray items:** a timer opens the timer page, an alarm opens the alarm page.
+- **Defaults:** default timer sound is the kitchen timer; default alarm is the cowbell. Paul will supply better prepared (shorter) files; the library sources in `assets/library/` are placeholders until then. Do not build them in before his files arrive.
+- **Countdown overlay:** applies to timers and alarms (both can be used for recipes).
+- **Licence:** Paul points to Pixabay's content licence summary (https://pixabay.com/service/license-summary/). Needs a check for this project: Pixabay's licence allows free use without attribution, but as far as I know it forbids redistributing the files on their own, and it is not an open-source licence. This repo is public GPL-3.0 and ships the sounds in the source tree and firmware image, so decide before the public release whether that is acceptable, or whether the sounds should be CC0/GPL-compatible instead, or kept out of the public repo. This is not legal advice.
+
 ## Still open
-- "Warning hit for all notifications" against the earlier rule "ordinary toasts are silent": which wins? Today only critical toasts play it.
-- Does a tray item for a timer and one for an alarm open the same page (the clock page, with the right area highlighted)?
-- Which sounds are the default timer sound, and may long ones be trimmed to a loop (kitchen 30 s to about 10 s) to save update size?
-- The 10-second overlay: timers only, or alarms too?
 - Alarm across power loss needs the RTC (HARDWARE_TODO).
+- Several timers in the tray: one item each (Paul), the exact look when there are many (more than about 3) is for the design.
+- Paul's trimmed sound files (kitchen timer, cowbell) and the licence decision above.
