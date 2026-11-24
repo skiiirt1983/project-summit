@@ -315,7 +315,7 @@ The state store and event bus are the public API between services, panels and th
 | `storage/sd_present` | bool | storage service | Modules screen (requirements), module panels |
 | `storage/sd_free_mb` | int: free space on the SD card | storage service | Modules screen (requirements) |
 | `diag/warnings` | string: newline-separated warnings, e.g. a missing add-on; empty = none | health gate (add-on checks) | web UI diagnostics |
-| `diag/metrics` | string: `key=value` lines (LVGL busy %, peak fps, panel strips/s, worst LVGL pass ms, heap, PSRAM, uptime, pending_verify, reset reason), refreshed every 5 s | UI loop (app_main) | web UI diagnostics, `diag:` log line every 30 s |
+| `diag/metrics` | string: `key=value` lines (LVGL busy %, peak fps, panel strips/s, worst LVGL pass ms, heap, PSRAM, uptime, pending_verify, reset reason, and the JPEG decoder: `jpeg_state` (ready/off), `jpeg_decodes`, `jpeg_fails`, `jpeg_last_ms`, `jpeg_last_size`, `jpeg_last_error`), refreshed every 5 s | UI loop (app_main) | web UI diagnostics, `diag:` log line every 30 s |
 | `system/settings_notice` | string; empty = none | boot (`app_main`), shell (clears after reset) | shell (toast + quick settings), web UI |
 | `notify/toast` | event: string | any service or panel | shell (toast) |
 | `ui/brightness_live` | event: int 0–100, the brightness slider while it is being dragged (not saved; the setting is saved when the finger lifts) | shell (quick settings) | display driver (backlight) |
@@ -537,7 +537,7 @@ Decided in DECISIONS.md D-008; built in steps R1–R7 (see `docs/KICKOFF.md`). T
 - **Card mode:** ingredients (left in landscape, above in portrait) with servings − / + and tap-to-tick; one big step at a time with Back / Next, and a timer button for each time found in the step.
 - While a recipe is open the panel takes horizontal swipes (left = next step, right = previous; `ui/swipe_lock`), keeps the screen on (`ui/keep_awake`) and reports `recipes/cooking`. A double-tap on the case (`input/double_tap`) is Next. Leaving the page restores normal swiping and dimming; the recipe stays open on its step.
 - **Book mode:** the original pages as images, one at a time: Back / Next, swipe, or a double-tap on the case. Fit = full width in landscape (scroll down to read on) and the whole page in portrait; the Zoom button or a double-tap on the page doubles it and dragging pans. A recipe with steps and pages has "Pages" / "Steps" buttons to switch; a scan (pages only) opens straight in book mode.
-- The panel reads recipes through `RecipeStore` (the storage interface) and gets page images through an image-source function, both given to it when it is created. JPEG decoding is the platform's job: libjpeg-turbo in the simulator; the device decoder is not written yet (HARDWARE_TODO).
+- The panel reads recipes through `RecipeStore` (the storage interface) and gets page images through an image-source function, both given to it when it is created. JPEG decoding is the platform's job: libjpeg-turbo in the simulator; on the device `firmware/services/jpeg` registers an LVGL image decoder for the ESP32-P4 hardware JPEG engine (baseline JPEGs only, output RGB565 in PSRAM with sizes rounded up to 16, kept in LVGL's 8 MB image cache; `jpeg_info.cpp` reads the header and plans memory and is host-tested). LVGL's POSIX file driver maps `S:` to `/sdcard`. A progressive or oversized JPEG fails with a reason (`jpeg_last_error`) and the panel shows its images-unavailable message. Compiled in CI; not yet run on the board.
 
 ### Recipe import in the web UI
 

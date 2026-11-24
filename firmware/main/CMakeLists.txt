@@ -1,5 +1,5 @@
 idf_component_register(
     SRCS "app_main.cpp"
     INCLUDE_DIRS "."
-    REQUIRES framework shell bsp boot demo net update web recipes storage timers power audio nvs_settings nvs_flash esp_app_format esp_timer espcoredump spi_flash app_update)
+    REQUIRES framework shell bsp boot demo net update web recipes storage timers power audio jpeg nvs_settings nvs_flash esp_app_format esp_timer espcoredump spi_flash app_update)
 target_compile_options(${COMPONENT_LIB} PRIVATE -std=gnu++17)

@@ -72,6 +72,15 @@ CONFIG_LV_USE_CLIB_MALLOC=y
 CONFIG_LV_USE_CLIB_STRING=y
 CONFIG_LV_USE_CLIB_SPRINTF=y
 
+# Recipe page images and thumbnails (hardware JPEG decoder, firmware/services/jpeg): LVGL reads them from the SD card
+# through its POSIX file driver (letter S = 83, rooted at the card mount) and keeps decoded pictures in an image cache
+# in PSRAM (a 905x1280 page is about 2.3 MB as RGB565; 8 MB holds a few pages or ~50 thumbnails).
+CONFIG_LV_USE_FS_POSIX=y
+CONFIG_LV_FS_POSIX_LETTER=83
+CONFIG_LV_FS_POSIX_PATH="/sdcard"
+CONFIG_LV_CACHE_DEF_SIZE=8388608
+CONFIG_LV_IMAGE_HEADER_CACHE_DEF_CNT=32
+
 # FAT on the SD card: long file names. The default is 8.3 names only, which cannot hold "recipe.json", "index.json" or a
 # recipe folder like "lemon-drizzle-cake": every recipe save failed with "could not save the recipe" (alpha.27).
 CONFIG_FATFS_LFN_HEAP=y
