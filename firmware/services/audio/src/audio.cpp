@@ -53,8 +53,8 @@ std::vector<int16_t> render_notes(const std::vector<Note> &notes, int sample_rat
 bool parse_sound(const std::string &name, Sound &out)
 {
     if (name == "preview") out = Sound::Preview;
-    else if (name == "confirm") out = Sound::Confirm;
     else if (name == "warning") out = Sound::Warning;
+    else if (name == "usb") out = Sound::UsbPlug;
     else if (name == "alarm") out = Sound::Alarm;
     else return false;
     return true;
@@ -64,7 +64,7 @@ bool audible(Sound s, bool dnd, int volume)
 {
     switch (s) {
     case Sound::Alarm: return true;
-    case Sound::Confirm: return volume > 0 && !dnd;
+    case Sound::UsbPlug: return volume > 0 && !dnd;
     case Sound::Warning: return volume > 0;  // critical: do-not-disturb does not matter
     case Sound::Preview: return volume > 0;  // the user is adjusting it: do-not-disturb does not matter
     }
@@ -111,6 +111,17 @@ AudioService::AudioService(EventBus &bus, StateStore &state, Settings &settings,
             live_volume_ = -1;
         }
         queue(Sound::Preview);
+    }));
+    // A critical toast (shown even full-screen) plays the warning hit; nothing else makes a sound on its own.
+    subs_.push_back(bus_.subscribe("notify/toast_critical", [this](const std::string &, const Value &) { queue(Sound::Warning); }));
+    // USB power plugged in (off -> on); the value at start-up is not a plug-in.
+    usb_known_ = std::holds_alternative<bool>(state_.get("power/usb_power"));
+    usb_was_on_ = bool_of(state_.get("power/usb_power"));
+    subs_.push_back(bus_.subscribe("power/usb_power", [this](const std::string &, const Value &v) {
+        const bool on = bool_of(v);
+        if (usb_known_ && on && !usb_was_on_) queue(Sound::UsbPlug);
+        usb_known_ = true;
+        usb_was_on_ = on;
     }));
     subs_.push_back(bus_.subscribe("timers/ringing", [this](const std::string &, const Value &v) {
         std::lock_guard<std::mutex> lock(mu_);
@@ -182,7 +193,10 @@ void AudioService::tick(uint64_t now_ms)
         todo.swap(pending_);
         ringing = ringing_;
     }
-    for (Sound s : todo) play(s, now_ms);
+    for (Sound s : todo) {
+        if (s == Sound::Warning && ringing) continue;  // "Timer done" is a critical toast too: the alarm is already ringing
+        play(s, now_ms);
+    }
     if (ringing) {
         if (now_ms >= next_alarm_ms_) {
             play(Sound::Alarm, now_ms);
