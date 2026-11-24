@@ -6,6 +6,14 @@ CONFIG_ESPTOOLPY_FLASHSIZE_32MB=y
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 
+# Let the CPU cache read flash above 16 MB (alpha.39 self-test, Paul 2026-11-24: esp_flash reads and writes above 16 MB
+# are fine, but memory-mapped reads, which the image check and code execution use, returned wrong data there). ESP-IDF
+# ships this off and calls it experimental for 4-line flash (it is a bootloader setting: the new bootloader needs a USB
+# flash, an over-the-air update cannot replace it). ota_1 starts at 0xC20000, so an image over 4,063,232 bytes in it
+# reaches past 16 MB. If the self-test still shows "mmap ... differ" with this on, remove it and see docs/HARDWARE_TODO.md.
+CONFIG_IDF_EXPERIMENTAL_FEATURES=y
+CONFIG_BOOTLOADER_CACHE_32BIT_ADDR_QUAD_FLASH=y
+
 # Two OTA slots with rollback; health gate lands in Phase 0 step 5.
 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
 
