@@ -128,6 +128,8 @@ AudioService::AudioService(EventBus &bus, StateStore &state, Settings &settings,
     volume_ = int_of(settings_.get("audio/volume"), 60);
     const Value timer_sound = settings_.get("audio/timer_sound");
     if (const std::string *id = std::get_if<std::string>(&timer_sound)) ring_id_ = *id;
+    const Value alarm_sound = settings_.get("audio/alarm_sound");
+    if (const std::string *id = std::get_if<std::string>(&alarm_sound)) alarm_id_ = *id;
     subs_.push_back(bus_.subscribe("audio/play", [this](const std::string &, const Value &v) {
         const std::string *name = std::get_if<std::string>(&v);
         Sound s;
@@ -139,6 +141,16 @@ AudioService::AudioService(EventBus &bus, StateStore &state, Settings &settings,
         if (!name) return;
         if (parse_sound(*name, s)) queue(s, true);
         else if (const LibrarySound *lib = find_library(*name)) queue(Sound::Alarm, true, &lib->clip);
+    }));
+    subs_.push_back(bus_.subscribe("settings/audio/alarm_sound", [this](const std::string &, const Value &v) {
+        if (const std::string *id = std::get_if<std::string>(&v)) {
+            std::lock_guard<std::mutex> lock(mu_);
+            alarm_id_ = *id;
+        }
+    }));
+    subs_.push_back(bus_.subscribe("alarm/ringing", [this](const std::string &, const Value &v) {
+        std::lock_guard<std::mutex> lock(mu_);
+        alarm_ringing_ = bool_of(v);
     }));
     subs_.push_back(bus_.subscribe("settings/audio/timer_sound", [this](const std::string &, const Value &v) {
         if (const std::string *id = std::get_if<std::string>(&v)) {
@@ -175,6 +187,7 @@ AudioService::AudioService(EventBus &bus, StateStore &state, Settings &settings,
         ringing_ = bool_of(v);
     }));
     ringing_ = bool_of(state_.get("timers/ringing"));
+    alarm_ringing_ = bool_of(state_.get("alarm/ringing"));
 }
 
 AudioService::~AudioService()
@@ -187,12 +200,14 @@ bool AudioService::dnd_now() const { return bool_of(settings_.get("system/dnd"))
 const SoundClip *AudioService::ring_clip()
 {
     std::string id;
+    bool alarm;
     {
         std::lock_guard<std::mutex> lock(mu_);
-        id = ring_id_;
+        alarm = alarm_ringing_;
+        id = alarm ? alarm_id_ : ring_id_;
     }
     const LibrarySound *lib = find_library(id);
-    if (!lib) lib = find_library(kDefaultTimerSound);
+    if (!lib) lib = find_library(alarm ? kDefaultAlarmSound : kDefaultTimerSound);
     return lib ? &lib->clip : sound_clip(Sound::Alarm);
 }
 
@@ -204,10 +219,10 @@ void AudioService::queue(Sound s, bool test, const SoundClip *clip)
     if (pending_.size() < 4) pending_.push_back({s, test, clip});
 }
 
-bool AudioService::alarm_ringing()
+bool AudioService::alarm_ringing()  // anything ringing: a kitchen timer or an alarm
 {
     std::lock_guard<std::mutex> lock(mu_);
-    return ringing_;
+    return ringing_ || alarm_ringing_;
 }
 
 void AudioService::play(Sound s, uint64_t now_ms, bool test, const SoundClip *picked)
@@ -259,7 +274,7 @@ void AudioService::tick(uint64_t now_ms)
     {
         std::lock_guard<std::mutex> lock(mu_);
         todo.swap(pending_);
-        ringing = ringing_;
+        ringing = ringing_ || alarm_ringing_;
     }
     for (const Pending &p : todo) {
         if (p.sound == Sound::Warning && !p.test && ringing) continue;  // "Timer done" is a critical toast too: the alarm is already ringing

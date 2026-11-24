@@ -55,7 +55,7 @@ add_executable(summit_sim
     ${FW}/services/update/src/preflight.cpp ${FW}/services/update/src/image_check.cpp
     ${FW}/services/update/src/engine.cpp ${FW}/services/update/src/health_gate.cpp
     ${FW}/services/update/src/status_topics.cpp
-    ${FW}/services/timers/src/timers.cpp
+    ${FW}/services/timers/src/timers.cpp ${FW}/services/timers/src/stopwatch.cpp ${FW}/services/timers/src/alarms.cpp ${FW}/services/timers/src/clock_tools.cpp
     ${FW}/services/power/src/sleep.cpp ${FW}/services/power/src/power_service.cpp
     ${FW}/boot/src/boot_screen.c ${FW}/boot/src/boot_images.c ${FW}/boot/src/splash.cpp
     ${FW}/web/src/api.cpp ${FW}/web/src/log_buffer.cpp ${FW}/web/src/log_mirror.cpp ${FW}/../third_party/cjson/cJSON.c)

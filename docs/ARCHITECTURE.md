@@ -310,6 +310,22 @@ The state store and event bus are the public API between services, panels and th
 | `timers/chip_text` | string: "12:34", "12:34 +2", "Timer done"; empty = no timers | timer service | glance strip (timer chip) |
 | `timers/list` | string: one line per timer, soonest first: "<id>\|<remaining_s>\|<0/1 ringing>\|<name>" | timer service | Recipes panel (timers bar), update pre-flight (not empty = blocked) |
 | `timers/ringing` | bool: a finished timer is waiting to be stopped | timer service | audio service (alarm sound) |
+| `stopwatch/command` | event: string `start`, `stop`, `toggle`, `lap` or `reset` | clock page (later) | clock tools service |
+| `stopwatch/state` | string "<running 0/1>\|<elapsed_ms at the anchor>\|<anchor, the device clock in ms>": the screen shows elapsed = elapsed_at_anchor + (now - anchor) while running. Published on commands only | clock tools service | clock page (later) |
+| `stopwatch/laps` | string: one line per lap, newest first: "<number>\|<lap_ms>\|<total_ms>"; empty = no laps (kept until reset) | clock tools service | clock page (later) |
+| `stopwatch/lap_marks` | string "<fastest lap number>\|<slowest lap number>" ("0\|0" until two laps) | clock tools service | clock page (later) |
+| `alarm/add` | event: string "<hour>\|<minute>\|<days>\|<label>", days = bit mask Monday = 1 ... Sunday = 64, 0 = once (31 = weekdays, 127 = every day) | clock page (later) | clock tools service |
+| `alarm/update` | event: string "<id>\|<hour>\|<minute>\|<days>\|<label>" | clock page (later) | clock tools service |
+| `alarm/enable` | event: string "<id>\|<0 or 1>" | clock page (later) | clock tools service |
+| `alarm/delete` | event: int alarm id | clock page (later) | clock tools service |
+| `alarm/dismiss` | event: any value; stops every ringing alarm (a once-alarm switches itself off) | clock page, tray, overlay (later) | clock tools service |
+| `alarm/snooze` | event: any value; silences ringing alarms for 9 minutes | clock page, overlay (later) | clock tools service |
+| `alarm/list` | string: one line per alarm by time of day: "<id>\|<HH:MM>\|<days>\|<0/1 enabled>\|<0/1 ringing>\|<label>" | clock tools service | clock page (later) |
+| `alarm/next_text` | string: the time of the soonest enabled alarm or snooze, "07:30"; empty = none (the tray item) | clock tools service | glance strip / tray (later) |
+| `alarm/ringing` | bool: an alarm is ringing | clock tools service | audio service (plays `audio/alarm_sound`), clock page (later) |
+| `alarm/ringing_text` | string: "07:30 Wake up" for the ringing alarm; empty = none | clock tools service | overlay (later) |
+| `alarm/saved` (setting) | string: the alarms, one per line "<hour>\|<minute>\|<days>\|<0/1 enabled>\|<label>", written by the clock tools service after every change so alarms survive a restart (internal: not for editing by hand) | clock tools service | clock tools service |
+| `time/unix` | (already listed) the alarms ring on this clock; before it exists they are kept but cannot ring | time service | clock tools service |
 | `recipes/cooking_chip` | string: short recipe title while a recipe is open on another page; empty otherwise | Recipes panel | glance strip ("Cooking now" chip) |
 | `recipes/library_rev` | int: goes up when recipes were deleted | Recipe module (Delete recipes) | Recipes panel (closes the open recipe, reloads the library) |
 | `time/unix` | int: unix time, once synced | time service | Recipes ("recently cooked") |
@@ -580,7 +596,7 @@ Large bodies are streamed in both directions (`StorageWriter`, `read_chunk`), ne
 
 ### Kitchen timers
 
-- `firmware/services/timers`: up to 8 named timers at once (1 s to 48 h); a timer without a name is called "Timer 1", "Timer 2" ... (the lowest number not in use). Also pure logic, not yet wired to the bus or a screen (design: `docs/TIMER_BRIEF.md`): `Stopwatch` (start/stop/lap/reset, laps kept until reset, up to 99) and `Alarms` (up to 8 alarms with a time of day, repeat days, snooze; works on local wall-clock seconds; a once-alarm switches itself off; late alarms after sleep are skipped). Tapping a time in a step raises `timers/start`; the service counts down and publishes `timers/chip_text`, `timers/list` and `timers/ringing`.
+- `firmware/services/timers`: up to 8 named timers at once (1 s to 48 h); a timer without a name is called "Timer 1", "Timer 2" ... (the lowest number not in use). Also (design: `docs/TIMER_BRIEF.md`): `Stopwatch` (start/stop/lap/reset, laps kept until reset, up to 99) and `Alarms` (up to 8 alarms with a time of day, repeat days, snooze; works on local wall-clock seconds; a once-alarm switches itself off; an alarm up to 2 minutes late after sleep still rings, later ones are skipped), joined to the bus and the state store by `ClockToolsService` (topics above; alarms saved in the setting `alarm/saved`). The clock page, tray items and countdown overlay that use these topics are not built yet. Tapping a time in a step raises `timers/start`; the service counts down and publishes `timers/chip_text`, `timers/list` and `timers/ringing`.
 - When a timer ends it raises a critical toast ("Timer done: <name>", shown even in full-screen modes) and rings until stopped; if nobody stops it, it stops by itself after 1 minute.
 - **Glance chips** (declared in the Recipes panel's manifest): a timer chip with the soonest countdown (never dropped at narrow widths) and a "Cooking now" chip with the recipe title while a recipe is open on another page. Tapping either returns to the Recipes page.
 - The Recipes panel lists running timers above every view with Cancel, and Stop for a finished one.

@@ -343,6 +343,32 @@ TEST(the_library_and_the_timer_sound_setting)
     CHECK(r.port.samples == find_library("marimba")->clip.samples);
 }
 
+TEST(a_ringing_alarm_plays_the_alarm_sound)
+{
+    Rig r;
+    r.state.set("alarm/ringing", true);
+    r.bus.publish("notify/toast_critical", std::string("Alarm: Wake up"));  // the alarm service sends both
+    r.step();
+    CHECK(r.port.samples == find_library("summit-cowbell")->clip.samples);  // the default alarm sound, no warning hit
+    r.settings.set("audio/alarm_sound", std::string("qwarky"));
+    r.step();
+    r.step(12000);                                                          // the next repeat plays the new choice
+    CHECK(r.port.samples == find_library("summit-cowbell")->clip.samples + find_library("qwarky")->clip.samples);  // one repeat;
+    r.state.set("alarm/ringing", false);
+    r.step();
+    const size_t stopped = r.port.samples;
+    r.step(20000);
+    CHECK(r.port.samples == stopped);                                       // dismissed: silent
+    r.state.set("timers/ringing", true);                                    // a timer and an alarm together: the alarm sound
+    r.state.set("alarm/ringing", true);
+    r.step();
+    CHECK(r.port.samples > stopped);
+    Rig q;                                                                  // the timer alone still plays the timer sound
+    q.state.set("timers/ringing", true);
+    q.step();
+    CHECK(q.port.samples == find_library("kitchen")->clip.samples);
+}
+
 TEST(the_ring_sound_is_read_from_the_setting_at_start_up)
 {
     EventBus bus{64};
@@ -411,6 +437,7 @@ int main()
     RUN(volume_slider);
     RUN(timer_alarm_repeats_until_dismissed_and_is_never_silent);
     RUN(the_library_and_the_timer_sound_setting);
+    RUN(a_ringing_alarm_plays_the_alarm_sound);
     RUN(the_ring_sound_is_read_from_the_setting_at_start_up);
     RUN(diagnostics_can_play_any_library_sound_whole);
     RUN(dismissing_stops_the_recording_at_once);

@@ -37,6 +37,7 @@
 #include "summit/storage.h"
 #include "summit/system_settings.h"
 #include "summit/power_service.h"
+#include "summit/clock_tools.h"
 #include "summit/timers.h"
 
 #if SUMMIT_SIM_SDL
@@ -126,6 +127,7 @@ struct App {
     std::unique_ptr<shell::Shell> shell;
     std::unique_ptr<sim::FakeUpdateService> updates;
     std::unique_ptr<TimerService> timers;
+    std::unique_ptr<ClockToolsService> clock_tools;
     FakeSleepPort sleep_port;
     std::unique_ptr<PowerService> power;
     bool auto_wake = true;  // interactive runs: "sleep" wakes at once (as if picked up)
@@ -140,6 +142,7 @@ void run_ms(App &app, uint32_t ms)
         app.bus.dispatch();
         if (app.updates) app.updates->tick(g_ms);
         if (app.timers) app.timers->tick(g_ms);
+        if (app.clock_tools) app.clock_tools->tick(g_ms);
         if (app.power) {
             app.power->tick(g_ms);
             if (app.sleep_port.pending && app.auto_wake) {
@@ -1129,6 +1132,7 @@ int start_app(App &app, shell::Shell::ApplyOrientation apply)
     app.settings->load();
     app.host = std::make_unique<PanelHost>(app.registry, app.bus, app.state, *app.settings);
     app.timers = std::make_unique<TimerService>(app.bus, app.state);
+    app.clock_tools = std::make_unique<ClockToolsService>(app.bus, app.state, *app.settings);
     app.power = std::make_unique<PowerService>(app.bus, app.state, *app.settings, *app.timers, app.sleep_port);
     app.updates = std::make_unique<sim::FakeUpdateService>(app.bus, app.state, *app.settings, "0.0.1");
     sim::publish_placeholders(app.state);

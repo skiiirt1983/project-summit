@@ -64,6 +64,60 @@ bool parse_alarm_request(const std::string &text, int &hour, int &minute, int &d
     return true;
 }
 
+bool parse_alarm_update(const std::string &text, int &id, int &hour, int &minute, int &days, std::string &label)
+{
+    const size_t bar = text.find('|');
+    if (bar == std::string::npos || bar == 0 || bar > 6) return false;
+    int v = 0;
+    for (size_t i = 0; i < bar; ++i) {
+        if (text[i] < '0' || text[i] > '9') return false;
+        v = v * 10 + (text[i] - '0');
+    }
+    id = v;
+    return parse_alarm_request(text.substr(bar + 1), hour, minute, days, label);
+}
+
+std::string Alarms::serialize() const
+{
+    std::string out;
+    for (const Alarm &a : alarms_) {
+        if (!out.empty()) out += '\n';
+        out += std::to_string(a.hour) + "|" + std::to_string(a.minute) + "|" + std::to_string(a.days) + "|" +
+               (a.enabled ? "1" : "0") + "|" + a.label;
+    }
+    return out;
+}
+
+void Alarms::restore(const std::string &saved, int64_t now)
+{
+    alarms_.clear();
+    size_t pos = 0;
+    while (pos <= saved.size() && alarms_.size() < kMax) {
+        size_t end = saved.find('\n', pos);
+        if (end == std::string::npos) end = saved.size();
+        const std::string line = saved.substr(pos, end - pos);
+        pos = end + 1;
+        if (line.empty()) continue;
+        // "<hour>|<minute>|<days>|<enabled>|<label>"
+        int field[4], n = 0;
+        size_t at = 0;
+        bool ok = true;
+        while (n < 4 && ok) {
+            const size_t bar = line.find('|', at);
+            if (bar == std::string::npos || bar == at || bar - at > 3) { ok = false; break; }
+            int v = 0;
+            for (size_t i = at; i < bar; ++i) {
+                if (line[i] < '0' || line[i] > '9') { ok = false; break; }
+                v = v * 10 + (line[i] - '0');
+            }
+            field[n++] = v;
+            at = bar + 1;
+        }
+        if (!ok || field[3] > 1) continue;
+        add(field[0], field[1], field[2], line.substr(at), now, field[3] == 1);
+    }
+}
+
 int64_t Alarms::compute_next(const Alarm &a, int64_t from)
 {
     const int64_t today = floor_div(from, kDay);

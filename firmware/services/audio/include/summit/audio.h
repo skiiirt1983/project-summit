@@ -62,7 +62,8 @@ std::vector<int16_t> render_notes(const std::vector<Note> &notes, int sample_rat
 // Bus events: audio/play (a sound by name, obeys the rules below) and audio/test (the web Diagnostics buttons: same
 // names, plus any library id such as "kitchen", which plays that sound once in full; do-not-disturb is ignored and a
 // test alarm plays kTestAlarmMs once without a timer ringing). Timers ring with the library sound chosen in the
-// setting audio/timer_sound (default kitchen); alarms will use audio/alarm_sound (default the cowbell).
+// setting audio/timer_sound (default kitchen); a ringing alarm (state alarm/ringing) plays audio/alarm_sound (default
+// the cowbell). If both ring, the alarm sound plays.
 // Parses the payload of those events: "preview", "warning", "usb" or "alarm".
 bool parse_sound(const std::string &name, Sound &out);
 bool audible(Sound s, bool dnd, int volume);
@@ -120,7 +121,9 @@ private:
     bool ringing_ = false;
     int volume_ = 60;
     int live_volume_ = -1;  // slider being dragged, -1 = none
-    std::string ring_id_;   // library id that rings (setting audio/timer_sound)
+    std::string ring_id_;   // library id a ringing timer plays (setting audio/timer_sound)
+    std::string alarm_id_;  // library id a ringing alarm plays (setting audio/alarm_sound)
+    bool alarm_ringing_ = false;  // state alarm/ringing (ringing_ is the timers)
 
     bool open_ = false;  // audio task only
     int applied_volume_ = -1;
