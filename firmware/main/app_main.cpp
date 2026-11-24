@@ -45,6 +45,7 @@
 #include "summit/audio_esp.h"
 #include "summit/jpeg_esp.h"
 #include "summit/update/flash_check.h"
+#include "summit/clock_tools.h"
 #include "summit/timers.h"
 #include "summit/update/device.h"
 #include "summit/web/device.h"
@@ -181,6 +182,7 @@ extern "C" void app_main(void)
 
     // Kitchen timers. They are ticked from the UI loop, which starts with the display BSP (Phase 1).
     static summit::TimerService timers(bus, state);
+    static summit::ClockToolsService clock_tools(bus, state, settings);  // stopwatch and alarms (state topics only: the screens come next)
 
     // Sleep (D-012). The rules are host-tested; deep sleep itself is untested on hardware.
     // PowerService::tick() runs from the UI loop (Phase 1), so nothing sleeps before then.
@@ -317,6 +319,7 @@ extern "C" void app_main(void)
         if (static_cast<int32_t>(now - next_services) >= 0) {
             bus.dispatch();
             timers.tick(now);
+            clock_tools.tick(now);
             shell.tick(now);
             if (!splash_ready) {
                 auto flag = [&](const char *topic) {

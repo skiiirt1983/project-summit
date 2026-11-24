@@ -4,5 +4,6 @@ Private alpha of **SLOPEFORM Home**: a battery-portable, auto-rotating 5" home d
 
 - Design: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Start here (Claude Code): [CLAUDE.md](CLAUDE.md) and [docs/KICKOFF.md](docs/KICKOFF.md)
+- Working on it locally (clone, test, build, flash, release): [docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md)
 
 Licence: GPL-3.0 (see [LICENSE](LICENSE)).

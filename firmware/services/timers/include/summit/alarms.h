@@ -62,6 +62,10 @@ public:
     bool ringing() const;
     const std::vector<Alarm> &all() const { return alarms_; }
     const Alarm *find(int id) const;
+    // The alarm settings as text, one per line "<hour>|<minute>|<days>|<0/1 enabled>|<label>" (kept in the setting
+    // alarm/saved so alarms survive a restart); restore() replaces all alarms with the saved ones (bad lines are skipped).
+    std::string serialize() const;
+    void restore(const std::string &saved, int64_t now_local_s);
     // The soonest enabled alarm (or snooze): its id (0 if none) and the seconds until it rings.
     int next(int64_t now_local_s, int64_t *seconds_until = nullptr) const;
     // Tray text: the next alarm's time "07:30" ("" if none).
@@ -81,6 +85,8 @@ private:
 
 std::string format_alarm_time(int hour, int minute);  // "07:30"
 // "<hour>|<minute>|<days>|<label>" (the alarm/set payload for a new alarm); false if out of range.
+// "<id>|<hour>|<minute>|<days>|<label>" (the alarm/update payload); false if out of range.
+bool parse_alarm_update(const std::string &text, int &id, int &hour, int &minute, int &days, std::string &label);
 bool parse_alarm_request(const std::string &text, int &hour, int &minute, int &days, std::string &label);
 
 }  // namespace summit

@@ -17,6 +17,9 @@ SettingsSchema system_settings_schema()
         {"display/brightness", int64_t{80}, {}},
         {"audio/volume", int64_t{60}, {}},
         {"system/dnd", false, {}},
+        // The alarms, one per line "<hour>|<minute>|<days>|<0/1 enabled>|<label>" (firmware/services/timers). Kept here so
+        // they survive a restart; edit them on the device, not here. Additive key: no version bump.
+        SettingDef("alarm/saved", std::string(""), {}, "Saved alarms (internal)", "The alarm list, written by the alarm clock."),
         // Ring sounds (the library in firmware/services/audio, tools/make_sounds.py). Additive keys: no version bump.
         // The choices must match the library ids: tests/host/test_audio.cpp checks it.
         SettingDef("audio/timer_sound", std::string("kitchen"), {"kitchen", "airplane", "marimba", "levelup", "chisper"},

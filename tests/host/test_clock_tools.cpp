@@ -225,6 +225,37 @@ TEST(late_alarms_after_sleep_and_clock_changes)
     CHECK(e.all()[0].next_fire_s == at(0, 7, 30));
 }
 
+TEST(saving_and_restoring_alarms)
+{
+    Alarms a;
+    a.add(6, 30, kDaysWeekdays, "Run", at(0, 9, 0));
+    a.add(18, 5, 0, "Dinner", at(0, 9, 0), false);
+    a.add(23, 59, kDaysAll, "", at(0, 9, 0));
+    const std::string text = a.serialize();
+    CHECK(text == "6|30|31|1|Run\n18|5|0|0|Dinner\n23|59|127|1|");
+    Alarms b;
+    b.restore(text, at(0, 9, 0));
+    CHECK(b.all().size() == 3 && b.serialize() == text);
+    CHECK(b.all()[0].next_fire_s == at(1, 6, 30) && b.all()[1].next_fire_s == -1 && !b.all()[1].enabled);  // armed again, the off one stays off
+    CHECK(b.all()[0].id == 1 && b.all()[2].id == 3 && b.all()[0].label == "Run");
+    Alarms c;
+    c.add(1, 1, 0, "x", 0);
+    c.restore("", 0);
+    CHECK(c.all().empty());                                                         // restore replaces
+    c.restore("7|0|0|1|Ok\nnonsense\n99|0|0|1|bad hour\n7|0|0|2|bad flag\n7|0|200|1|bad days\n\n8|15|1|0|Pipe | inside", 0);
+    CHECK(c.all().size() == 2 && c.all()[0].hour == 7 && c.all()[1].minute == 15 && c.all()[1].label == "Pipe   inside");
+    Alarms many;
+    std::string lots;
+    for (int i = 0; i < 12; ++i) lots += "1|" + std::to_string(i) + "|0|1|\n";
+    many.restore(lots, 0);
+    CHECK(many.all().size() == Alarms::kMax);
+    int id, h, m, d;
+    std::string label;
+    CHECK(parse_alarm_update("3|7|30|31|Work", id, h, m, d, label) && id == 3 && h == 7 && m == 30 && d == 31 && label == "Work");
+    for (const char *bad : {"", "|7|30|0|x", "x|7|30|0|x", "3|25|30|0|x", "3|7|30|0", "1234567|7|30|0|x"})
+        CHECK(!parse_alarm_update(bad, id, h, m, d, label));
+}
+
 TEST(managing_alarms)
 {
     Alarms a;
@@ -267,6 +298,7 @@ int main()
     RUN(snooze_rings_again_and_the_tray_shows_it);
     RUN(an_untouched_alarm_stops_after_five_minutes);
     RUN(late_alarms_after_sleep_and_clock_changes);
+    RUN(saving_and_restoring_alarms);
     RUN(managing_alarms);
     return report("clock tools");
 }
