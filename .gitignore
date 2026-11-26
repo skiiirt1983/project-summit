@@ -19,3 +19,4 @@ node_modules/
 # Enclosure build output
 hardware/enclosure/out/
 hardware/enclosure/cad/render/node_modules/
+hardware/enclosure/test-cradle/_render/

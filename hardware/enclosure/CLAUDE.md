@@ -125,6 +125,7 @@ python remaining_tests.py # REMAINING-TESTS.md + .docx
 | `parts.py` | screen module, frame, button pins, tunnels, body cutter |
 | `peak.py` | body, cap split, pegs, pads, assembly, exports |
 | `test_coupons.py`, `test_pictures.py`, `remaining_tests.py`, `render_all.py` | coupons, checklist pictures and documents, renders |
+| `../test-cradle/` | **unofficial TPU bench cradle** for the real board (tray + bezel ring, buttons / USB-C / microSD open). Built on request 2026-11-26, separate from the Peak, not yet printed. See its README |
 | `../coupons/` | print files (STL, 3MF) as issued to Paul; `../renders/` latest renders; `../ref/` reference images and the LyricFlash 3MF |
 | `../decisions.md`, `../dimensions.md`, `../COUPON-RESULTS.md` | the log, the provenance table, the record of finished tests |
 

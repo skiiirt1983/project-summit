@@ -168,6 +168,10 @@ Paul measured the button distances from the **outer face of the USB-C connector*
 | Button work is finished: POWER pin to the ridge; BOOT and RESET as 1.8 mm paperclip holes in the PETG module (both click with a paperclip); no battery switch | Paul's call and the tests |
 | The pin may still need a retest in the full case, since a printed full body will hold it differently from the test strip | Only a coupon so far |
 
+## Bench test cradle (2026-11-26, Paul's request)
+
+An unofficial TPU box so the real board can sit on the bench for software testing with no battery: `test-cradle/`. Tray plus a bezel ring that sits on the walls by tongue and groove (friction, no glue); the board is screwed down onto the base through its own four standoffs (4 x M2.5 flat-head screws). The notches for the USB-C ports, buttons and microSD are open at the top, so the ring's underside is their roof (no ceilings). Base windows for the header and the speaker, battery, RTC and camera sockets, plus the mic holes. Uses the measured board numbers and the TPU rules learned on the Peak (no flat ceilings, 45 degree chamfer on the plate edge, countersinks at 45 degrees, teardrop not needed). Glass pocket 0.45 per side (a guess for soft TPU; PETG needed 0.55). **Not printed yet.** Not part of the Peak and not covered by REMAINING-TESTS.
+
 ## Fixed 2026-11-13
 - **Mic exit holes were blocked.** The mics sit 29.9 mm off the centre line, which is behind the solid corners of
   the triangle, so the holes in frame and body did not reach the hollow. The exit holes (cover, frame, body) are now

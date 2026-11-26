@@ -46,6 +46,8 @@ likes to work, what went wrong before, and a starter prompt.
   the board; Paul now has the board but not yet the battery or accelerometer.
 - **Enclosure:** designed and modelled; fit testing on coupons is nearly done; no full case printed yet. Details in
   `hardware/enclosure/CLAUDE.md`.
+- **Bench cradle:** `hardware/enclosure/test-cradle/` is a simple unofficial TPU box (tray + bezel ring) so the board can be
+  used for software testing without damage. Not part of the Peak, not yet printed.
 - Paul keeps decisions in the Claude design doc (see rule 10 above) and answers questions best with pictures and
   A/B/C choices.
 - **For Paul's design doc (firmware ideas, not built):** RESET as a programmed short press of the POWER button (2026-11-20).
